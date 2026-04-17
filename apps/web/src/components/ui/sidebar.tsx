@@ -1,7 +1,7 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva, type VariantProps } from "class-variance-authority";
-import { PanelLeftCloseIcon, PanelLeftIcon } from "lucide-react";
+import { PanelLeftIcon } from "lucide-react";
 import * as React from "react";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
@@ -227,12 +227,15 @@ function Sidebar({
         <Sheet onOpenChange={setOpenMobile} open={openMobile} {...props}>
           <SheetPopup
             className={cn(
-              "w-(--sidebar-width) max-w-none bg-sidebar p-0 text-sidebar-foreground",
+              "w-(--sidebar-width) max-w-none bg-sidebar p-0 text-sidebar-foreground duration-0",
               className,
             )}
             data-mobile="true"
             data-sidebar="sidebar"
             data-slot="sidebar"
+            initialFocus={() =>
+              document.querySelector<HTMLElement>('[data-testid="command-palette-trigger"]')
+            }
             showCloseButton={false}
             side={side}
             style={
@@ -303,7 +306,7 @@ function Sidebar({
 }
 
 function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, openMobile } = useSidebar();
+  const { toggleSidebar } = useSidebar();
 
   return (
     <Button
@@ -318,7 +321,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
       variant="ghost"
       {...props}
     >
-      {openMobile ? <PanelLeftCloseIcon /> : <PanelLeftIcon />}
+      <PanelLeftIcon />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   );
