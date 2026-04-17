@@ -490,10 +490,7 @@ export const TraitsPicker = memo(function TraitsPicker({
         ) : (
           <>
             <span>{triggerLabel}</span>
-            <ChevronDownIcon
-              aria-hidden="true"
-              className="size-3 opacity-60 max-[469px]:hidden"
-            />
+            <ChevronDownIcon aria-hidden="true" className="size-3 opacity-60 max-[469px]:hidden" />
           </>
         )}
       </MenuTrigger>

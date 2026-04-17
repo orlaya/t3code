@@ -339,7 +339,20 @@ export default function ProjectScriptsControl({
             </MenuPopup>
           </Menu>
         </Group>
-      ) : null}
+      ) : (
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={openAddDialog}
+          title="Add action"
+          className="max-[499px]:hidden"
+        >
+          <PlusIcon className="size-3.5" />
+          <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
+            Add action
+          </span>
+        </Button>
+      )}
 
       <Dialog
         onOpenChange={(open) => {
