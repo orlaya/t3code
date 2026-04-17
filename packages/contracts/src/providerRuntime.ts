@@ -1,5 +1,6 @@
 import { Effect, Schema } from "effect";
 import {
+  AgentKind,
   EventId,
   IsoDateTime,
   NonNegativeInt,
@@ -245,6 +246,7 @@ const ProviderRuntimeEventBase = Schema.Struct({
   eventId: EventId,
   provider: ProviderKind,
   threadId: ThreadId,
+  agentKind: AgentKind,
   createdAt: IsoDateTime,
   turnId: Schema.optional(TurnId),
   itemId: Schema.optional(RuntimeItemId),

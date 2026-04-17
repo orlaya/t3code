@@ -44,7 +44,8 @@ export type ChatAttachment = ChatImageAttachment;
 
 export interface ChatMessage {
   id: MessageId;
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "thinking";
+  agentKind?: "primary" | "sub";
   text: string;
   attachments?: ChatAttachment[];
   turnId?: TurnId | null;

@@ -1017,8 +1017,13 @@ export function deriveTimelineEntries(
   messages: ChatMessage[],
   proposedPlans: ProposedPlan[],
   workEntries: WorkLogEntry[],
+  latestTurnId?: TurnId,
 ): TimelineEntry[] {
-  const messageRows: TimelineEntry[] = messages.map((message) => ({
+  const visibleMessages = messages.filter((message) => {
+    if (message.role !== "thinking") return true;
+    return latestTurnId !== undefined && message.turnId === latestTurnId;
+  });
+  const messageRows: TimelineEntry[] = visibleMessages.map((message) => ({
     id: message.id,
     kind: "message",
     createdAt: message.createdAt,

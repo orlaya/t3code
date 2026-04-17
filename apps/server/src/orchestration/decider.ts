@@ -541,7 +541,8 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           threadId: command.threadId,
           messageId: command.messageId,
-          role: "assistant",
+          role: command.role ?? "assistant",
+          ...(command.agentKind ? { agentKind: command.agentKind } : {}),
           text: command.delta,
           turnId: command.turnId ?? null,
           streaming: true,
@@ -568,7 +569,8 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           threadId: command.threadId,
           messageId: command.messageId,
-          role: "assistant",
+          role: command.role ?? "assistant",
+          ...(command.agentKind ? { agentKind: command.agentKind } : {}),
           text: "",
           turnId: command.turnId ?? null,
           streaming: false,

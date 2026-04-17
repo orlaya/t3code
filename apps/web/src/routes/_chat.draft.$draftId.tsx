@@ -7,6 +7,7 @@ import { SidebarInset } from "../components/ui/sidebar";
 import { createThreadSelectorAcrossEnvironments } from "../storeSelectors";
 import { useStore } from "../store";
 import { buildThreadRouteParams } from "../threadRoutes";
+import { retainThreadDetailSubscription } from "../environments/runtime/service";
 
 function DraftChatThreadRouteView() {
   const navigate = useNavigate();
@@ -20,20 +21,35 @@ function DraftChatThreadRouteView() {
     ),
   );
   const serverThreadStarted = threadHasStarted(serverThread);
+  // Wait until the server thread has at least one message before navigating.
+  // Without this, the draft ChatView (with its optimistic user message) gets
+  // torn down before the server has echoed the message back, causing a flicker
+  // where the user message briefly disappears.
+  const serverThreadHasMessages = serverThread !== undefined && serverThread.messages.length > 0;
   const canonicalThreadRef = useMemo(
     () =>
       draftSession?.promotedTo
-        ? serverThreadStarted
+        ? serverThreadStarted && serverThreadHasMessages
           ? draftSession.promotedTo
           : null
-        : serverThread
+        : serverThreadHasMessages
           ? {
-              environmentId: serverThread.environmentId,
-              threadId: serverThread.id,
+              environmentId: serverThread!.environmentId,
+              threadId: serverThread!.id,
             }
           : null,
-    [draftSession?.promotedTo, serverThread, serverThreadStarted],
+    [draftSession?.promotedTo, serverThread, serverThreadStarted, serverThreadHasMessages],
   );
+
+  // Subscribe to thread detail events as soon as the server thread exists,
+  // so message-sent events flow into the store and serverThreadHasMessages
+  // flips promptly. Without this, the draft route never sees individual
+  // message updates and waits indefinitely.
+  const promotedRef = draftSession?.promotedTo ?? null;
+  useEffect(() => {
+    if (!promotedRef) return;
+    return retainThreadDetailSubscription(promotedRef.environmentId, promotedRef.threadId);
+  }, [promotedRef]);
 
   useEffect(() => {
     if (!canonicalThreadRef) {

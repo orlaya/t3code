@@ -365,6 +365,7 @@ export const makeTestProviderAdapterHarness = (options?: MakeTestProviderAdapter
             type: "turn.completed",
             eventId: EventId.make(randomUUID()),
             provider,
+            agentKind: "primary",
             createdAt: nowIso(),
             threadId: state.snapshot.threadId,
             turnId,

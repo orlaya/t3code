@@ -2,6 +2,7 @@ import { Effect, Option, Schema, SchemaIssue, Struct } from "effect";
 import { ClaudeModelOptions, CodexModelOptions, OpenCodeModelOptions } from "./model.ts";
 import { RepositoryIdentity } from "./environment.ts";
 import {
+  AgentKind,
   ApprovalRequestId,
   CheckpointRef,
   CommandId,
@@ -167,12 +168,18 @@ export const OrchestrationProject = Schema.Struct({
 });
 export type OrchestrationProject = typeof OrchestrationProject.Type;
 
-export const OrchestrationMessageRole = Schema.Literals(["user", "assistant", "system"]);
+export const OrchestrationMessageRole = Schema.Literals([
+  "user",
+  "assistant",
+  "system",
+  "thinking",
+]);
 export type OrchestrationMessageRole = typeof OrchestrationMessageRole.Type;
 
 export const OrchestrationMessage = Schema.Struct({
   id: MessageId,
   role: OrchestrationMessageRole,
+  agentKind: Schema.optional(AgentKind),
   text: Schema.String,
   attachments: Schema.optional(Schema.Array(ChatAttachment)),
   turnId: Schema.NullOr(TurnId),
@@ -655,6 +662,8 @@ const ThreadMessageAssistantDeltaCommand = Schema.Struct({
   threadId: ThreadId,
   messageId: MessageId,
   delta: Schema.String,
+  role: Schema.optional(OrchestrationMessageRole),
+  agentKind: Schema.optional(AgentKind),
   turnId: Schema.optional(TurnId),
   createdAt: IsoDateTime,
 });
@@ -664,6 +673,8 @@ const ThreadMessageAssistantCompleteCommand = Schema.Struct({
   commandId: CommandId,
   threadId: ThreadId,
   messageId: MessageId,
+  role: Schema.optional(OrchestrationMessageRole),
+  agentKind: Schema.optional(AgentKind),
   turnId: Schema.optional(TurnId),
   createdAt: IsoDateTime,
 });
@@ -837,6 +848,7 @@ export const ThreadMessageSentPayload = Schema.Struct({
   threadId: ThreadId,
   messageId: MessageId,
   role: OrchestrationMessageRole,
+  agentKind: Schema.optional(AgentKind),
   text: Schema.String,
   attachments: Schema.optional(Schema.Array(ChatAttachment)),
   turnId: Schema.NullOr(TurnId),

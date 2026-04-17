@@ -758,6 +758,9 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
     )(function* (event, attachmentSideEffects) {
       switch (event.type) {
         case "thread.message-sent": {
+          if (event.payload.role === "thinking") {
+            return;
+          }
           const existingMessage = yield* projectionThreadMessageRepository.getByMessageId({
             messageId: event.payload.messageId,
           });

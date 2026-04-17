@@ -170,6 +170,7 @@ function mapMessage(environmentId: EnvironmentId, message: OrchestrationMessage)
   return {
     id: message.id,
     role: message.role,
+    ...(message.agentKind ? { agentKind: message.agentKind } : {}),
     text: message.text,
     turnId: message.turnId,
     createdAt: message.createdAt,

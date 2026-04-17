@@ -2,11 +2,11 @@ import { type TimelineEntry, type WorkLogEntry } from "../../session-logic";
 import { type ChatMessage, type ProposedPlan, type TurnDiffSummary } from "../../types";
 import { type MessageId } from "@t3tools/contracts";
 
-export const MAX_VISIBLE_WORK_LOG_ENTRIES = 6;
+export const MAX_VISIBLE_WORK_LOG_ENTRIES = 4;
 
 export interface TimelineDurationMessage {
   id: string;
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "thinking";
   createdAt: string;
   completedAt?: string | undefined;
 }
@@ -28,6 +28,12 @@ export type MessagesTimelineRow =
       showAssistantCopyButton: boolean;
       assistantTurnDiffSummary?: TurnDiffSummary | undefined;
       revertTurnCount?: number | undefined;
+    }
+  | {
+      kind: "thinking";
+      id: string;
+      createdAt: string;
+      message: ChatMessage;
     }
   | {
       kind: "proposed-plan";
@@ -156,6 +162,16 @@ export function deriveMessagesTimelineRows(input: {
       continue;
     }
 
+    if (timelineEntry.message.role === "thinking") {
+      nextRows.push({
+        kind: "thinking",
+        id: timelineEntry.id,
+        createdAt: timelineEntry.createdAt,
+        message: timelineEntry.message,
+      });
+      continue;
+    }
+
     nextRows.push({
       kind: "message",
       id: timelineEntry.id,
@@ -236,5 +252,8 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
         a.revertTurnCount === bm.revertTurnCount
       );
     }
+
+    case "thinking":
+      return a.message === (b as typeof a).message;
   }
 }

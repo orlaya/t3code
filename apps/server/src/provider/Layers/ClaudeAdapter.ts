@@ -21,6 +21,7 @@ import {
 } from "@anthropic-ai/claude-agent-sdk";
 import { parseCliArgs } from "@t3tools/shared/cliArgs";
 import {
+  type AgentKind,
   ApprovalRequestId,
   type CanonicalItemType,
   type CanonicalRequestType,
@@ -108,6 +109,7 @@ interface ClaudeTurnState {
   readonly items: Array<unknown>;
   readonly assistantTextBlocks: Map<number, AssistantTextBlockState>;
   readonly assistantTextBlockOrder: Array<AssistantTextBlockState>;
+  readonly thinkingBlocks: Map<number, ThinkingBlockState>;
   readonly capturedProposedPlanKeys: Set<string>;
   nextSyntheticAssistantBlockIndex: number;
 }
@@ -118,6 +120,12 @@ interface AssistantTextBlockState {
   emittedTextDelta: boolean;
   fallbackText: string;
   streamClosed: boolean;
+  completionEmitted: boolean;
+}
+
+interface ThinkingBlockState {
+  readonly itemId: string;
+  readonly blockIndex: number;
   completionEmitted: boolean;
 }
 
@@ -153,6 +161,7 @@ interface ClaudeSessionContext {
   readonly basePermissionMode: PermissionMode | undefined;
   currentApiModelId: string | undefined;
   resumeSessionId: string | undefined;
+  primarySessionId: string | undefined;
   readonly pendingApprovals: Map<ApprovalRequestId, PendingApproval>;
   readonly pendingUserInputs: Map<ApprovalRequestId, PendingUserInput>;
   readonly turns: Array<{
@@ -993,6 +1002,13 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
   const offerRuntimeEvent = (event: ProviderRuntimeEvent): Effect.Effect<void> =>
     Queue.offer(runtimeEventQueue, event).pipe(Effect.asVoid);
 
+  const resolveAgentKind = (context: ClaudeSessionContext): AgentKind => {
+    if (context.primarySessionId === undefined) {
+      return "primary";
+    }
+    return context.resumeSessionId === context.primarySessionId ? "primary" : "sub";
+  };
+
   const logNativeSdkMessage = Effect.fn("logNativeSdkMessage")(function* (
     context: ClaudeSessionContext,
     message: SDKMessage,
@@ -1014,6 +1030,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
               : crypto.randomUUID(),
           kind: "notification",
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: observedAt,
           method: sdkNativeMethod(message),
           ...(typeof message.session_id === "string"
@@ -1147,6 +1164,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "content.delta",
         eventId: deltaStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: deltaStamp.createdAt,
         threadId: context.session.threadId,
         turnId: turnState.turnId,
@@ -1178,6 +1196,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       type: "item.completed",
       eventId: stamp.eventId,
       provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
       createdAt: stamp.createdAt,
       itemId: asRuntimeItemId(block.itemId),
       threadId: context.session.threadId,
@@ -1187,6 +1206,51 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         status: "completed",
         title: "Assistant message",
         ...(block.fallbackText.length > 0 ? { detail: block.fallbackText } : {}),
+      },
+      providerRefs: nativeProviderRefs(context),
+      ...(options?.rawMethod || options?.rawPayload
+        ? {
+            raw: {
+              source: "claude.sdk.message" as const,
+              ...(options.rawMethod ? { method: options.rawMethod } : {}),
+              payload: options?.rawPayload,
+            },
+          }
+        : {}),
+    });
+  });
+
+  const completeThinkingBlock = Effect.fn("completeThinkingBlock")(function* (
+    context: ClaudeSessionContext,
+    block: ThinkingBlockState,
+    options?: {
+      readonly rawMethod?: string;
+      readonly rawPayload?: unknown;
+    },
+  ) {
+    const turnState = context.turnState;
+    if (!turnState || block.completionEmitted) {
+      return;
+    }
+    block.completionEmitted = true;
+    if (turnState.thinkingBlocks.get(block.blockIndex) === block) {
+      turnState.thinkingBlocks.delete(block.blockIndex);
+    }
+
+    const stamp = yield* makeEventStamp();
+    yield* offerRuntimeEvent({
+      type: "item.completed",
+      eventId: stamp.eventId,
+      provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
+      createdAt: stamp.createdAt,
+      itemId: asRuntimeItemId(block.itemId),
+      threadId: context.session.threadId,
+      turnId: turnState.turnId,
+      payload: {
+        itemType: "reasoning",
+        status: "completed",
+        title: "Thinking",
       },
       providerRefs: nativeProviderRefs(context),
       ...(options?.rawMethod || options?.rawPayload
@@ -1257,6 +1321,9 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       return;
     }
     const nextThreadId = message.session_id;
+    if (context.primarySessionId === undefined) {
+      context.primarySessionId = message.session_id;
+    }
     context.resumeSessionId = message.session_id;
     yield* updateResumeCursor(context);
 
@@ -1267,6 +1334,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "thread.started",
         eventId: stamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: stamp.createdAt,
         threadId: context.session.threadId,
         payload: {
@@ -1298,6 +1366,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       type: "runtime.error",
       eventId: stamp.eventId,
       provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
       createdAt: stamp.createdAt,
       threadId: context.session.threadId,
       ...(turnState ? { turnId: asCanonicalTurnId(turnState.turnId) } : {}),
@@ -1321,6 +1390,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       type: "runtime.warning",
       eventId: stamp.eventId,
       provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
       createdAt: stamp.createdAt,
       threadId: context.session.threadId,
       ...(turnState ? { turnId: asCanonicalTurnId(turnState.turnId) } : {}),
@@ -1362,6 +1432,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       type: "turn.proposed.completed",
       eventId: stamp.eventId,
       provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
       createdAt: stamp.createdAt,
       threadId: context.session.threadId,
       turnId: turnState.turnId,
@@ -1427,6 +1498,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           type: "thread.token-usage.updated",
           eventId: usageStamp.eventId,
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: usageStamp.createdAt,
           threadId: context.session.threadId,
           payload: {
@@ -1441,6 +1513,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "turn.completed",
         eventId: stamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: stamp.createdAt,
         threadId: context.session.threadId,
         payload: {
@@ -1464,6 +1537,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "item.completed",
         eventId: toolStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: toolStamp.createdAt,
         threadId: context.session.threadId,
         turnId: turnState.turnId,
@@ -1511,6 +1585,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "thread.token-usage.updated",
         eventId: usageStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: usageStamp.createdAt,
         threadId: context.session.threadId,
         turnId: turnState.turnId,
@@ -1526,6 +1601,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       type: "turn.completed",
       eventId: stamp.eventId,
       provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
       createdAt: stamp.createdAt,
       threadId: context.session.threadId,
       turnId: turnState.turnId,
@@ -1579,33 +1655,34 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           return;
         }
         const streamKind = streamKindFromDeltaType(event.delta.type);
-        const assistantBlockEntry =
-          event.delta.type === "text_delta"
-            ? yield* ensureAssistantTextBlock(context, event.index)
-            : context.turnState.assistantTextBlocks.get(event.index)
-              ? {
-                  blockIndex: event.index,
-                  block: context.turnState.assistantTextBlocks.get(
-                    event.index,
-                  ) as AssistantTextBlockState,
-                }
-              : undefined;
-        if (assistantBlockEntry?.block && event.delta.type === "text_delta") {
-          assistantBlockEntry.block.emittedTextDelta = true;
+        let itemIdForDelta: string | undefined;
+        if (event.delta.type === "text_delta") {
+          const assistantBlockEntry = yield* ensureAssistantTextBlock(context, event.index);
+          if (assistantBlockEntry?.block) {
+            assistantBlockEntry.block.emittedTextDelta = true;
+            itemIdForDelta = assistantBlockEntry.block.itemId;
+          }
+        } else {
+          let thinkingBlock = context.turnState.thinkingBlocks.get(event.index);
+          if (!thinkingBlock) {
+            // Lazily register thinking block on first delta — the Agent SDK
+            // may not forward content_block_start for thinking blocks.
+            const itemId = yield* Random.nextUUIDv4;
+            thinkingBlock = { itemId, blockIndex: event.index, completionEmitted: false };
+            context.turnState.thinkingBlocks.set(event.index, thinkingBlock);
+          }
+          itemIdForDelta = thinkingBlock.itemId;
         }
         const stamp = yield* makeEventStamp();
         yield* offerRuntimeEvent({
           type: "content.delta",
           eventId: stamp.eventId,
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: stamp.createdAt,
           threadId: context.session.threadId,
           turnId: context.turnState.turnId,
-          ...(assistantBlockEntry?.block
-            ? {
-                itemId: asRuntimeItemId(assistantBlockEntry.block.itemId),
-              }
-            : {}),
+          ...(itemIdForDelta ? { itemId: asRuntimeItemId(itemIdForDelta) } : {}),
           payload: {
             streamKind,
             delta: deltaText,
@@ -1661,6 +1738,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           type: "item.updated",
           eventId: stamp.eventId,
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: stamp.createdAt,
           threadId: context.session.threadId,
           ...(context.turnState
@@ -1698,6 +1776,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
               type: "turn.plan.updated",
               eventId: planStamp.eventId,
               provider: PROVIDER,
+              agentKind: resolveAgentKind(context),
               createdAt: planStamp.createdAt,
               threadId: context.session.threadId,
               ...(context.turnState
@@ -1722,6 +1801,18 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         yield* ensureAssistantTextBlock(context, index, {
           fallbackText: extractContentBlockText(block),
         });
+        return;
+      }
+      if (block.type === "thinking") {
+        const turnState = context.turnState;
+        if (turnState && !turnState.thinkingBlocks.has(index)) {
+          const itemId = yield* Random.nextUUIDv4;
+          turnState.thinkingBlocks.set(index, {
+            itemId,
+            blockIndex: index,
+            completionEmitted: false,
+          });
+        }
         return;
       }
       if (
@@ -1760,6 +1851,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "item.started",
         eventId: stamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: stamp.createdAt,
         threadId: context.session.threadId,
         ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
@@ -1792,6 +1884,14 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       if (assistantBlock) {
         assistantBlock.streamClosed = true;
         yield* completeAssistantTextBlock(context, assistantBlock, {
+          rawMethod: "claude/stream_event/content_block_stop",
+          rawPayload: message,
+        });
+        return;
+      }
+      const thinkingBlock = context.turnState?.thinkingBlocks.get(index);
+      if (thinkingBlock) {
+        yield* completeThinkingBlock(context, thinkingBlock, {
           rawMethod: "claude/stream_event/content_block_stop",
           rawPayload: message,
         });
@@ -1837,6 +1937,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "item.updated",
         eventId: updatedStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: updatedStamp.createdAt,
         threadId: context.session.threadId,
         ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
@@ -1865,6 +1966,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           type: "content.delta",
           eventId: deltaStamp.eventId,
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: deltaStamp.createdAt,
           threadId: context.session.threadId,
           turnId: context.turnState.turnId,
@@ -1889,6 +1991,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "item.completed",
         eventId: completedStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: completedStamp.createdAt,
         threadId: context.session.threadId,
         ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
@@ -1933,6 +2036,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         items: [],
         assistantTextBlocks: new Map(),
         assistantTextBlockOrder: [],
+        thinkingBlocks: new Map(),
         capturedProposedPlanKeys: new Set(),
         nextSyntheticAssistantBlockIndex: -1,
       };
@@ -1947,6 +2051,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "turn.started",
         eventId: turnStartedStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: turnStartedStamp.createdAt,
         threadId: context.session.threadId,
         turnId,
@@ -2031,6 +2136,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
     const base = {
       eventId: stamp.eventId,
       provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
       createdAt: stamp.createdAt,
       threadId: context.session.threadId,
       ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
@@ -2225,6 +2331,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
     const base = {
       eventId: stamp.eventId,
       provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
       createdAt: stamp.createdAt,
       threadId: context.session.threadId,
       ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
@@ -2296,8 +2403,8 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
     context: ClaudeSessionContext,
     message: SDKMessage,
   ) {
-    yield* logNativeSdkMessage(context, message);
     yield* ensureThreadId(context, message);
+    yield* logNativeSdkMessage(context, message);
 
     switch (message.type) {
       case "stream_event":
@@ -2385,6 +2492,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "request.resolved",
         eventId: stamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: stamp.createdAt,
         threadId: context.session.threadId,
         ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
@@ -2431,6 +2539,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "session.exited",
         eventId: stamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: stamp.createdAt,
         threadId: context.session.threadId,
         payload: {
@@ -2570,6 +2679,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           type: "user-input.requested",
           eventId: requestedStamp.eventId,
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: requestedStamp.createdAt,
           threadId: context.session.threadId,
           ...(context.turnState
@@ -2617,6 +2727,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           type: "user-input.resolved",
           eventId: resolvedStamp.eventId,
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: resolvedStamp.createdAt,
           threadId: context.session.threadId,
           ...(context.turnState
@@ -2720,6 +2831,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           type: "request.opened",
           eventId: requestedStamp.eventId,
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: requestedStamp.createdAt,
           threadId: context.session.threadId,
           ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
@@ -2768,6 +2880,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           type: "request.resolved",
           eventId: resolvedStamp.eventId,
           provider: PROVIDER,
+          agentKind: resolveAgentKind(context),
           createdAt: resolvedStamp.createdAt,
           threadId: context.session.threadId,
           ...(context.turnState ? { turnId: asCanonicalTurnId(context.turnState.turnId) } : {}),
@@ -2910,6 +3023,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         basePermissionMode: permissionMode,
         currentApiModelId: apiModelId,
         resumeSessionId: sessionId,
+        primarySessionId: sessionId,
         pendingApprovals,
         pendingUserInputs,
         turns: [],
@@ -2929,6 +3043,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "session.started",
         eventId: sessionStartedStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: sessionStartedStamp.createdAt,
         threadId,
         payload: input.resumeCursor !== undefined ? { resume: input.resumeCursor } : {},
@@ -2940,6 +3055,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "session.configured",
         eventId: configuredStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: configuredStamp.createdAt,
         threadId,
         payload: {
@@ -2959,6 +3075,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         type: "session.state.changed",
         eventId: readyStamp.eventId,
         provider: PROVIDER,
+        agentKind: resolveAgentKind(context),
         createdAt: readyStamp.createdAt,
         threadId,
         payload: {
@@ -3043,6 +3160,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       items: [],
       assistantTextBlocks: new Map(),
       assistantTextBlockOrder: [],
+      thinkingBlocks: new Map(),
       capturedProposedPlanKeys: new Set(),
       nextSyntheticAssistantBlockIndex: -1,
     };
@@ -3061,6 +3179,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       type: "turn.started",
       eventId: turnStartedStamp.eventId,
       provider: PROVIDER,
+      agentKind: resolveAgentKind(context),
       createdAt: turnStartedStamp.createdAt,
       threadId: context.session.threadId,
       turnId,

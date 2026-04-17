@@ -297,6 +297,8 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
     >
       {row.kind === "work" && <WorkGroupSection groupedEntries={row.groupedEntries} />}
 
+      {row.kind === "thinking" && <ThinkingSection message={row.message} />}
+
       {row.kind === "message" &&
         row.message.role === "user" &&
         (() => {
@@ -573,6 +575,94 @@ const WorkGroupSection = memo(function WorkGroupSection({
             workspaceRoot={workspaceRoot}
           />
         ))}
+      </div>
+    </div>
+  );
+});
+
+const THINKING_EXPAND_CHAR_THRESHOLD = 240;
+
+const ThinkingSection = memo(function ThinkingSection({
+  message,
+}: {
+  message: Extract<MessagesTimelineRow, { kind: "thinking" }>["message"];
+}) {
+  const { markdownCwd } = use(TimelineRowCtx);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const collapsedScrollRef = useRef<HTMLDivElement | null>(null);
+  const isSubAgent = message.agentKind === "sub";
+
+
+  useEffect(() => {
+    if (isExpanded || !collapsedScrollRef.current) return;
+    collapsedScrollRef.current.scrollTop = collapsedScrollRef.current.scrollHeight;
+  }, [message.text, isExpanded]);
+
+  if (isSubAgent) {
+    const preview =
+      message.text
+        .split("\n")
+        .map((line) => line.trim())
+        .find((line) => line.length > 0) ?? "";
+    return (
+      <div className="flex items-center gap-2 px-2 py-1 text-[11px] italic text-muted-foreground/50">
+        <span className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+          Sub-agent thinking
+        </span>
+        {preview && <span className="min-w-0 flex-1 truncate">{preview}</span>}
+        {message.streaming && (
+          <span className="inline-flex items-center gap-[3px]">
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  const canExpand = message.text.length > THINKING_EXPAND_CHAR_THRESHOLD;
+
+  return (
+    <div className="rounded-xl border border-border/45 bg-card/25 px-2 py-1.5">
+      <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+        <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+          Thinking
+          {message.streaming && (
+            <span className="ml-2 inline-flex items-center gap-[3px] align-middle">
+              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
+              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
+              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
+            </span>
+          )}
+        </p>
+        {canExpand && (
+          <button
+            type="button"
+            className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75"
+            onClick={() => setIsExpanded((v) => !v)}
+          >
+            {isExpanded ? "Show less" : "Show more"}
+          </button>
+        )}
+      </div>
+      <div className="relative">
+        <div
+          ref={collapsedScrollRef}
+          className={cn(
+            "text-[12px] italic text-muted-foreground/60",
+            canExpand && !isExpanded && "thinking-collapsed-scroll max-h-28 overflow-y-auto",
+          )}
+        >
+          <ChatMarkdown
+            text={message.text}
+            cwd={markdownCwd}
+            isStreaming={Boolean(message.streaming)}
+          />
+        </div>
+        {canExpand && !isExpanded && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-card/60 to-transparent" />
+        )}
       </div>
     </div>
   );

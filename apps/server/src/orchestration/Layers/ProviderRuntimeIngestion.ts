@@ -1000,6 +1000,10 @@ const make = Effect.fn("make")(function* () {
       event.type === "content.delta" && event.payload.streamKind === "assistant_text"
         ? event.payload.delta
         : undefined;
+    const reasoningDelta =
+      event.type === "content.delta" && event.payload.streamKind === "reasoning_text"
+        ? event.payload.delta
+        : undefined;
     const proposedPlanDelta =
       event.type === "turn.proposed.delta" ? event.payload.delta : undefined;
 
@@ -1042,6 +1046,22 @@ const make = Effect.fn("make")(function* () {
       }
     }
 
+    if (reasoningDelta && reasoningDelta.length > 0) {
+      const thinkingMessageId = MessageId.make(`thinking:${event.itemId ?? event.eventId}`);
+      const turnId = toTurnId(event.turnId);
+      yield* orchestrationEngine.dispatch({
+        type: "thread.message.assistant.delta",
+        commandId: providerCommandId(event, "thinking-delta"),
+        threadId: thread.id,
+        messageId: thinkingMessageId,
+        delta: reasoningDelta,
+        role: "thinking",
+        agentKind: event.agentKind,
+        ...(turnId ? { turnId } : {}),
+        createdAt: now,
+      });
+    }
+
     if (proposedPlanDelta && proposedPlanDelta.length > 0) {
       const planId = proposedPlanIdFromEvent(event, thread.id);
       yield* appendBufferedProposedPlan(planId, proposedPlanDelta, now);
@@ -1052,6 +1072,12 @@ const make = Effect.fn("make")(function* () {
         ? {
             messageId: MessageId.make(`assistant:${event.itemId ?? event.turnId ?? event.eventId}`),
             fallbackText: event.payload.detail,
+          }
+        : undefined;
+    const reasoningCompletion =
+      event.type === "item.completed" && event.payload.itemType === "reasoning"
+        ? {
+            messageId: MessageId.make(`thinking:${event.itemId ?? event.eventId}`),
           }
         : undefined;
     const proposedPlanCompletion =
@@ -1091,6 +1117,20 @@ const make = Effect.fn("make")(function* () {
       if (turnId) {
         yield* forgetAssistantMessageId(thread.id, turnId, assistantMessageId);
       }
+    }
+
+    if (reasoningCompletion) {
+      const turnId = toTurnId(event.turnId);
+      yield* orchestrationEngine.dispatch({
+        type: "thread.message.assistant.complete",
+        commandId: providerCommandId(event, "thinking-complete"),
+        threadId: thread.id,
+        messageId: reasoningCompletion.messageId,
+        role: "thinking",
+        agentKind: event.agentKind,
+        ...(turnId ? { turnId } : {}),
+        createdAt: now,
+      });
     }
 
     if (proposedPlanCompletion) {

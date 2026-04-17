@@ -14,6 +14,7 @@ describe("ProviderRuntimeEvent", () => {
       sessionId: "runtime-session-1",
       createdAt: "2026-02-28T00:00:00.000Z",
       threadId: "thread-1",
+      agentKind: "primary",
       turnId: "turn-1",
       payload: {
         explanation: "Implement schema updates",
@@ -39,6 +40,7 @@ describe("ProviderRuntimeEvent", () => {
       provider: "codex",
       createdAt: "2026-02-28T00:00:00.000Z",
       threadId: "thread-1",
+      agentKind: "primary",
       turnId: "turn-1",
       payload: {
         planMarkdown: "# Ship it",
@@ -60,6 +62,7 @@ describe("ProviderRuntimeEvent", () => {
       sessionId: "runtime-session-2",
       createdAt: "2026-02-28T00:00:01.000Z",
       threadId: "thread-2",
+      agentKind: "primary",
       requestId: "request-1",
       payload: {
         questions: [
@@ -98,6 +101,7 @@ describe("ProviderRuntimeEvent", () => {
       sessionId: "runtime-session-2",
       createdAt: "2026-02-28T00:00:02.000Z",
       threadId: "thread-2",
+      agentKind: "primary",
       requestId: "request-1",
       payload: {
         answers: {
@@ -147,6 +151,7 @@ describe("ProviderRuntimeEvent", () => {
       provider: "claudeAgent",
       createdAt: "2026-02-28T00:00:04.000Z",
       threadId: "thread-1",
+      agentKind: "primary",
       payload: {
         usage: {
           usedTokens: 31251,

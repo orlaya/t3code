@@ -7,6 +7,7 @@
  * @module CodexAdapterLive
  */
 import {
+  type AgentKind,
   type CanonicalItemType,
   type CanonicalRequestType,
   type ProviderEvent,
@@ -464,882 +465,914 @@ function codexEventMessage(
   return asObject(payload?.msg);
 }
 
-function codexEventBase(
-  event: ProviderEvent,
-  canonicalThreadId: ThreadId,
-): Omit<ProviderRuntimeEvent, "type" | "payload"> {
-  const payload = asObject(event.payload);
-  const msg = codexEventMessage(payload);
-  const turnId = event.turnId ?? toTurnId(asString(msg?.turn_id) ?? asString(msg?.turnId));
-  const itemId = event.itemId ?? toProviderItemId(asString(msg?.item_id) ?? asString(msg?.itemId));
-  const requestId = asString(msg?.request_id) ?? asString(msg?.requestId);
-  const base = runtimeEventBase(event, canonicalThreadId);
-  const providerRefs = base.providerRefs
-    ? {
-        ...base.providerRefs,
-        ...(turnId ? { providerTurnId: turnId } : {}),
-        ...(itemId ? { providerItemId: itemId } : {}),
-        ...(requestId ? { providerRequestId: requestId } : {}),
-      }
-    : {
-        ...(turnId ? { providerTurnId: turnId } : {}),
-        ...(itemId ? { providerItemId: itemId } : {}),
-        ...(requestId ? { providerRequestId: requestId } : {}),
-      };
-
-  return {
-    ...base,
-    ...(turnId ? { turnId } : {}),
-    ...(itemId ? { itemId: asRuntimeItemId(itemId) } : {}),
-    ...(requestId ? { requestId: asRuntimeRequestId(requestId) } : {}),
-    ...(Object.keys(providerRefs).length > 0 ? { providerRefs } : {}),
-  };
+interface CodexEventMapper {
+  readonly mapToRuntimeEvents: (
+    event: ProviderEvent,
+    canonicalThreadId: ThreadId,
+  ) => ReadonlyArray<ProviderRuntimeEvent>;
 }
 
-function eventRawSource(event: ProviderEvent): NonNullable<ProviderRuntimeEvent["raw"]>["source"] {
-  return event.kind === "request" ? "codex.app-server.request" : "codex.app-server.notification";
-}
+function createCodexEventMapper(subAgentTaskIds: Set<string>): CodexEventMapper {
+  function codexEventBase(
+    event: ProviderEvent,
+    canonicalThreadId: ThreadId,
+  ): Omit<ProviderRuntimeEvent, "type" | "payload"> {
+    const payload = asObject(event.payload);
+    const msg = codexEventMessage(payload);
+    const turnId = event.turnId ?? toTurnId(asString(msg?.turn_id) ?? asString(msg?.turnId));
+    const itemId =
+      event.itemId ?? toProviderItemId(asString(msg?.item_id) ?? asString(msg?.itemId));
+    const requestId = asString(msg?.request_id) ?? asString(msg?.requestId);
+    const base = runtimeEventBase(event, canonicalThreadId);
+    const providerRefs = base.providerRefs
+      ? {
+          ...base.providerRefs,
+          ...(turnId ? { providerTurnId: turnId } : {}),
+          ...(itemId ? { providerItemId: itemId } : {}),
+          ...(requestId ? { providerRequestId: requestId } : {}),
+        }
+      : {
+          ...(turnId ? { providerTurnId: turnId } : {}),
+          ...(itemId ? { providerItemId: itemId } : {}),
+          ...(requestId ? { providerRequestId: requestId } : {}),
+        };
 
-function providerRefsFromEvent(
-  event: ProviderEvent,
-): ProviderRuntimeEvent["providerRefs"] | undefined {
-  const refs: Record<string, string> = {};
-  if (event.turnId) refs.providerTurnId = event.turnId;
-  if (event.itemId) refs.providerItemId = event.itemId;
-  if (event.requestId) refs.providerRequestId = event.requestId;
-
-  return Object.keys(refs).length > 0 ? (refs as ProviderRuntimeEvent["providerRefs"]) : undefined;
-}
-
-function runtimeEventBase(
-  event: ProviderEvent,
-  canonicalThreadId: ThreadId,
-): Omit<ProviderRuntimeEvent, "type" | "payload"> {
-  const refs = providerRefsFromEvent(event);
-  return {
-    eventId: event.id,
-    provider: event.provider,
-    threadId: canonicalThreadId,
-    createdAt: event.createdAt,
-    ...(event.turnId ? { turnId: event.turnId } : {}),
-    ...(event.itemId ? { itemId: asRuntimeItemId(event.itemId) } : {}),
-    ...(event.requestId ? { requestId: asRuntimeRequestId(event.requestId) } : {}),
-    ...(refs ? { providerRefs: refs } : {}),
-    raw: {
-      source: eventRawSource(event),
-      method: event.method,
-      payload: event.payload ?? {},
-    },
-  };
-}
-
-function mapItemLifecycle(
-  event: ProviderEvent,
-  canonicalThreadId: ThreadId,
-  lifecycle: "item.started" | "item.updated" | "item.completed",
-): ProviderRuntimeEvent | undefined {
-  const payload = asObject(event.payload);
-  const item = asObject(payload?.item);
-  const source = item ?? payload;
-  if (!source) {
-    return undefined;
+    return {
+      ...base,
+      ...(turnId ? { turnId } : {}),
+      ...(itemId ? { itemId: asRuntimeItemId(itemId) } : {}),
+      ...(requestId ? { requestId: asRuntimeRequestId(requestId) } : {}),
+      ...(Object.keys(providerRefs).length > 0 ? { providerRefs } : {}),
+    };
   }
 
-  const itemType = toCanonicalItemType(source.type ?? source.kind);
-  if (itemType === "unknown" && lifecycle !== "item.updated") {
-    return undefined;
+  function eventRawSource(
+    event: ProviderEvent,
+  ): NonNullable<ProviderRuntimeEvent["raw"]>["source"] {
+    return event.kind === "request" ? "codex.app-server.request" : "codex.app-server.notification";
   }
 
-  const detail = itemDetail(source, payload ?? {});
-  const status =
-    lifecycle === "item.started"
-      ? "inProgress"
-      : lifecycle === "item.completed"
-        ? "completed"
-        : undefined;
+  function providerRefsFromEvent(
+    event: ProviderEvent,
+  ): ProviderRuntimeEvent["providerRefs"] | undefined {
+    const refs: Record<string, string> = {};
+    if (event.turnId) refs.providerTurnId = event.turnId;
+    if (event.itemId) refs.providerItemId = event.itemId;
+    if (event.requestId) refs.providerRequestId = event.requestId;
 
-  return {
-    ...runtimeEventBase(event, canonicalThreadId),
-    type: lifecycle,
-    payload: {
-      itemType,
-      ...(status ? { status } : {}),
-      ...(itemTitle(itemType) ? { title: itemTitle(itemType) } : {}),
-      ...(detail ? { detail } : {}),
-      ...(event.payload !== undefined ? { data: event.payload } : {}),
-    },
-  };
-}
+    return Object.keys(refs).length > 0
+      ? (refs as ProviderRuntimeEvent["providerRefs"])
+      : undefined;
+  }
 
-function mapToRuntimeEvents(
-  event: ProviderEvent,
-  canonicalThreadId: ThreadId,
-): ReadonlyArray<ProviderRuntimeEvent> {
-  const payload = asObject(event.payload);
-  const turn = asObject(payload?.turn);
-
-  if (event.kind === "error") {
-    if (!event.message) {
-      return [];
+  function resolveAgentKind(event: ProviderEvent): AgentKind {
+    if (subAgentTaskIds.size === 0) {
+      return "primary";
     }
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "runtime.error",
-        payload: {
-          message: event.message,
-          class: "provider_error",
-          ...(event.payload !== undefined ? { detail: event.payload } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.kind === "request") {
-    if (event.method === "item/tool/requestUserInput") {
-      const questions = toUserInputQuestions(payload);
-      if (!questions) {
-        return [];
-      }
-      return [
-        {
-          ...runtimeEventBase(event, canonicalThreadId),
-          type: "user-input.requested",
-          payload: {
-            questions,
-          },
-        },
-      ];
+    const payload = asObject(event.payload);
+    const msg = codexEventMessage(payload);
+    const taskId = asString(payload?.id) ?? asString(msg?.turn_id) ?? asString(msg?.turnId);
+    if (!taskId) {
+      return "primary";
     }
+    return subAgentTaskIds.has(taskId) ? "sub" : "primary";
+  }
 
-    const detail =
-      asString(payload?.command) ?? asString(payload?.reason) ?? asString(payload?.prompt);
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "request.opened",
-        payload: {
-          requestType: toRequestTypeFromMethod(event.method),
-          ...(detail ? { detail } : {}),
-          ...(event.payload !== undefined ? { args: event.payload } : {}),
-        },
+  function runtimeEventBase(
+    event: ProviderEvent,
+    canonicalThreadId: ThreadId,
+  ): Omit<ProviderRuntimeEvent, "type" | "payload"> {
+    const refs = providerRefsFromEvent(event);
+    return {
+      eventId: event.id,
+      provider: event.provider,
+      threadId: canonicalThreadId,
+      agentKind: resolveAgentKind(event),
+      createdAt: event.createdAt,
+      ...(event.turnId ? { turnId: event.turnId } : {}),
+      ...(event.itemId ? { itemId: asRuntimeItemId(event.itemId) } : {}),
+      ...(event.requestId ? { requestId: asRuntimeRequestId(event.requestId) } : {}),
+      ...(refs ? { providerRefs: refs } : {}),
+      raw: {
+        source: eventRawSource(event),
+        method: event.method,
+        payload: event.payload ?? {},
       },
-    ];
+    };
   }
 
-  if (event.method === "item/requestApproval/decision" && event.requestId) {
-    const decision = Schema.decodeUnknownSync(ProviderApprovalDecision)(payload?.decision);
-    const requestType =
-      event.requestKind !== undefined
-        ? toRequestTypeFromKind(event.requestKind)
-        : toRequestTypeFromMethod(event.method);
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "request.resolved",
-        payload: {
-          requestType,
-          ...(decision ? { decision } : {}),
-          ...(event.payload !== undefined ? { resolution: event.payload } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "session/connecting") {
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "session.state.changed",
-        payload: {
-          state: "starting",
-          ...(event.message ? { reason: event.message } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "session/ready") {
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "session.state.changed",
-        payload: {
-          state: "ready",
-          ...(event.message ? { reason: event.message } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "session/started") {
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "session.started",
-        payload: {
-          ...(event.message ? { message: event.message } : {}),
-          ...(event.payload !== undefined ? { resume: event.payload } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "session/exited" || event.method === "session/closed") {
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "session.exited",
-        payload: {
-          ...(event.message ? { reason: event.message } : {}),
-          ...(event.method === "session/closed" ? { exitKind: "graceful" } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "thread/started") {
-    const payloadThreadId = asString(asObject(payload?.thread)?.id);
-    const providerThreadId = payloadThreadId ?? asString(payload?.threadId);
-    if (!providerThreadId) {
-      return [];
-    }
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "thread.started",
-        payload: {
-          providerThreadId,
-        },
-      },
-    ];
-  }
-
-  if (
-    event.method === "thread/status/changed" ||
-    event.method === "thread/archived" ||
-    event.method === "thread/unarchived" ||
-    event.method === "thread/closed" ||
-    event.method === "thread/compacted"
-  ) {
-    return [
-      {
-        type: "thread.state.changed",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          state:
-            event.method === "thread/archived"
-              ? "archived"
-              : event.method === "thread/closed"
-                ? "closed"
-                : event.method === "thread/compacted"
-                  ? "compacted"
-                  : toThreadState(asObject(payload?.thread)?.state ?? payload?.state),
-          ...(event.payload !== undefined ? { detail: event.payload } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "thread/name/updated") {
-    return [
-      {
-        type: "thread.metadata.updated",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          ...(asString(payload?.threadName) ? { name: asString(payload?.threadName) } : {}),
-          ...(event.payload !== undefined ? { metadata: asObject(event.payload) } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "thread/tokenUsage/updated") {
-    const tokenUsage = asObject(payload?.tokenUsage);
-    const normalizedUsage = normalizeCodexTokenUsage(tokenUsage ?? event.payload);
-    if (!normalizedUsage) {
-      return [];
-    }
-    return [
-      {
-        type: "thread.token-usage.updated",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          usage: normalizedUsage,
-        },
-      },
-    ];
-  }
-
-  if (event.method === "turn/started") {
-    const turnId = event.turnId;
-    if (!turnId) {
-      return [];
-    }
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        turnId,
-        type: "turn.started",
-        payload: {
-          ...(asString(turn?.model) ? { model: asString(turn?.model) } : {}),
-          ...(asString(turn?.effort) ? { effort: asString(turn?.effort) } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "turn/completed") {
-    const errorMessage = asString(asObject(turn?.error)?.message);
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "turn.completed",
-        payload: {
-          state: toTurnStatus(turn?.status),
-          ...(asString(turn?.stopReason) ? { stopReason: asString(turn?.stopReason) } : {}),
-          ...(turn?.usage !== undefined ? { usage: turn.usage } : {}),
-          ...(asObject(turn?.modelUsage) ? { modelUsage: asObject(turn?.modelUsage) } : {}),
-          ...(asNumber(turn?.totalCostUsd) !== undefined
-            ? { totalCostUsd: asNumber(turn?.totalCostUsd) }
-            : {}),
-          ...(errorMessage ? { errorMessage } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "turn/aborted") {
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "turn.aborted",
-        payload: {
-          reason: event.message ?? "Turn aborted",
-        },
-      },
-    ];
-  }
-
-  if (event.method === "turn/plan/updated") {
-    const steps = Array.isArray(payload?.plan) ? payload.plan : [];
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "turn.plan.updated",
-        payload: {
-          ...(asString(payload?.explanation)
-            ? { explanation: asString(payload?.explanation) }
-            : {}),
-          plan: steps
-            .map((entry) => asObject(entry))
-            .filter((entry): entry is Record<string, unknown> => entry !== undefined)
-            .map((entry) => ({
-              step: asString(entry.step) ?? "step",
-              status:
-                entry.status === "completed" || entry.status === "inProgress"
-                  ? entry.status
-                  : "pending",
-            })),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "turn/diff/updated") {
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "turn.diff.updated",
-        payload: {
-          unifiedDiff:
-            asString(payload?.unifiedDiff) ??
-            asString(payload?.diff) ??
-            asString(payload?.patch) ??
-            "",
-        },
-      },
-    ];
-  }
-
-  if (event.method === "item/started") {
-    const started = mapItemLifecycle(event, canonicalThreadId, "item.started");
-    return started ? [started] : [];
-  }
-
-  if (event.method === "item/completed") {
+  function mapItemLifecycle(
+    event: ProviderEvent,
+    canonicalThreadId: ThreadId,
+    lifecycle: "item.started" | "item.updated" | "item.completed",
+  ): ProviderRuntimeEvent | undefined {
     const payload = asObject(event.payload);
     const item = asObject(payload?.item);
     const source = item ?? payload;
     if (!source) {
-      return [];
+      return undefined;
     }
-    const itemType = source ? toCanonicalItemType(source.type ?? source.kind) : "unknown";
-    if (itemType === "plan") {
-      const detail = itemDetail(source, payload ?? {});
-      if (!detail) {
+
+    const itemType = toCanonicalItemType(source.type ?? source.kind);
+    if (itemType === "unknown" && lifecycle !== "item.updated") {
+      return undefined;
+    }
+
+    const detail = itemDetail(source, payload ?? {});
+    const status =
+      lifecycle === "item.started"
+        ? "inProgress"
+        : lifecycle === "item.completed"
+          ? "completed"
+          : undefined;
+
+    return {
+      ...runtimeEventBase(event, canonicalThreadId),
+      type: lifecycle,
+      payload: {
+        itemType,
+        ...(status ? { status } : {}),
+        ...(itemTitle(itemType) ? { title: itemTitle(itemType) } : {}),
+        ...(detail ? { detail } : {}),
+        ...(event.payload !== undefined ? { data: event.payload } : {}),
+      },
+    };
+  }
+
+  function mapToRuntimeEvents(
+    event: ProviderEvent,
+    canonicalThreadId: ThreadId,
+  ): ReadonlyArray<ProviderRuntimeEvent> {
+    const payload = asObject(event.payload);
+    const turn = asObject(payload?.turn);
+
+    if (event.kind === "error") {
+      if (!event.message) {
         return [];
       }
       return [
         {
           ...runtimeEventBase(event, canonicalThreadId),
-          type: "turn.proposed.completed",
+          type: "runtime.error",
           payload: {
-            planMarkdown: detail,
+            message: event.message,
+            class: "provider_error",
+            ...(event.payload !== undefined ? { detail: event.payload } : {}),
           },
         },
       ];
     }
-    const completed = mapItemLifecycle(event, canonicalThreadId, "item.completed");
-    return completed ? [completed] : [];
-  }
 
-  if (
-    event.method === "item/reasoning/summaryPartAdded" ||
-    event.method === "item/commandExecution/terminalInteraction"
-  ) {
-    const updated = mapItemLifecycle(event, canonicalThreadId, "item.updated");
-    return updated ? [updated] : [];
-  }
+    if (event.kind === "request") {
+      if (event.method === "item/tool/requestUserInput") {
+        const questions = toUserInputQuestions(payload);
+        if (!questions) {
+          return [];
+        }
+        return [
+          {
+            ...runtimeEventBase(event, canonicalThreadId),
+            type: "user-input.requested",
+            payload: {
+              questions,
+            },
+          },
+        ];
+      }
 
-  if (event.method === "item/plan/delta") {
-    const delta =
-      event.textDelta ??
-      asString(payload?.delta) ??
-      asString(payload?.text) ??
-      asString(asObject(payload?.content)?.text);
-    if (!delta || delta.length === 0) {
-      return [];
+      const detail =
+        asString(payload?.command) ?? asString(payload?.reason) ?? asString(payload?.prompt);
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "request.opened",
+          payload: {
+            requestType: toRequestTypeFromMethod(event.method),
+            ...(detail ? { detail } : {}),
+            ...(event.payload !== undefined ? { args: event.payload } : {}),
+          },
+        },
+      ];
     }
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "turn.proposed.delta",
-        payload: {
-          delta,
-        },
-      },
-    ];
-  }
 
-  if (
-    event.method === "item/agentMessage/delta" ||
-    event.method === "item/commandExecution/outputDelta" ||
-    event.method === "item/fileChange/outputDelta" ||
-    event.method === "item/reasoning/summaryTextDelta" ||
-    event.method === "item/reasoning/textDelta"
-  ) {
-    const delta =
-      event.textDelta ??
-      asString(payload?.delta) ??
-      asString(payload?.text) ??
-      asString(asObject(payload?.content)?.text);
-    if (!delta || delta.length === 0) {
-      return [];
-    }
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "content.delta",
-        payload: {
-          streamKind: contentStreamKindFromMethod(event.method),
-          delta,
-          ...(typeof payload?.contentIndex === "number"
-            ? { contentIndex: payload.contentIndex }
-            : {}),
-          ...(typeof payload?.summaryIndex === "number"
-            ? { summaryIndex: payload.summaryIndex }
-            : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "item/mcpToolCall/progress") {
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "tool.progress",
-        payload: {
-          ...(asString(payload?.toolUseId) ? { toolUseId: asString(payload?.toolUseId) } : {}),
-          ...(asString(payload?.toolName) ? { toolName: asString(payload?.toolName) } : {}),
-          ...(asString(payload?.summary) ? { summary: asString(payload?.summary) } : {}),
-          ...(asNumber(payload?.elapsedSeconds) !== undefined
-            ? { elapsedSeconds: asNumber(payload?.elapsedSeconds) }
-            : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "serverRequest/resolved") {
-    const requestType =
-      toRequestTypeFromResolvedPayload(payload) !== "unknown"
-        ? toRequestTypeFromResolvedPayload(payload)
-        : event.requestId && event.requestKind !== undefined
+    if (event.method === "item/requestApproval/decision" && event.requestId) {
+      const decision = Schema.decodeUnknownSync(ProviderApprovalDecision)(payload?.decision);
+      const requestType =
+        event.requestKind !== undefined
           ? toRequestTypeFromKind(event.requestKind)
-          : "unknown";
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "request.resolved",
-        payload: {
-          requestType,
-          ...(event.payload !== undefined ? { resolution: event.payload } : {}),
+          : toRequestTypeFromMethod(event.method);
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "request.resolved",
+          payload: {
+            requestType,
+            ...(decision ? { decision } : {}),
+            ...(event.payload !== undefined ? { resolution: event.payload } : {}),
+          },
         },
-      },
-    ];
-  }
-
-  if (event.method === "item/tool/requestUserInput/answered") {
-    return [
-      {
-        ...runtimeEventBase(event, canonicalThreadId),
-        type: "user-input.resolved",
-        payload: {
-          answers: toCanonicalUserInputAnswers(
-            asObject(event.payload)?.answers as ProviderUserInputAnswers | undefined,
-          ),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "codex/event/task_started") {
-    const msg = codexEventMessage(payload);
-    const taskId = asString(payload?.id) ?? asString(msg?.turn_id);
-    if (!taskId) {
-      return [];
+      ];
     }
-    return [
-      {
-        ...codexEventBase(event, canonicalThreadId),
-        type: "task.started",
-        payload: {
-          taskId: asRuntimeTaskId(taskId),
-          ...(asString(msg?.collaboration_mode_kind)
-            ? { taskType: asString(msg?.collaboration_mode_kind) }
-            : {}),
-        },
-      },
-    ];
-  }
 
-  if (event.method === "codex/event/task_complete") {
-    const msg = codexEventMessage(payload);
-    const taskId = asString(payload?.id) ?? asString(msg?.turn_id);
-    const proposedPlanMarkdown = extractProposedPlanMarkdown(asString(msg?.last_agent_message));
-    if (!taskId) {
-      if (!proposedPlanMarkdown) {
+    if (event.method === "session/connecting") {
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "session.state.changed",
+          payload: {
+            state: "starting",
+            ...(event.message ? { reason: event.message } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "session/ready") {
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "session.state.changed",
+          payload: {
+            state: "ready",
+            ...(event.message ? { reason: event.message } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "session/started") {
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "session.started",
+          payload: {
+            ...(event.message ? { message: event.message } : {}),
+            ...(event.payload !== undefined ? { resume: event.payload } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "session/exited" || event.method === "session/closed") {
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "session.exited",
+          payload: {
+            ...(event.message ? { reason: event.message } : {}),
+            ...(event.method === "session/closed" ? { exitKind: "graceful" } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "thread/started") {
+      const payloadThreadId = asString(asObject(payload?.thread)?.id);
+      const providerThreadId = payloadThreadId ?? asString(payload?.threadId);
+      if (!providerThreadId) {
         return [];
       }
       return [
         {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "thread.started",
+          payload: {
+            providerThreadId,
+          },
+        },
+      ];
+    }
+
+    if (
+      event.method === "thread/status/changed" ||
+      event.method === "thread/archived" ||
+      event.method === "thread/unarchived" ||
+      event.method === "thread/closed" ||
+      event.method === "thread/compacted"
+    ) {
+      return [
+        {
+          type: "thread.state.changed",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            state:
+              event.method === "thread/archived"
+                ? "archived"
+                : event.method === "thread/closed"
+                  ? "closed"
+                  : event.method === "thread/compacted"
+                    ? "compacted"
+                    : toThreadState(asObject(payload?.thread)?.state ?? payload?.state),
+            ...(event.payload !== undefined ? { detail: event.payload } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "thread/name/updated") {
+      return [
+        {
+          type: "thread.metadata.updated",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            ...(asString(payload?.threadName) ? { name: asString(payload?.threadName) } : {}),
+            ...(event.payload !== undefined ? { metadata: asObject(event.payload) } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "thread/tokenUsage/updated") {
+      const tokenUsage = asObject(payload?.tokenUsage);
+      const normalizedUsage = normalizeCodexTokenUsage(tokenUsage ?? event.payload);
+      if (!normalizedUsage) {
+        return [];
+      }
+      return [
+        {
+          type: "thread.token-usage.updated",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            usage: normalizedUsage,
+          },
+        },
+      ];
+    }
+
+    if (event.method === "turn/started") {
+      const turnId = event.turnId;
+      if (!turnId) {
+        return [];
+      }
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          turnId,
+          type: "turn.started",
+          payload: {
+            ...(asString(turn?.model) ? { model: asString(turn?.model) } : {}),
+            ...(asString(turn?.effort) ? { effort: asString(turn?.effort) } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "turn/completed") {
+      const errorMessage = asString(asObject(turn?.error)?.message);
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "turn.completed",
+          payload: {
+            state: toTurnStatus(turn?.status),
+            ...(asString(turn?.stopReason) ? { stopReason: asString(turn?.stopReason) } : {}),
+            ...(turn?.usage !== undefined ? { usage: turn.usage } : {}),
+            ...(asObject(turn?.modelUsage) ? { modelUsage: asObject(turn?.modelUsage) } : {}),
+            ...(asNumber(turn?.totalCostUsd) !== undefined
+              ? { totalCostUsd: asNumber(turn?.totalCostUsd) }
+              : {}),
+            ...(errorMessage ? { errorMessage } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "turn/aborted") {
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "turn.aborted",
+          payload: {
+            reason: event.message ?? "Turn aborted",
+          },
+        },
+      ];
+    }
+
+    if (event.method === "turn/plan/updated") {
+      const steps = Array.isArray(payload?.plan) ? payload.plan : [];
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "turn.plan.updated",
+          payload: {
+            ...(asString(payload?.explanation)
+              ? { explanation: asString(payload?.explanation) }
+              : {}),
+            plan: steps
+              .map((entry) => asObject(entry))
+              .filter((entry): entry is Record<string, unknown> => entry !== undefined)
+              .map((entry) => ({
+                step: asString(entry.step) ?? "step",
+                status:
+                  entry.status === "completed" || entry.status === "inProgress"
+                    ? entry.status
+                    : "pending",
+              })),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "turn/diff/updated") {
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "turn.diff.updated",
+          payload: {
+            unifiedDiff:
+              asString(payload?.unifiedDiff) ??
+              asString(payload?.diff) ??
+              asString(payload?.patch) ??
+              "",
+          },
+        },
+      ];
+    }
+
+    if (event.method === "item/started") {
+      const started = mapItemLifecycle(event, canonicalThreadId, "item.started");
+      return started ? [started] : [];
+    }
+
+    if (event.method === "item/completed") {
+      const payload = asObject(event.payload);
+      const item = asObject(payload?.item);
+      const source = item ?? payload;
+      if (!source) {
+        return [];
+      }
+      const itemType = source ? toCanonicalItemType(source.type ?? source.kind) : "unknown";
+      if (itemType === "plan") {
+        const detail = itemDetail(source, payload ?? {});
+        if (!detail) {
+          return [];
+        }
+        return [
+          {
+            ...runtimeEventBase(event, canonicalThreadId),
+            type: "turn.proposed.completed",
+            payload: {
+              planMarkdown: detail,
+            },
+          },
+        ];
+      }
+      const completed = mapItemLifecycle(event, canonicalThreadId, "item.completed");
+      return completed ? [completed] : [];
+    }
+
+    if (
+      event.method === "item/reasoning/summaryPartAdded" ||
+      event.method === "item/commandExecution/terminalInteraction"
+    ) {
+      const updated = mapItemLifecycle(event, canonicalThreadId, "item.updated");
+      return updated ? [updated] : [];
+    }
+
+    if (event.method === "item/plan/delta") {
+      const delta =
+        event.textDelta ??
+        asString(payload?.delta) ??
+        asString(payload?.text) ??
+        asString(asObject(payload?.content)?.text);
+      if (!delta || delta.length === 0) {
+        return [];
+      }
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "turn.proposed.delta",
+          payload: {
+            delta,
+          },
+        },
+      ];
+    }
+
+    if (
+      event.method === "item/agentMessage/delta" ||
+      event.method === "item/commandExecution/outputDelta" ||
+      event.method === "item/fileChange/outputDelta" ||
+      event.method === "item/reasoning/summaryTextDelta" ||
+      event.method === "item/reasoning/textDelta"
+    ) {
+      const delta =
+        event.textDelta ??
+        asString(payload?.delta) ??
+        asString(payload?.text) ??
+        asString(asObject(payload?.content)?.text);
+      if (!delta || delta.length === 0) {
+        return [];
+      }
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "content.delta",
+          payload: {
+            streamKind: contentStreamKindFromMethod(event.method),
+            delta,
+            ...(typeof payload?.contentIndex === "number"
+              ? { contentIndex: payload.contentIndex }
+              : {}),
+            ...(typeof payload?.summaryIndex === "number"
+              ? { summaryIndex: payload.summaryIndex }
+              : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "item/mcpToolCall/progress") {
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "tool.progress",
+          payload: {
+            ...(asString(payload?.toolUseId) ? { toolUseId: asString(payload?.toolUseId) } : {}),
+            ...(asString(payload?.toolName) ? { toolName: asString(payload?.toolName) } : {}),
+            ...(asString(payload?.summary) ? { summary: asString(payload?.summary) } : {}),
+            ...(asNumber(payload?.elapsedSeconds) !== undefined
+              ? { elapsedSeconds: asNumber(payload?.elapsedSeconds) }
+              : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "serverRequest/resolved") {
+      const requestType =
+        toRequestTypeFromResolvedPayload(payload) !== "unknown"
+          ? toRequestTypeFromResolvedPayload(payload)
+          : event.requestId && event.requestKind !== undefined
+            ? toRequestTypeFromKind(event.requestKind)
+            : "unknown";
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "request.resolved",
+          payload: {
+            requestType,
+            ...(event.payload !== undefined ? { resolution: event.payload } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "item/tool/requestUserInput/answered") {
+      return [
+        {
+          ...runtimeEventBase(event, canonicalThreadId),
+          type: "user-input.resolved",
+          payload: {
+            answers: toCanonicalUserInputAnswers(
+              asObject(event.payload)?.answers as ProviderUserInputAnswers | undefined,
+            ),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "codex/event/task_started") {
+      const msg = codexEventMessage(payload);
+      const taskId = asString(payload?.id) ?? asString(msg?.turn_id);
+      if (!taskId) {
+        return [];
+      }
+      subAgentTaskIds.add(taskId);
+      return [
+        {
+          ...codexEventBase(event, canonicalThreadId),
+          type: "task.started",
+          payload: {
+            taskId: asRuntimeTaskId(taskId),
+            ...(asString(msg?.collaboration_mode_kind)
+              ? { taskType: asString(msg?.collaboration_mode_kind) }
+              : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "codex/event/task_complete") {
+      const msg = codexEventMessage(payload);
+      const taskId = asString(payload?.id) ?? asString(msg?.turn_id);
+      const proposedPlanMarkdown = extractProposedPlanMarkdown(asString(msg?.last_agent_message));
+      if (!taskId) {
+        if (!proposedPlanMarkdown) {
+          return [];
+        }
+        return [
+          {
+            ...codexEventBase(event, canonicalThreadId),
+            type: "turn.proposed.completed",
+            payload: {
+              planMarkdown: proposedPlanMarkdown,
+            },
+          },
+        ];
+      }
+      const events: ProviderRuntimeEvent[] = [
+        {
+          ...codexEventBase(event, canonicalThreadId),
+          type: "task.completed",
+          payload: {
+            taskId: asRuntimeTaskId(taskId),
+            status: "completed",
+            ...(asString(msg?.last_agent_message)
+              ? { summary: asString(msg?.last_agent_message) }
+              : {}),
+          },
+        },
+      ];
+      if (proposedPlanMarkdown) {
+        events.push({
           ...codexEventBase(event, canonicalThreadId),
           type: "turn.proposed.completed",
           payload: {
             planMarkdown: proposedPlanMarkdown,
           },
+        });
+      }
+      subAgentTaskIds.delete(taskId);
+      return events;
+    }
+
+    if (event.method === "codex/event/agent_reasoning") {
+      const msg = codexEventMessage(payload);
+      const taskId = asString(payload?.id);
+      const description = asString(msg?.text);
+      if (!taskId || !description) {
+        return [];
+      }
+      return [
+        {
+          ...codexEventBase(event, canonicalThreadId),
+          type: "task.progress",
+          payload: {
+            taskId: asRuntimeTaskId(taskId),
+            description,
+          },
         },
       ];
     }
-    const events: ProviderRuntimeEvent[] = [
-      {
-        ...codexEventBase(event, canonicalThreadId),
-        type: "task.completed",
-        payload: {
-          taskId: asRuntimeTaskId(taskId),
-          status: "completed",
-          ...(asString(msg?.last_agent_message)
-            ? { summary: asString(msg?.last_agent_message) }
-            : {}),
-        },
-      },
-    ];
-    if (proposedPlanMarkdown) {
-      events.push({
-        ...codexEventBase(event, canonicalThreadId),
-        type: "turn.proposed.completed",
-        payload: {
-          planMarkdown: proposedPlanMarkdown,
-        },
-      });
-    }
-    return events;
-  }
 
-  if (event.method === "codex/event/agent_reasoning") {
-    const msg = codexEventMessage(payload);
-    const taskId = asString(payload?.id);
-    const description = asString(msg?.text);
-    if (!taskId || !description) {
-      return [];
-    }
-    return [
-      {
-        ...codexEventBase(event, canonicalThreadId),
-        type: "task.progress",
-        payload: {
-          taskId: asRuntimeTaskId(taskId),
-          description,
-        },
-      },
-    ];
-  }
-
-  if (event.method === "codex/event/reasoning_content_delta") {
-    const msg = codexEventMessage(payload);
-    const delta = asString(msg?.delta);
-    if (!delta) {
-      return [];
-    }
-    return [
-      {
-        ...codexEventBase(event, canonicalThreadId),
-        type: "content.delta",
-        payload: {
-          streamKind:
-            asNumber(msg?.summary_index) !== undefined
-              ? "reasoning_summary_text"
-              : "reasoning_text",
-          delta,
-          ...(asNumber(msg?.summary_index) !== undefined
-            ? { summaryIndex: asNumber(msg?.summary_index) }
-            : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "model/rerouted") {
-    return [
-      {
-        type: "model.rerouted",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          fromModel: asString(payload?.fromModel) ?? "unknown",
-          toModel: asString(payload?.toModel) ?? "unknown",
-          reason: asString(payload?.reason) ?? "unknown",
-        },
-      },
-    ];
-  }
-
-  if (event.method === "deprecationNotice") {
-    return [
-      {
-        type: "deprecation.notice",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          summary: asString(payload?.summary) ?? "Deprecation notice",
-          ...(asString(payload?.details) ? { details: asString(payload?.details) } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "configWarning") {
-    return [
-      {
-        type: "config.warning",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          summary: asString(payload?.summary) ?? "Configuration warning",
-          ...(asString(payload?.details) ? { details: asString(payload?.details) } : {}),
-          ...(asString(payload?.path) ? { path: asString(payload?.path) } : {}),
-          ...(payload?.range !== undefined ? { range: payload.range } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "account/updated") {
-    return [
-      {
-        type: "account.updated",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          account: event.payload ?? {},
-        },
-      },
-    ];
-  }
-
-  if (event.method === "account/rateLimits/updated") {
-    return [
-      {
-        type: "account.rate-limits.updated",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          rateLimits: event.payload ?? {},
-        },
-      },
-    ];
-  }
-
-  if (event.method === "mcpServer/oauthLogin/completed") {
-    return [
-      {
-        type: "mcp.oauth.completed",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          success: payload?.success === true,
-          ...(asString(payload?.name) ? { name: asString(payload?.name) } : {}),
-          ...(asString(payload?.error) ? { error: asString(payload?.error) } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "thread/realtime/started") {
-    const realtimeSessionId = asString(payload?.realtimeSessionId);
-    return [
-      {
-        type: "thread.realtime.started",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          realtimeSessionId,
-        },
-      },
-    ];
-  }
-
-  if (event.method === "thread/realtime/itemAdded") {
-    return [
-      {
-        type: "thread.realtime.item-added",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          item: event.payload ?? {},
-        },
-      },
-    ];
-  }
-
-  if (event.method === "thread/realtime/outputAudio/delta") {
-    return [
-      {
-        type: "thread.realtime.audio.delta",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          audio: event.payload ?? {},
-        },
-      },
-    ];
-  }
-
-  if (event.method === "thread/realtime/error") {
-    const message = asString(payload?.message) ?? event.message ?? "Realtime error";
-    return [
-      {
-        type: "thread.realtime.error",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          message,
-        },
-      },
-    ];
-  }
-
-  if (event.method === "thread/realtime/closed") {
-    return [
-      {
-        type: "thread.realtime.closed",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          reason: event.message,
-        },
-      },
-    ];
-  }
-
-  if (event.method === "error") {
-    const message =
-      asString(asObject(payload?.error)?.message) ?? event.message ?? "Provider runtime error";
-    const willRetry = payload?.willRetry === true;
-    return [
-      {
-        type: willRetry ? "runtime.warning" : "runtime.error",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          message,
-          ...(!willRetry ? { class: "provider_error" as const } : {}),
-          ...(event.payload !== undefined ? { detail: event.payload } : {}),
-        },
-      },
-    ];
-  }
-
-  if (event.method === "process/stderr") {
-    const message = event.message ?? "Codex process stderr";
-    const isFatal = isFatalCodexProcessStderrMessage(message);
-    return [
-      isFatal
-        ? {
-            type: "runtime.error",
-            ...runtimeEventBase(event, canonicalThreadId),
-            payload: {
-              message,
-              class: "provider_error" as const,
-              ...(event.payload !== undefined ? { detail: event.payload } : {}),
-            },
-          }
-        : {
-            type: "runtime.warning",
-            ...runtimeEventBase(event, canonicalThreadId),
-            payload: {
-              message,
-              ...(event.payload !== undefined ? { detail: event.payload } : {}),
-            },
+    if (event.method === "codex/event/reasoning_content_delta") {
+      const msg = codexEventMessage(payload);
+      const delta = asString(msg?.delta);
+      if (!delta) {
+        return [];
+      }
+      return [
+        {
+          ...codexEventBase(event, canonicalThreadId),
+          type: "content.delta",
+          payload: {
+            streamKind:
+              asNumber(msg?.summary_index) !== undefined
+                ? "reasoning_summary_text"
+                : "reasoning_text",
+            delta,
+            ...(asNumber(msg?.summary_index) !== undefined
+              ? { summaryIndex: asNumber(msg?.summary_index) }
+              : {}),
           },
-    ];
-  }
-
-  if (event.method === "windows/worldWritableWarning") {
-    return [
-      {
-        type: "runtime.warning",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          message: event.message ?? "Windows world-writable warning",
-          ...(event.payload !== undefined ? { detail: event.payload } : {}),
         },
-      },
-    ];
-  }
+      ];
+    }
 
-  if (event.method === "windowsSandbox/setupCompleted") {
-    const payloadRecord = asObject(event.payload);
-    const success = payloadRecord?.success;
-    const successMessage = event.message ?? "Windows sandbox setup completed";
-    const failureMessage = event.message ?? "Windows sandbox setup failed";
-
-    return [
-      {
-        type: "session.state.changed",
-        ...runtimeEventBase(event, canonicalThreadId),
-        payload: {
-          state: success === false ? "error" : "ready",
-          reason: success === false ? failureMessage : successMessage,
-          ...(event.payload !== undefined ? { detail: event.payload } : {}),
+    if (event.method === "model/rerouted") {
+      return [
+        {
+          type: "model.rerouted",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            fromModel: asString(payload?.fromModel) ?? "unknown",
+            toModel: asString(payload?.toModel) ?? "unknown",
+            reason: asString(payload?.reason) ?? "unknown",
+          },
         },
-      },
-      ...(success === false
-        ? [
-            {
-              type: "runtime.warning" as const,
+      ];
+    }
+
+    if (event.method === "deprecationNotice") {
+      return [
+        {
+          type: "deprecation.notice",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            summary: asString(payload?.summary) ?? "Deprecation notice",
+            ...(asString(payload?.details) ? { details: asString(payload?.details) } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "configWarning") {
+      return [
+        {
+          type: "config.warning",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            summary: asString(payload?.summary) ?? "Configuration warning",
+            ...(asString(payload?.details) ? { details: asString(payload?.details) } : {}),
+            ...(asString(payload?.path) ? { path: asString(payload?.path) } : {}),
+            ...(payload?.range !== undefined ? { range: payload.range } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "account/updated") {
+      return [
+        {
+          type: "account.updated",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            account: event.payload ?? {},
+          },
+        },
+      ];
+    }
+
+    if (event.method === "account/rateLimits/updated") {
+      return [
+        {
+          type: "account.rate-limits.updated",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            rateLimits: event.payload ?? {},
+          },
+        },
+      ];
+    }
+
+    if (event.method === "mcpServer/oauthLogin/completed") {
+      return [
+        {
+          type: "mcp.oauth.completed",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            success: payload?.success === true,
+            ...(asString(payload?.name) ? { name: asString(payload?.name) } : {}),
+            ...(asString(payload?.error) ? { error: asString(payload?.error) } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "thread/realtime/started") {
+      const realtimeSessionId = asString(payload?.realtimeSessionId);
+      return [
+        {
+          type: "thread.realtime.started",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            realtimeSessionId,
+          },
+        },
+      ];
+    }
+
+    if (event.method === "thread/realtime/itemAdded") {
+      return [
+        {
+          type: "thread.realtime.item-added",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            item: event.payload ?? {},
+          },
+        },
+      ];
+    }
+
+    if (event.method === "thread/realtime/outputAudio/delta") {
+      return [
+        {
+          type: "thread.realtime.audio.delta",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            audio: event.payload ?? {},
+          },
+        },
+      ];
+    }
+
+    if (event.method === "thread/realtime/error") {
+      const message = asString(payload?.message) ?? event.message ?? "Realtime error";
+      return [
+        {
+          type: "thread.realtime.error",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            message,
+          },
+        },
+      ];
+    }
+
+    if (event.method === "thread/realtime/closed") {
+      return [
+        {
+          type: "thread.realtime.closed",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            reason: event.message,
+          },
+        },
+      ];
+    }
+
+    if (event.method === "error") {
+      const message =
+        asString(asObject(payload?.error)?.message) ?? event.message ?? "Provider runtime error";
+      const willRetry = payload?.willRetry === true;
+      return [
+        {
+          type: willRetry ? "runtime.warning" : "runtime.error",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            message,
+            ...(!willRetry ? { class: "provider_error" as const } : {}),
+            ...(event.payload !== undefined ? { detail: event.payload } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "process/stderr") {
+      const message = event.message ?? "Codex process stderr";
+      const isFatal = isFatalCodexProcessStderrMessage(message);
+      return [
+        isFatal
+          ? {
+              type: "runtime.error",
               ...runtimeEventBase(event, canonicalThreadId),
               payload: {
-                message: failureMessage,
+                message,
+                class: "provider_error" as const,
+                ...(event.payload !== undefined ? { detail: event.payload } : {}),
+              },
+            }
+          : {
+              type: "runtime.warning",
+              ...runtimeEventBase(event, canonicalThreadId),
+              payload: {
+                message,
                 ...(event.payload !== undefined ? { detail: event.payload } : {}),
               },
             },
-          ]
-        : []),
-    ];
+      ];
+    }
+
+    if (event.method === "windows/worldWritableWarning") {
+      return [
+        {
+          type: "runtime.warning",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            message: event.message ?? "Windows world-writable warning",
+            ...(event.payload !== undefined ? { detail: event.payload } : {}),
+          },
+        },
+      ];
+    }
+
+    if (event.method === "windowsSandbox/setupCompleted") {
+      const payloadRecord = asObject(event.payload);
+      const success = payloadRecord?.success;
+      const successMessage = event.message ?? "Windows sandbox setup completed";
+      const failureMessage = event.message ?? "Windows sandbox setup failed";
+
+      return [
+        {
+          type: "session.state.changed",
+          ...runtimeEventBase(event, canonicalThreadId),
+          payload: {
+            state: success === false ? "error" : "ready",
+            reason: success === false ? failureMessage : successMessage,
+            ...(event.payload !== undefined ? { detail: event.payload } : {}),
+          },
+        },
+        ...(success === false
+          ? [
+              {
+                type: "runtime.warning" as const,
+                ...runtimeEventBase(event, canonicalThreadId),
+                payload: {
+                  message: failureMessage,
+                  ...(event.payload !== undefined ? { detail: event.payload } : {}),
+                },
+              },
+            ]
+          : []),
+      ];
+    }
+
+    return [];
   }
 
-  return [];
+  return { mapToRuntimeEvents };
 }
 
 const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
@@ -1570,6 +1603,9 @@ const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
 
   const runtimeEventQueue = yield* Queue.unbounded<ProviderRuntimeEvent>();
 
+  const subAgentTaskIds = new Set<string>();
+  const eventMapper = createCodexEventMapper(subAgentTaskIds);
+
   const writeNativeEvent = Effect.fn("writeNativeEvent")(function* (event: ProviderEvent) {
     if (!nativeEventLogger) {
       return;
@@ -1581,7 +1617,7 @@ const makeCodexAdapter = Effect.fn("makeCodexAdapter")(function* (
     const services = yield* Effect.context<never>();
     const listenerEffect = Effect.fn("listener")(function* (event: ProviderEvent) {
       yield* writeNativeEvent(event);
-      const runtimeEvents = mapToRuntimeEvents(event, event.threadId);
+      const runtimeEvents = eventMapper.mapToRuntimeEvents(event, event.threadId);
       if (runtimeEvents.length === 0) {
         yield* Effect.logDebug("ignoring unhandled Codex provider event", {
           method: event.method,

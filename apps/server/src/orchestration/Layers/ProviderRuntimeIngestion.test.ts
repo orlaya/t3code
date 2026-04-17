@@ -116,7 +116,11 @@ function createProviderServiceHarness() {
   const normalizeLegacyEvent = (event: LegacyProviderRuntimeEvent): ProviderRuntimeEvent => {
     if (isLegacyTurnCompletedEvent(event)) {
       const normalized: Extract<ProviderRuntimeEvent, { type: "turn.completed" }> = {
-        ...(event as Omit<Extract<ProviderRuntimeEvent, { type: "turn.completed" }>, "payload">),
+        ...(event as Omit<
+          Extract<ProviderRuntimeEvent, { type: "turn.completed" }>,
+          "payload" | "agentKind"
+        >),
+        agentKind: "primary",
         payload: {
           state: event.status,
           ...(typeof event.errorMessage === "string" ? { errorMessage: event.errorMessage } : {}),
