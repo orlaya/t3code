@@ -272,6 +272,15 @@ function resultErrorsText(result: SDKResultMessage): string {
 }
 
 function isInterruptedResult(result: SDKResultMessage): boolean {
+  // The SDK's terminal_reason field explicitly indicates why the query loop ended.
+  // "aborted_streaming" and "aborted_tools" are user-initiated interrupts.
+  if (
+    "terminal_reason" in result &&
+    (result.terminal_reason === "aborted_streaming" || result.terminal_reason === "aborted_tools")
+  ) {
+    return true;
+  }
+
   if (result.subtype === "error_during_execution" && result.is_error === false) {
     return true;
   }
