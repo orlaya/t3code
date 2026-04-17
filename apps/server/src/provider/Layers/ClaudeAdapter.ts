@@ -272,18 +272,12 @@ function resultErrorsText(result: SDKResultMessage): string {
 }
 
 function isInterruptedResult(result: SDKResultMessage): boolean {
-  const errors = resultErrorsText(result);
-  if (errors.includes("interrupt")) {
+  if (result.subtype === "error_during_execution" && result.is_error === false) {
     return true;
   }
 
-  return (
-    result.subtype === "error_during_execution" &&
-    result.is_error === false &&
-    (errors.includes("request was aborted") ||
-      errors.includes("interrupted by user") ||
-      errors.includes("aborted"))
-  );
+  const errors = resultErrorsText(result);
+  return errors.includes("interrupt") || errors.includes("aborted");
 }
 
 function asRuntimeItemId(value: string): RuntimeItemId {

@@ -625,8 +625,9 @@ const ThinkingSection = memo(function ThinkingSection({
 
   return (
     <div className="rounded-xl border border-border/45 bg-card/25 px-2 py-1.5">
-      <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-        <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+        <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+           {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
+        <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">
           Thinking
           {message.streaming && (
             <span className="ml-2 inline-flex items-center gap-[3px] align-middle">
@@ -650,7 +651,7 @@ const ThinkingSection = memo(function ThinkingSection({
         <div
           ref={collapsedScrollRef}
           className={cn(
-            "text-[12px] italic text-muted-foreground/60",
+            "px-1.5 text-[12.5px] italic leading-snug text-muted-foreground/80",
             canExpand && !isExpanded && "thinking-collapsed-scroll max-h-28 overflow-y-auto",
           )}
         >
@@ -658,6 +659,7 @@ const ThinkingSection = memo(function ThinkingSection({
             text={message.text}
             cwd={markdownCwd}
             isStreaming={Boolean(message.streaming)}
+            className="chat-markdown-thinking text-[12.5px] leading-snug text-muted-foreground/80"
           />
         </div>
         {canExpand && !isExpanded && (

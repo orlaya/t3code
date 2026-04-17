@@ -191,7 +191,15 @@ function isStalePendingRequestFailureDetail(detail: string | undefined): boolean
 
 export function derivePendingApprovals(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
+  sessionPhase?: SessionPhase | null,
 ): PendingApproval[] {
+  // When the session is disconnected (provider process died, laptop sleep, etc.)
+  // any pending approvals are stale — the provider callback that was waiting for
+  // the response no longer exists.
+  if (sessionPhase === "disconnected") {
+    return [];
+  }
+
   const openByRequestId = new Map<ApprovalRequestId, PendingApproval>();
   const ordered = [...activities].toSorted(compareActivitiesByOrder);
 
@@ -297,7 +305,13 @@ function parseUserInputQuestions(
 
 export function derivePendingUserInputs(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
+  sessionPhase?: SessionPhase | null,
 ): PendingUserInput[] {
+  // When the session is disconnected, pending user input prompts are stale.
+  if (sessionPhase === "disconnected") {
+    return [];
+  }
+
   const openByRequestId = new Map<ApprovalRequestId, PendingUserInput>();
   const ordered = [...activities].toSorted(compareActivitiesByOrder);
 

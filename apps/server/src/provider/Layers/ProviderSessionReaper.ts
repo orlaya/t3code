@@ -1,3 +1,4 @@
+import { CommandId } from "@t3tools/contracts";
 import { Duration, Effect, Layer, Schedule } from "effect";
 
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
@@ -98,10 +99,78 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
       }
     });
 
+    /**
+     * Reconcile orphaned sessions: threads whose orchestration read model claims
+     * a live session but whose provider process is actually dead.
+     *
+     * This handles the case where a provider process dies silently (e.g. laptop
+     * sleep, OOM) without emitting a `session.exited` event, leaving the read
+     * model permanently stale.
+     */
+    const reconcile = Effect.gen(function* () {
+      const readModel = yield* orchestrationEngine.getReadModel();
+      const liveSessions = yield* providerService.listSessions();
+      const liveThreadIds = new Set(liveSessions.map((s) => s.threadId));
+
+      const NON_TERMINAL_STATUSES = new Set(["idle", "starting", "running", "ready", "interrupted"]);
+
+      let reconciledCount = 0;
+
+      for (const thread of readModel.threads) {
+        if (!thread.session) continue;
+        if (!NON_TERMINAL_STATUSES.has(thread.session.status)) continue;
+        if (liveThreadIds.has(thread.id)) continue;
+
+        // This thread thinks it has a live session, but no provider process exists.
+        const now = new Date().toISOString();
+        const previousStatus = thread.session.status;
+        yield* orchestrationEngine
+          .dispatch({
+            type: "thread.session.set",
+            commandId: CommandId.make(`server:session-reconcile:${crypto.randomUUID()}`),
+            threadId: thread.id,
+            session: {
+              threadId: thread.id,
+              status: "stopped",
+              providerName: thread.session.providerName ?? null,
+              runtimeMode: thread.session.runtimeMode,
+              activeTurnId: null,
+              lastError: null,
+              updatedAt: now,
+            },
+            createdAt: now,
+          })
+          .pipe(
+            Effect.tap(() =>
+              Effect.logInfo("provider.session.reconciled", {
+                threadId: thread.id,
+                previousStatus,
+                reason: "orphaned_session",
+              }),
+            ),
+            Effect.catchCause((cause) =>
+              Effect.logWarning("provider.session.reconcile.dispatch-failed", {
+                threadId: thread.id,
+                cause,
+              }),
+            ),
+          );
+
+        reconciledCount += 1;
+      }
+
+      if (reconciledCount > 0) {
+        yield* Effect.logInfo("provider.session.reaper.reconcile-complete", {
+          reconciledCount,
+          totalThreads: readModel.threads.length,
+        });
+      }
+    });
+
     const start: ProviderSessionReaperShape["start"] = () =>
       Effect.gen(function* () {
         yield* Effect.forkScoped(
-          sweep.pipe(
+          Effect.all([sweep, reconcile]).pipe(
             Effect.catch((error: unknown) =>
               Effect.logWarning("provider.session.reaper.sweep-failed", {
                 error,
@@ -124,6 +193,19 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
 
     return {
       start,
+      reconcile: () =>
+        reconcile.pipe(
+          Effect.catch((error: unknown) =>
+            Effect.logWarning("provider.session.reaper.reconcile-failed", {
+              error,
+            }),
+          ),
+          Effect.catchDefect((defect: unknown) =>
+            Effect.logWarning("provider.session.reaper.reconcile-defect", {
+              defect,
+            }),
+          ),
+        ),
     } satisfies ProviderSessionReaperShape;
   });
 

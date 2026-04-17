@@ -488,6 +488,59 @@ label:has(> select#reasoning-effort) select {
   text-align: left;
 }
 
+/* ---- Thinking variant ---- dimmer, smaller inner elements ------------- */
+
+.chat-markdown-thinking :not(pre) > code {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  border-color: color-mix(in srgb, var(--border) 60%, transparent);
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.chat-markdown-thinking a {
+  color: color-mix(in srgb, var(--info-foreground) 60%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--info-foreground) 25%, transparent);
+}
+
+.chat-markdown-thinking blockquote {
+  color: color-mix(in srgb, var(--muted-foreground) 65%, transparent);
+  border-left-color: color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+.chat-markdown-thinking pre {
+  border-color: color-mix(in srgb, var(--border) 50%, transparent);
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+}
+
+.chat-markdown-thinking pre code {
+  font-size: 0.7rem;
+}
+
+.chat-markdown-thinking .chat-markdown-shiki .shiki {
+  background: color-mix(in srgb, var(--muted) 40%, transparent) !important;
+  opacity: 0.7;
+}
+
+.chat-markdown-thinking .chat-markdown-file-link {
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  border-color: color-mix(in srgb, var(--border) 55%, transparent);
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.chat-markdown-thinking .chat-markdown-file-link-label {
+  color: color-mix(in srgb, var(--muted-foreground) 80%, transparent);
+}
+
+.chat-markdown-thinking .chat-markdown-file-link-icon {
+  opacity: 0.5;
+}
+
+.chat-markdown-thinking th,
+.chat-markdown-thinking td {
+  border-color: color-mix(in srgb, var(--border) 50%, transparent);
+}
+
 /* Diffs theme bridge (match diff surfaces to app palette) */
 .diff-panel-viewport {
   background: color-mix(in srgb, var(--background) 94%, var(--card));
