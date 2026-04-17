@@ -92,13 +92,22 @@ function buildEventBase(input: {
   readonly raw?: unknown;
 }): Pick<
   ProviderRuntimeEvent,
-  "eventId" | "provider" | "threadId" | "createdAt" | "turnId" | "itemId" | "requestId" | "raw"
+  | "eventId"
+  | "provider"
+  | "threadId"
+  | "createdAt"
+  | "agentKind"
+  | "turnId"
+  | "itemId"
+  | "requestId"
+  | "raw"
 > {
   return {
     eventId: EventId.make(randomUUID()),
     provider: PROVIDER,
     threadId: input.threadId,
     createdAt: input.createdAt ?? nowIso(),
+    agentKind: "primary",
     ...(input.turnId ? { turnId: input.turnId } : {}),
     ...(input.itemId ? { itemId: RuntimeItemId.make(input.itemId) } : {}),
     ...(input.requestId ? { requestId: RuntimeRequestId.make(input.requestId) } : {}),
