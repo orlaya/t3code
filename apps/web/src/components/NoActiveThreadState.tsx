@@ -1,27 +1,35 @@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
-import { SidebarInset, SidebarTrigger } from "./ui/sidebar";
+import { SidebarInset, SidebarTrigger, useSidebar } from "./ui/sidebar";
 import { isElectron } from "../env";
 import { cn } from "~/lib/utils";
 
 export function NoActiveThreadState() {
+  const { state, isMobile } = useSidebar();
+  const reserveTrafficLightInset = state === "collapsed" || isMobile;
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
         <header
           className={cn(
-            "border-b border-border px-3 sm:px-5",
+            "border-b border-border pr-3 sm:pr-5",
             isElectron
-              ? "drag-region flex h-[52px] items-center wco:h-[env(titlebar-area-height)]"
-              : "py-2 sm:py-3",
+              ? cn(
+                  "drag-region flex h-[52px] items-center wco:h-[env(titlebar-area-height)]",
+                  reserveTrafficLightInset
+                    ? "pl-[90px] wco:pl-[calc(env(titlebar-area-x)+1em)]"
+                    : "pl-3 sm:pl-5",
+                )
+              : "pl-3 py-2 sm:pl-5 sm:py-3",
           )}
         >
           {isElectron ? (
-            <span className="text-xs text-muted-foreground/50 wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]">
-              No active thread
-            </span>
+            <div className="flex items-center gap-2 wco:pr-[calc(100vw-env(titlebar-area-width)-env(titlebar-area-x)+1em)]">
+              <SidebarTrigger className="size-7 shrink-0" />
+              <span className="text-xs text-muted-foreground/50">No active thread</span>
+            </div>
           ) : (
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="size-7 shrink-0 md:hidden" />
+              <SidebarTrigger className="size-7 shrink-0" />
               <span className="text-sm font-medium text-foreground md:text-muted-foreground/60">
                 No active thread
               </span>
