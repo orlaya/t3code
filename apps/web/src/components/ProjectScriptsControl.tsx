@@ -345,7 +345,7 @@ export default function ProjectScriptsControl({
           variant="outline"
           onClick={openAddDialog}
           title="Add action"
-          className="max-[499px]:hidden"
+          className="h-6 max-[499px]:hidden [&_svg]:!size-3"
         >
           <PlusIcon className="size-3.5" />
           <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">

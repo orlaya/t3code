@@ -16,7 +16,7 @@
 
 **Header button cleanup:**
 
-- Hidden the standalone "Add action" button in `ProjectScriptsControl.tsx:342-349` (the else branch when no scripts exist — now `: null`). Dropdown "Add action" menu item when scripts DO exist is kept.
+- The standalone "Add action" button (else branch when no scripts exist) in `ProjectScriptsControl.tsx:342-355` now hides entirely below 500px viewport (`max-[499px]:hidden`). Above that it's icon-only until `@3xl/header-actions`, then gains the "Add action" text label. Dropdown "Add action" menu item when scripts DO exist is unchanged.
 - Removed `GitActionsControl` entirely from `ChatHeader.tsx` + cleaned up now-unused imports and props (`activeThreadEnvironmentId`, `activeThreadId`, `draftId`, `gitCwd`, `scopeThreadRef`, `GitActionsControl` import) and the corresponding props passed from `ChatView.tsx`. The component file + tests still exist as dead code.
 
 **Sidebar sheet animation:**
@@ -64,9 +64,13 @@
 
 - Both user message (copy + revert) and assistant message (copy) action buttons now use `size="icon-xs"` + `variant="ghost"` + `text-muted-foreground/70 hover:text-foreground`. Previously the user's were bordered `size="xs" variant="outline"` and the assistant's had a custom bordered/translucent style — unified to a mid-contrast ghost icon. `MessageCopyButton` call sites at ~355 and ~434.
 
-**ChatHeader sidebar toggle visual parity:**
+**ChatHeader icon buttons — unified height + icon sizing:**
 
-- `SidebarTrigger` at `ChatHeader.tsx:61` now passes `variant="outline" size="icon-xs" className="shrink-0 [&_svg]:size-3"` to match the Terminal and Diff `<Toggle variant="outline" size="xs">` buttons next to it. Works because `SidebarTrigger` spreads `...props` after its `size="icon" variant="ghost"` defaults, so caller props win.
+- All four icon-shaped header buttons (SidebarTrigger, Terminal Toggle, Diff Toggle, and the Zed-picker primary + chevron in `OpenInPicker.tsx`) are pinned to 24px at every width — Button/Toggle `xs`/`icon-xs` sizes default to `h-7 sm:h-6`, which jumps to 28px below the 640px `sm` breakpoint. Each call site now adds `h-6` / `size-6` to kill the breakpoint bump.
+- `SidebarTrigger` at `ChatHeader.tsx:61` passes `variant="outline" size="icon-xs" className="size-6 shrink-0 [&_svg]:!size-3 [&_svg]:!opacity-64"`. The `!` on the svg overrides are needed because Button's `icon-xs` variant has a higher-specificity `[&_svg:not([class*='size-'])]:size-3.5` rule and its own opacity-80 rule; `!important` beats both. Works because `SidebarTrigger` spreads `...props` after its `size="icon" variant="ghost"` defaults, so caller props win.
+- Terminal + Diff `<Toggle>` both get `h-6 min-w-6 shrink-0` inline.
+- `OpenInPicker.tsx` — primary button gets `h-6`, icon shrunk `size-3.5` → `size-3`. Chevron button gets `size-6` and is hidden below `@3xl/header-actions` (via `hidden @3xl/header-actions:inline-flex` on the rendered Button). Because the Group's border-stripping rules (`*:data-slot:has-[~[data-slot]]:rounded-e-none` etc) still match when the chevron is just visually hidden (it's still in the DOM), the primary button also gets `@max-3xl/header-actions:rounded-e-md! @max-3xl/header-actions:border-e! @max-3xl/header-actions:before:rounded-e-[calc(var(--radius-md)-1px)]!` to restore its right edge below the breakpoint.
+- `ProjectScriptsControl.tsx` standalone "Add action" button: `className="h-6 max-[499px]:hidden [&_svg]:!size-3"` — same 24px pin plus forced 12px icon via `!` (its PlusIcon has an explicit `size-3.5` class that needs overriding).
 
 **Theme colors:**
 
@@ -77,5 +81,5 @@
 
 **Badge outline variant breathing room + No Git removal:**
 
-- `ui/badge.tsx:28-29` — outline variant gained `h-6 px-2 sm:h-5 sm:px-1.5` to override the default size's tighter dimensions. Slight bump on both axes with horizontal > vertical. Affects the project-name badge in the chat header and the "model" badge in the command menu.
+- `ChatHeader.tsx` — project-name badge gets `h-6 min-w-0 shrink overflow-hidden px-2 opacity-80 sm:h-5 sm:px-1.5` inline. Extra horizontal > vertical breathing room, plus `opacity-80` to mute the badge (text + border + bg all dim together). Applied only at this call site; the global outline variant in `ui/badge.tsx` was reverted so other outline badges (e.g. command-menu "model" badge) keep the default tighter dimensions and full opacity.
 - `ChatHeader.tsx:77-81` — "No Git" badge commented out (not deleted). `isGitRepo` prop is still used to disable the Diff toggle.

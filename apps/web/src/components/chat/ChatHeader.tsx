@@ -58,7 +58,11 @@ export const ChatHeader = memo(function ChatHeader({
   return (
     <div className="@container/header-actions flex min-w-0 flex-1 items-center gap-2">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden sm:gap-3">
-        <SidebarTrigger variant="outline" size="icon-xs" className="shrink-0 [&_svg]:size-3" />
+        <SidebarTrigger
+          variant="outline"
+          size="icon-xs"
+          className="size-6 shrink-0 [&_svg]:!size-3 [&_svg]:!opacity-64"
+        />
         <h2
           className="min-w-0 shrink truncate text-sm font-medium text-foreground"
           title={activeThreadTitle}
@@ -66,7 +70,10 @@ export const ChatHeader = memo(function ChatHeader({
           {activeThreadTitle}
         </h2>
         {activeProjectName && (
-          <Badge variant="outline" className="min-w-0 shrink overflow-hidden">
+          <Badge
+            variant="outline"
+            className="h-6 min-w-0 shrink overflow-hidden px-2 opacity-80 sm:h-5 sm:px-1.5"
+          >
             <span className="min-w-0 truncate">{activeProjectName}</span>
           </Badge>
         )}
@@ -99,7 +106,7 @@ export const ChatHeader = memo(function ChatHeader({
           <TooltipTrigger
             render={
               <Toggle
-                className="shrink-0"
+                className="h-6 min-w-6 shrink-0"
                 pressed={terminalOpen}
                 onPressedChange={onToggleTerminal}
                 aria-label="Toggle terminal drawer"
@@ -123,7 +130,7 @@ export const ChatHeader = memo(function ChatHeader({
           <TooltipTrigger
             render={
               <Toggle
-                className="shrink-0"
+                className="h-6 min-w-6 shrink-0"
                 pressed={diffOpen}
                 onPressedChange={onToggleDiff}
                 aria-label="Toggle diff panel"
