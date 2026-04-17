@@ -74,11 +74,11 @@ export const ChatHeader = memo(function ChatHeader({
             <span className="min-w-0 truncate">{activeProjectName}</span>
           </Badge>
         )}
-        {activeProjectName && !isGitRepo && (
+        {/*{activeProjectName && !isGitRepo && (
           <Badge variant="outline" className="shrink-0 text-[10px] text-amber-700">
             No Git
           </Badge>
-        )}
+        )}*/}
       </div>
       <div className="flex shrink-0 items-center justify-end gap-2 @3xl/header-actions:gap-3">
         {activeProjectScripts && (
