@@ -1643,6 +1643,20 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
 
     const { event } = message;
 
+    // DIAGNOSTIC: log raw stream events for Opus 4.7 to investigate
+    // empty thinking blocks. Remove once the cause is identified.
+    // if (context.currentApiModelId?.startsWith("claude-opus-4-7")) {
+    //   yield* Effect.logInfo("claude.opus47.stream_event", {
+    //     eventType: event.type,
+    //     deltaType:
+    //       event.type === "content_block_delta" ? event.delta?.type : undefined,
+    //     blockType:
+    //       event.type === "content_block_start" ? event.content_block?.type : undefined,
+    //     index: "index" in event ? event.index : undefined,
+    //     event,
+    //   });
+    // }
+
     if (event.type === "content_block_delta") {
       if (
         (event.delta.type === "text_delta" || event.delta.type === "thinking_delta") &&
@@ -2964,12 +2978,20 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         ...(fastMode ? { fastMode: true } : {}),
       };
 
+      // Opus 4.7 defaults `thinking.display` to `"omitted"` on Anthropic's
+      // side — the thinking block opens, only a signature_delta streams, then
+      // it closes with no `thinking_delta` events. Ask for summarized thinking
+      // explicitly so the fork's thinking UI has text to render.
+      // Opus 4.7 only accepts `type: "adaptive"` (enabled is rejected 400).
+      const isOpus47 = apiModelId?.startsWith("claude-opus-4-7") ?? false;
+
       const queryOptions: ClaudeQueryOptions = {
         ...(input.cwd ? { cwd: input.cwd } : {}),
         ...(apiModelId ? { model: apiModelId } : {}),
         pathToClaudeCodeExecutable: claudeBinaryPath,
         settingSources: [...CLAUDE_SETTING_SOURCES],
         ...(effectiveEffort ? { effort: effectiveEffort } : {}),
+        ...(isOpus47 ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
         ...(permissionMode ? { permissionMode } : {}),
         ...(permissionMode === "bypassPermissions"
           ? { allowDangerouslySkipPermissions: true }
