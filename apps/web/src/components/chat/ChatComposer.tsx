@@ -62,7 +62,8 @@ import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../Compos
 import { AVAILABLE_PROVIDER_OPTIONS, ProviderModelPicker } from "./ProviderModelPicker";
 import { type ComposerCommandItem, ComposerCommandMenu } from "./ComposerCommandMenu";
 import { ComposerPendingApprovalActions } from "./ComposerPendingApprovalActions";
-import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
+// Preserved for possible restore of narrow-screen overflow menu.
+// import { CompactComposerControlsMenu } from "./CompactComposerControlsMenu";
 import { ComposerPrimaryActions } from "./ComposerPrimaryActions";
 import { ComposerPendingApprovalPanel } from "./ComposerPendingApprovalPanel";
 import { ComposerPendingUserInputPanel } from "./ComposerPendingUserInputPanel";
@@ -72,7 +73,7 @@ import { searchSlashCommandItems } from "./composerSlashCommandSearch";
 import {
   getComposerProviderControls,
   getComposerProviderState,
-  renderProviderTraitsMenuContent,
+  // renderProviderTraitsMenuContent, // Preserved for possible restore of narrow-screen overflow menu.
   renderProviderTraitsPicker,
 } from "./composerProviderRegistry";
 import { ContextWindowMeter } from "./ContextWindowMeter";
@@ -116,7 +117,7 @@ const runtimeModeConfig: Record<
     icon: LockIcon,
   },
   "auto-accept-edits": {
-    label: "Auto-accept edits",
+    label: "Accept edits",
     description: "Auto-approve edits, ask before other actions.",
     icon: PenLineIcon,
   },
@@ -175,7 +176,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
 
   return (
     <>
-      <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
+      <Separator orientation="vertical" className="mx-0.5 h-4" />
 
       {props.showInteractionModeToggle ? (
         <>
@@ -191,13 +192,11 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                 : "Default mode — click to enter plan mode"
             }
           >
-            <BotIcon />
-            <span className="sr-only sm:not-sr-only">
-              {props.interactionMode === "plan" ? "Plan" : "Build"}
-            </span>
+            <BotIcon className="hidden sm:inline" />
+            <span>{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
           </Button>
 
-          <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
+          <Separator orientation="vertical" className="mx-0.5 h-4" />
         </>
       ) : null}
 
@@ -212,7 +211,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           aria-label="Runtime mode"
           title={runtimeModeOption.description}
         >
-          <RuntimeModeIcon className="size-4" />
+          <RuntimeModeIcon className="hidden size-4 sm:inline" />
           <SelectValue>{runtimeModeOption.label}</SelectValue>
         </SelectTrigger>
         <SelectPopup alignItemWithTrigger={false}>
@@ -238,7 +237,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
 
       {props.showPlanToggle ? (
         <>
-          <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
+          <Separator orientation="vertical" className="mx-0.5 h-4" />
           <Button
             variant="ghost"
             className={cn(
@@ -256,8 +255,8 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                 : `Show ${props.planSidebarLabel.toLowerCase()} sidebar`
             }
           >
-            <ListTodoIcon />
-            <span className="sr-only sm:not-sr-only">{props.planSidebarLabel}</span>
+            <ListTodoIcon className="hidden sm:inline" />
+            <span>{props.planSidebarLabel}</span>
           </Button>
         </>
       ) : null}
@@ -900,16 +899,17 @@ export const ChatComposer = memo(
       [composerDraftTarget, promptRef, scheduleComposerFocus, setComposerDraftPrompt],
     );
 
-    const providerTraitsMenuContent = renderProviderTraitsMenuContent({
-      provider: selectedProvider,
-      ...(routeKind === "server" ? { threadRef: routeThreadRef } : {}),
-      ...(routeKind === "draft" && draftId ? { draftId } : {}),
-      model: selectedModel,
-      models: selectedProviderModels,
-      modelOptions: composerModelOptions?.[selectedProvider],
-      prompt,
-      onPromptChange: setPromptFromTraits,
-    });
+    // Preserved for possible restore of narrow-screen overflow menu (CompactComposerControlsMenu).
+    // const providerTraitsMenuContent = renderProviderTraitsMenuContent({
+    //   provider: selectedProvider,
+    //   ...(routeKind === "server" ? { threadRef: routeThreadRef } : {}),
+    //   ...(routeKind === "draft" && draftId ? { draftId } : {}),
+    //   model: selectedModel,
+    //   models: selectedProviderModels,
+    //   modelOptions: composerModelOptions?.[selectedProvider],
+    //   prompt,
+    //   onPromptChange: setPromptFromTraits,
+    // });
     const providerTraitsPicker = renderProviderTraitsPicker({
       provider: selectedProvider,
       ...(routeKind === "server" ? { threadRef: routeThreadRef } : {}),
@@ -1934,6 +1934,7 @@ export const ChatComposer = memo(
                     onProviderModelChange={onProviderModelSelect}
                   />
 
+                  {/* Narrow-screen overflow menu — kept inline always now; preserved in case we want to restore compact collapsing.
                   {isComposerFooterCompact ? (
                     <CompactComposerControlsMenu
                       activePlan={showPlanSidebarToggle}
@@ -1947,32 +1948,25 @@ export const ChatComposer = memo(
                       onTogglePlanSidebar={togglePlanSidebar}
                       onRuntimeModeChange={handleRuntimeModeChange}
                     />
-                  ) : (
+                  ) : null}
+                  */}
+                  {providerTraitsPicker ? (
                     <>
-                      {providerTraitsPicker ? (
-                        <>
-                          <Separator
-                            orientation="vertical"
-                            className="mx-0.5 hidden h-4 sm:block"
-                          />
-                          {providerTraitsPicker}
-                        </>
-                      ) : null}
-                      <ComposerFooterModeControls
-                        showInteractionModeToggle={
-                          composerProviderControls.showInteractionModeToggle
-                        }
-                        interactionMode={interactionMode}
-                        runtimeMode={runtimeMode}
-                        showPlanToggle={showPlanSidebarToggle}
-                        planSidebarLabel={planSidebarLabel}
-                        planSidebarOpen={planSidebarOpen}
-                        onToggleInteractionMode={toggleInteractionMode}
-                        onRuntimeModeChange={handleRuntimeModeChange}
-                        onTogglePlanSidebar={togglePlanSidebar}
-                      />
+                      <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
+                      {providerTraitsPicker}
                     </>
-                  )}
+                  ) : null}
+                  <ComposerFooterModeControls
+                    showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
+                    interactionMode={interactionMode}
+                    runtimeMode={runtimeMode}
+                    showPlanToggle={showPlanSidebarToggle}
+                    planSidebarLabel={planSidebarLabel}
+                    planSidebarOpen={planSidebarOpen}
+                    onToggleInteractionMode={toggleInteractionMode}
+                    onRuntimeModeChange={handleRuntimeModeChange}
+                    onTogglePlanSidebar={togglePlanSidebar}
+                  />
                 </div>
 
                 {/* Right side: send / stop button */}

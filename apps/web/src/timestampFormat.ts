@@ -2,12 +2,10 @@ import { type TimestampFormat } from "@t3tools/contracts/settings";
 
 export function getTimestampFormatOptions(
   timestampFormat: TimestampFormat,
-  includeSeconds: boolean,
 ): Intl.DateTimeFormatOptions {
   const baseOptions: Intl.DateTimeFormatOptions = {
     hour: "numeric",
     minute: "2-digit",
-    ...(includeSeconds ? { second: "2-digit" } : {}),
   };
 
   if (timestampFormat === "locale") {
@@ -22,30 +20,19 @@ export function getTimestampFormatOptions(
 
 const timestampFormatterCache = new Map<string, Intl.DateTimeFormat>();
 
-function getTimestampFormatter(
-  timestampFormat: TimestampFormat,
-  includeSeconds: boolean,
-): Intl.DateTimeFormat {
-  const cacheKey = `${timestampFormat}:${includeSeconds ? "seconds" : "minutes"}`;
-  const cachedFormatter = timestampFormatterCache.get(cacheKey);
-  if (cachedFormatter) {
-    return cachedFormatter;
+function getTimestampFormatter(timestampFormat: TimestampFormat): Intl.DateTimeFormat {
+  const cached = timestampFormatterCache.get(timestampFormat);
+  if (cached) {
+    return cached;
   }
 
-  const formatter = new Intl.DateTimeFormat(
-    undefined,
-    getTimestampFormatOptions(timestampFormat, includeSeconds),
-  );
-  timestampFormatterCache.set(cacheKey, formatter);
+  const formatter = new Intl.DateTimeFormat(undefined, getTimestampFormatOptions(timestampFormat));
+  timestampFormatterCache.set(timestampFormat, formatter);
   return formatter;
 }
 
 export function formatTimestamp(isoDate: string, timestampFormat: TimestampFormat): string {
-  return getTimestampFormatter(timestampFormat, true).format(new Date(isoDate));
-}
-
-export function formatShortTimestamp(isoDate: string, timestampFormat: TimestampFormat): string {
-  return getTimestampFormatter(timestampFormat, false).format(new Date(isoDate));
+  return getTimestampFormatter(timestampFormat).format(new Date(isoDate));
 }
 
 /**

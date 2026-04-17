@@ -58,6 +58,25 @@
   }
 }
 
+/* Composer footer: Button defaults to text-base on mobile (sm:text-sm on ≥640px),
+   which makes narrow-screen text counterintuitively larger than desktop. Force
+   the smaller size inside the footer at all widths. */
+[data-chat-composer-footer="true"] button,
+[data-chat-composer-footer="true"] [role="combobox"] {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
+}
+
+/* Below 470px, drop all chevrons from the composer footer dropdowns. The
+   provider model picker and traits picker handle this via `max-[469px]:hidden`
+   directly; the shared SelectTrigger chevron lives in ui/select.tsx and is
+   scoped here instead of globally. */
+@media (max-width: 469px) {
+  [data-chat-composer-footer="true"] [data-slot="select-icon"] {
+    display: none;
+  }
+}
+
 /* Suppress all transitions during theme changes */
 .no-transitions,
 .no-transitions *,

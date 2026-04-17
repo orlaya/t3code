@@ -305,8 +305,8 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
           const terminalContexts = displayedUserMessage.contexts;
           const canRevertAgentWork = typeof row.revertTurnCount === "number";
           return (
-            <div className="flex justify-end">
-              <div className="group relative max-w-[80%] rounded-2xl rounded-br-sm border border-border bg-secondary px-4 py-3">
+            <div className="group flex flex-col items-end">
+              <div className="relative max-w-[80%] rounded-2xl rounded-br-sm border border-border bg-secondary px-4 py-3">
                 {userImages.length > 0 && (
                   <div className="mb-2 grid max-w-[420px] grid-cols-2 gap-2">
                     {userImages.map(
@@ -333,7 +333,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                               />
                             </button>
                           ) : (
-                            <div className="flex min-h-[72px] items-center justify-center px-2 py-3 text-center text-[11px] text-muted-foreground/70">
+                            <div className="flex min-h-[72px] items-center justify-center px-2 py-3 text-center text-[11px] text-muted-foreground/80">
                               {image.name}
                             </div>
                           )}
@@ -349,28 +349,34 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                     terminalContexts={terminalContexts}
                   />
                 )}
-                <div className="mt-1.5 flex items-center justify-end gap-2">
-                  <div className="flex items-center gap-1.5 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100">
-                    {displayedUserMessage.copyText && (
-                      <MessageCopyButton text={displayedUserMessage.copyText} />
-                    )}
-                    {canRevertAgentWork && (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        disabled={ctx.isRevertingCheckpoint || ctx.isWorking}
-                        onClick={() => ctx.onRevertUserMessage(row.message.id)}
-                        title="Revert to this message"
-                      >
-                        <Undo2Icon className="size-3" />
-                      </Button>
-                    )}
-                  </div>
-                  <p className="text-right text-xs text-muted-foreground/50">
-                    {formatTimestamp(row.message.createdAt, ctx.timestampFormat)}
-                  </p>
+              </div>
+              <div className="mt-1.5 flex items-center gap-2 px-1">
+                <div className="flex items-center gap-1.5 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100">
+                  {displayedUserMessage.copyText && (
+                    <MessageCopyButton
+                      text={displayedUserMessage.copyText}
+                      size="icon-xs"
+                      variant="ghost"
+                      className="text-muted-foreground/80 hover:text-foreground"
+                    />
+                  )}
+                  {canRevertAgentWork && (
+                    <Button
+                      type="button"
+                      size="icon-xs"
+                      variant="ghost"
+                      className="text-muted-foreground/80 hover:text-foreground"
+                      disabled={ctx.isRevertingCheckpoint || ctx.isWorking}
+                      onClick={() => ctx.onRevertUserMessage(row.message.id)}
+                      title="Revert to this message"
+                    >
+                      <Undo2Icon className="size-3" />
+                    </Button>
+                  )}
                 </div>
+                <p className="text-[11px] text-muted-foreground/80">
+                  {formatTimestamp(row.message.createdAt, ctx.timestampFormat)}
+                </p>
               </div>
             </div>
           );
@@ -414,7 +420,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                   onOpenTurnDiff={ctx.onOpenTurnDiff}
                 />
                 <div className="mt-1.5 flex items-center gap-2">
-                  <p className="text-[10px] text-muted-foreground/30">
+                  <p className="text-[11px] text-muted-foreground/80">
                     {row.message.streaming ? (
                       <LiveMessageMeta
                         createdAt={row.message.createdAt}
@@ -434,8 +440,8 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                       <MessageCopyButton
                         text={assistantCopyState.text ?? ""}
                         size="icon-xs"
-                        variant="outline"
-                        className="border-border/50 bg-background/35 text-muted-foreground/45 shadow-none hover:border-border/70 hover:bg-background/55 hover:text-muted-foreground/70"
+                        variant="ghost"
+                        className="text-muted-foreground/80 hover:text-foreground"
                       />
                     </div>
                   ) : null}
@@ -458,7 +464,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
 
       {row.kind === "working" && (
         <div className="py-0.5 pl-1.5">
-          <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground/70">
+          <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground/80">
             <span className="inline-flex items-center gap-[3px]">
               <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
               <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
@@ -860,7 +866,7 @@ function workToneIcon(tone: TimelineWorkEntry["tone"]): {
 
 function workToneClass(tone: "thinking" | "tool" | "info" | "error"): string {
   if (tone === "error") return "text-rose-300/50 dark:text-rose-300/50";
-  if (tone === "tool") return "text-muted-foreground/70";
+  if (tone === "tool") return "text-muted-foreground/80";
   if (tone === "thinking") return "text-muted-foreground/50";
   return "text-muted-foreground/40";
 }
@@ -958,7 +964,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               className={cn(
                 "truncate text-xs leading-5",
                 workToneClass(workEntry.tone),
-                preview ? "text-muted-foreground/70" : "",
+                preview ? "text-muted-foreground/80" : "",
               )}
               title={rawCommand ? undefined : displayText}
             >

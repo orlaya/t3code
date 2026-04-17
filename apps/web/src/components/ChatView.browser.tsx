@@ -3270,7 +3270,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
         "Ask before commands and file changes",
       );
 
-      const autoAcceptItem = await waitForSelectItemContainingText("Auto-accept edits");
+      const autoAcceptItem = await waitForSelectItemContainingText("Accept edits");
       expect(autoAcceptItem.textContent).toContain("Auto-approve edits");
       expect((await waitForSelectItemContainingText("Full access")).textContent).toContain(
         "Allow commands and edits without prompts",

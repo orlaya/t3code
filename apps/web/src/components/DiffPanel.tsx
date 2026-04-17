@@ -34,7 +34,7 @@ import { selectProjectByRef, useStore } from "../store";
 import { createThreadSelectorByRef } from "../storeSelectors";
 import { buildThreadRouteParams, resolveThreadRouteRef } from "../threadRoutes";
 import { useSettings } from "../hooks/useSettings";
-import { formatShortTimestamp } from "../timestampFormat";
+import { formatTimestamp } from "../timestampFormat";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { ToggleGroup, Toggle } from "./ui/toggle-group";
 
@@ -511,7 +511,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
                       "?"}
                   </span>
                   <span className="text-[9px] leading-tight opacity-70">
-                    {formatShortTimestamp(summary.completedAt, settings.timestampFormat)}
+                    {formatTimestamp(summary.completedAt, settings.timestampFormat)}
                   </span>
                 </div>
               </div>
