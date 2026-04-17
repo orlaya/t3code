@@ -102,3 +102,25 @@
 - Web `index.css` — added `.thinking-collapsed-scroll` utility (hides scrollbar in the collapsed thinking container while keeping scroll behaviour).
 - **Operational gotcha:** dev server does NOT pick up adapter changes via HMR. Restart required. Spent ~30 min on what looked like a code bug (0/345 reasoning_text events without itemId) before realising the runtime was stale.
 - **Open bug:** substantial flicker on the first message of a conversation. Investigation deferred — see PLAN.thinking.md for hypotheses + diagnostic plan.
+
+**Session reconciliation (dead session + stuck permission prompt fixes):**
+
+- `apps/server/src/provider/Services/ProviderSessionReaper.ts` — added `reconcile()` method to the service interface.
+- `apps/server/src/provider/Layers/ProviderSessionReaper.ts` — added reconcile logic that compares orchestration read model against live provider sessions (`providerService.listSessions()`), marks orphaned sessions as `"stopped"` via `thread.session.set` dispatch. Runs on the existing 5-min reaper schedule AND exposed for on-demand calls. Handles the case where a provider process dies silently (laptop sleep, OOM) without emitting `session.exited`.
+- `apps/server/src/ws.ts` — wired `ProviderSessionReaper` into the WS layer; `subscribeShell` calls `reconcile()` before delivering the snapshot so clients see corrected state immediately on reconnect.
+- `apps/server/src/server.test.ts` — added mock `ProviderSessionReaper` to test layer.
+- `apps/web/src/session-logic.ts` — `derivePendingApprovals()` and `derivePendingUserInputs()` now accept optional `sessionPhase` param, return empty when `"disconnected"`. Fixes stuck permission/user-input prompts when session dies mid-approval.
+- `apps/web/src/components/ChatView.tsx` — updated both `derivePendingApprovals` and `derivePendingUserInputs` call sites to pass `phase`.
+
+**Preserve provider bindings when stopping sessions (manual port of upstream `721b6b4c`):**
+
+- `apps/server/src/provider/Layers/ProviderService.ts` — `stopSession()` now calls `directory.upsert({ status: "stopped" })` instead of `directory.remove()`, preserving the binding row and `resumeCursor` in SQLite so sessions can resume with full conversation history.
+- `apps/server/src/provider/Services/ProviderSessionDirectory.ts` — removed `remove()` from the service interface.
+- `apps/server/src/provider/Layers/ProviderSessionDirectory.ts` — removed `remove()` implementation.
+- `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — removed `providerChanged` logic that was clearing `resumeCursor` on provider switch (provider switching is rejected anyway). Simplifies the session restart path.
+- Test files updated to match: `ProviderCommandReactor.test.ts`, `ProviderService.test.ts`, `ProviderSessionDirectory.test.ts`, `CodexAdapter.test.ts`.
+
+**Vitest env var leak fix:**
+
+- `apps/web/vitest.config.ts` — new file. Overrides the `define` block from `vite.config.ts` to force `VITE_HTTP_URL` and `VITE_WS_URL` to empty strings during test runs. Fixes 6 tests in `authBootstrap.test.ts` and `bootstrap.test.ts` that were failing when the dev server was running (Vite's `define` baked real env vars as literal string replacements, making `vi.stubEnv` / `vi.stubGlobal` mocks ineffective).
+- `apps/web/src/rpc/wsTransport.test.ts` — added missing `href` property to the mock `window.location` object. `resolvePrimaryEnvironmentHttpUrl` calls `new URL(window.location.href)` which needs `href` to exist.

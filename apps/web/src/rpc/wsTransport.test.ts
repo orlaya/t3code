@@ -125,6 +125,7 @@ beforeEach(() => {
     configurable: true,
     value: {
       location: {
+        href: "http://localhost:3020/",
         origin: "http://localhost:3020",
         hostname: "localhost",
         port: "3020",
