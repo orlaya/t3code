@@ -39,6 +39,7 @@ const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_TTL = Duration.minutes(120);
 const BUFFERED_PROPOSED_PLAN_BY_ID_CACHE_CAPACITY = 10_000;
 const BUFFERED_PROPOSED_PLAN_BY_ID_TTL = Duration.minutes(120);
 const MAX_BUFFERED_ASSISTANT_CHARS = 24_000;
+const STREAMING_FLUSH_INTERVAL_MS = 150;
 const STRICT_PROVIDER_LIFECYCLE_GUARD = process.env.T3CODE_STRICT_PROVIDER_LIFECYCLE_GUARD !== "0";
 
 type TurnStartRequestedDomainEvent = Extract<
@@ -525,6 +526,13 @@ const make = Effect.fn("make")(function* () {
     lookup: () => Effect.succeed({ text: "", createdAt: "" }),
   });
 
+  // Tracks the last time buffered assistant text was flushed for each message,
+  // enabling delta-triggered timed flushes: on each incoming delta we check
+  // whether STREAMING_FLUSH_INTERVAL_MS has elapsed since the last flush and,
+  // if so, drain the buffer into a dispatch. Completion always flushes any
+  // remainder via finalizeAssistantMessage.
+  const lastAssistantFlushTimestampByMessageId = new Map<MessageId, number>();
+
   const isGitRepoForThread = Effect.fn("isGitRepoForThread")(function* (threadId: ThreadId) {
     const readModel = yield* orchestrationEngine.getReadModel();
     const thread = readModel.threads.find((entry) => entry.id === threadId);
@@ -642,8 +650,10 @@ const make = Effect.fn("make")(function* () {
   const clearBufferedProposedPlan = (planId: string) =>
     Cache.invalidate(bufferedProposedPlanById, planId);
 
-  const clearAssistantMessageState = (messageId: MessageId) =>
-    clearBufferedAssistantText(messageId);
+  const clearAssistantMessageState = (messageId: MessageId) => {
+    lastAssistantFlushTimestampByMessageId.delete(messageId);
+    return clearBufferedAssistantText(messageId);
+  };
 
   const finalizeAssistantMessage = Effect.fn("finalizeAssistantMessage")(function* (input: {
     event: ProviderRuntimeEvent;
@@ -1034,15 +1044,42 @@ const make = Effect.fn("make")(function* () {
           });
         }
       } else {
-        yield* orchestrationEngine.dispatch({
-          type: "thread.message.assistant.delta",
-          commandId: providerCommandId(event, "assistant-delta"),
-          threadId: thread.id,
-          messageId: assistantMessageId,
-          delta: assistantDelta,
-          ...(turnId ? { turnId } : {}),
-          createdAt: now,
-        });
+        // Timed streaming: buffer deltas and flush every STREAMING_FLUSH_INTERVAL_MS.
+        // Each incoming delta checks elapsed time since last flush; if enough time
+        // has passed, drain the buffer into a single dispatch. Any remainder is
+        // flushed on message/turn completion via finalizeAssistantMessage.
+        const spillChunk = yield* appendBufferedAssistantText(assistantMessageId, assistantDelta);
+        if (spillChunk.length > 0) {
+          // Safety-valve overflow — flush immediately regardless of interval.
+          lastAssistantFlushTimestampByMessageId.set(assistantMessageId, Date.now());
+          yield* orchestrationEngine.dispatch({
+            type: "thread.message.assistant.delta",
+            commandId: providerCommandId(event, "assistant-delta-streaming-spill"),
+            threadId: thread.id,
+            messageId: assistantMessageId,
+            delta: spillChunk,
+            ...(turnId ? { turnId } : {}),
+            createdAt: now,
+          });
+        } else {
+          const lastFlush = lastAssistantFlushTimestampByMessageId.get(assistantMessageId);
+          const elapsed = lastFlush !== undefined ? Date.now() - lastFlush : STREAMING_FLUSH_INTERVAL_MS;
+          if (elapsed >= STREAMING_FLUSH_INTERVAL_MS) {
+            const flushed = yield* takeBufferedAssistantText(assistantMessageId);
+            if (flushed.length > 0) {
+              lastAssistantFlushTimestampByMessageId.set(assistantMessageId, Date.now());
+              yield* orchestrationEngine.dispatch({
+                type: "thread.message.assistant.delta",
+                commandId: providerCommandId(event, "assistant-delta-streaming"),
+                threadId: thread.id,
+                messageId: assistantMessageId,
+                delta: flushed,
+                ...(turnId ? { turnId } : {}),
+                createdAt: now,
+              });
+            }
+          }
+        }
       }
     }
 

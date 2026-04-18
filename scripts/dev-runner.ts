@@ -166,8 +166,8 @@ export function createDevRunnerEnv({
       output.T3CODE_PORT = String(serverPort);
       output.VITE_HTTP_URL = `http://${DESKTOP_DEV_LOOPBACK_HOST}:${serverPort}`;
       output.VITE_WS_URL = `ws://${DESKTOP_DEV_LOOPBACK_HOST}:${serverPort}`;
+      output.T3CODE_NO_BROWSER = "1";
       delete output.T3CODE_MODE;
-      delete output.T3CODE_NO_BROWSER;
       delete output.T3CODE_HOST;
     }
 
