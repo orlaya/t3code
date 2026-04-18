@@ -86,6 +86,7 @@ interface TimelineRowSharedState {
   onRevertUserMessage: (messageId: MessageId) => void;
   onImageExpand: (preview: ExpandedImagePreview) => void;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
+  agentEditedFilesByTurnId: Map<TurnId, Set<string>>;
 }
 
 const TimelineRowCtx = createContext<TimelineRowSharedState>(null!);
@@ -104,6 +105,7 @@ interface MessagesTimelineProps {
   completionDividerBeforeEntryId: string | null;
   completionSummary: string | null;
   turnDiffSummaryByAssistantMessageId: Map<MessageId, TurnDiffSummary>;
+  agentEditedFilesByTurnId: Map<TurnId, Set<string>>;
   routeThreadKey: string;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
   revertTurnCountByUserMessageId: Map<MessageId, number>;
@@ -132,6 +134,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   completionDividerBeforeEntryId,
   completionSummary,
   turnDiffSummaryByAssistantMessageId,
+  agentEditedFilesByTurnId,
   routeThreadKey,
   onOpenTurnDiff,
   revertTurnCountByUserMessageId,
@@ -209,6 +212,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onRevertUserMessage,
       onImageExpand,
       onOpenTurnDiff,
+      agentEditedFilesByTurnId,
     }),
     [
       activeTurnInProgress,
@@ -225,6 +229,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onRevertUserMessage,
       onImageExpand,
       onOpenTurnDiff,
+      agentEditedFilesByTurnId,
     ],
   );
 
@@ -427,6 +432,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                 />
                 <AssistantChangedFilesSection
                   turnSummary={row.assistantTurnDiffSummary}
+                  agentEditedFilesByTurnId={ctx.agentEditedFilesByTurnId}
                   routeThreadKey={ctx.routeThreadKey}
                   resolvedTheme={ctx.resolvedTheme}
                   onOpenTurnDiff={ctx.onOpenTurnDiff}
@@ -620,13 +626,6 @@ const ThinkingSection = memo(function ThinkingSection({
           Sub-agent thinking
         </span>
         {preview && <span className="min-w-0 flex-1 truncate">{preview}</span>}
-        {message.streaming && (
-          <span className="inline-flex items-center gap-[3px]">
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
-            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
-          </span>
-        )}
       </div>
     );
   }
@@ -639,13 +638,6 @@ const ThinkingSection = memo(function ThinkingSection({
            {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
         <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">
           Thinking
-          {message.streaming && (
-            <span className="ml-2 inline-flex items-center gap-[3px] align-middle">
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
-            </span>
-          )}
         </p>
         {canExpand && (
           <button
@@ -684,17 +676,31 @@ const ThinkingSection = memo(function ThinkingSection({
  *  so toggling re-renders only this component — not the entire list. */
 const AssistantChangedFilesSection = memo(function AssistantChangedFilesSection({
   turnSummary,
+  agentEditedFilesByTurnId,
   routeThreadKey,
   resolvedTheme,
   onOpenTurnDiff,
 }: {
   turnSummary: TurnDiffSummary | undefined;
+  agentEditedFilesByTurnId: Map<TurnId, Set<string>>;
   routeThreadKey: string;
   resolvedTheme: "light" | "dark";
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
 }) {
   if (!turnSummary) return null;
-  const checkpointFiles = turnSummary.files;
+
+  // Filter to only files the agent actually edited via Edit/Write tool calls,
+  // excluding unrelated changes from the user or other sessions.
+  // Git diff paths are repo-relative, tool call paths may be absolute — use endsWith matching.
+  const agentTouchedFiles = agentEditedFilesByTurnId.get(turnSummary.turnId);
+  const checkpointFiles = agentTouchedFiles
+    ? turnSummary.files.filter((f) => {
+        for (const agentPath of agentTouchedFiles) {
+          if (agentPath === f.path || agentPath.endsWith("/" + f.path)) return true;
+        }
+        return false;
+      })
+    : [];
   if (checkpointFiles.length === 0) return null;
 
   return (
@@ -724,7 +730,7 @@ function AssistantChangedFilesSectionInner({
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
 }) {
   const allDirectoriesExpanded = useUiStateStore(
-    (store) => store.threadChangedFilesExpandedById[routeThreadKey]?.[turnSummary.turnId] ?? true,
+    (store) => store.threadChangedFilesExpandedById[routeThreadKey]?.[turnSummary.turnId] ?? false,
   );
   const setExpanded = useUiStateStore((store) => store.setThreadChangedFilesExpanded);
   const summaryStat = summarizeTurnDiffStats(checkpointFiles);
@@ -747,6 +753,7 @@ function AssistantChangedFilesSectionInner({
             type="button"
             size="xs"
             variant="outline"
+            className="text-muted-foreground"
             data-scroll-anchor-ignore
             onClick={() => setExpanded(routeThreadKey, turnSummary.turnId, !allDirectoriesExpanded)}
           >
@@ -756,6 +763,7 @@ function AssistantChangedFilesSectionInner({
             type="button"
             size="xs"
             variant="outline"
+            className="text-muted-foreground"
             onClick={() => onOpenTurnDiff(turnSummary.turnId, checkpointFiles[0]?.path)}
           >
             View diff

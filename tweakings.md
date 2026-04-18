@@ -218,3 +218,13 @@
 - `apps/web/src/index.css` `@theme inline` — added `--font-mono: "Source Code Pro", "SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace`. Tailwind's `font-mono` utility now uses this stack everywhere.
 - `apps/web/src/index.css` `:root` — added `--diffs-font-family: var(--font-mono)`. Pierre's shadow DOM inherits this globally — applies to both `DiffPanel` and `InlineEditDiff` without per-component style props.
 - `apps/web/src/index.css` `pre, code` rule — simplified from a hardcoded font stack to `var(--font-mono)`.
+
+**Changed files section — agent-only filtering + visual tweaks:**
+
+- `apps/web/src/components/ChatView.tsx` — new `agentEditedFilesByTurnId` memo builds a `Map<TurnId, Set<string>>` from `editDiffEntries`, collecting the file paths the agent actually touched via Edit/Write tool calls per turn. Passed as a prop to `MessagesTimeline`.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — `agentEditedFilesByTurnId` threaded through `MessagesTimelineProps`, `TimelineRowSharedState`, and `TimelineRowCtx` to `AssistantChangedFilesSection`. The outer guard component now filters `turnSummary.files` to only files present in the agent's set (using `endsWith("/" + path)` matching since git diff paths are repo-relative while tool call paths are absolute). If no agent-edited files remain, the entire block returns `null`. Fixes the problem where user edits, or changes from other sessions, would show up in a turn's "Changed files" when not using worktrees.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — `allDirectoriesExpanded` default flipped from `true` to `false`. Changed files tree now starts collapsed.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — "Collapse all" and "View diff" buttons now include `className="text-muted-foreground"` to match the muted shade of the header icon buttons.
+- `apps/web/src/components/chat/DiffStatLabel.tsx` — additions colour changed from `text-success` to inline `style={{ color: "#cae28f" }}` (NZ muted green). Deletions changed from `text-destructive` to `style={{ color: "#d36c6c" }}` (NZ muted red).
+- `apps/web/src/components/chat/ChangedFilesTree.tsx` — removed `VscodeEntryIcon` from file entries (and its import). File rows now show no icon, just the filename.
+- Test files (`MessagesTimeline.browser.tsx`, `MessagesTimeline.test.tsx`) — added `agentEditedFilesByTurnId: new Map()` to test prop builders.

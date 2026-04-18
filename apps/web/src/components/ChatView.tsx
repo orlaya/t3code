@@ -1444,6 +1444,20 @@ export default function ChatView(props: ChatViewProps) {
   const activeProjectCwd = activeProject?.cwd ?? null;
   const activeThreadWorktreePath = activeThread?.worktreePath ?? null;
   const activeWorkspaceRoot = activeThreadWorktreePath ?? activeProjectCwd ?? undefined;
+  const agentEditedFilesByTurnId = useMemo(() => {
+    const map = new Map<TurnId, Set<string>>();
+    for (const entry of editDiffEntries) {
+      if (!entry.turnId) continue;
+      const turnId = entry.turnId as TurnId;
+      let set = map.get(turnId);
+      if (!set) {
+        set = new Set<string>();
+        map.set(turnId, set);
+      }
+      set.add(entry.filePath);
+    }
+    return map;
+  }, [editDiffEntries]);
   const activeTerminalLaunchContext =
     terminalLaunchContext?.threadId === activeThreadId
       ? terminalLaunchContext
@@ -3283,6 +3297,7 @@ export default function ChatView(props: ChatViewProps) {
               completionDividerBeforeEntryId={completionDividerBeforeEntryId}
               completionSummary={completionSummary}
               turnDiffSummaryByAssistantMessageId={turnDiffSummaryByAssistantMessageId}
+              agentEditedFilesByTurnId={agentEditedFilesByTurnId}
               activeThreadEnvironmentId={activeThread.environmentId}
               routeThreadKey={routeThreadKey}
               onOpenTurnDiff={onOpenTurnDiff}
