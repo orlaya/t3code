@@ -111,3 +111,84 @@ Note the `showInteractionModeToggle={composerProviderControls.showInteractionMod
 
 - If upstream's `showInteractionModeToggle` gets renamed or supplanted by a different mechanism, update the Policy block and add a fresh Active resolution dated to that merge.
 - If upstream ever substantially rethinks the composer footer layout (e.g. removes the compact menu themselves), revisit the Policy — our simplification may converge with theirs and some of this doc becomes moot.
+
+---
+
+## `apps/server/src/provider/Layers/ClaudeAdapter.ts`
+
+### Policy
+
+The `queryOptions` object in the `startSession` flow is an accumulation point for per-model SDK configuration. Whenever both upstream and our fork add fields to it, expect merge conflicts that are purely additive. Take both sides' additions unless they genuinely overlap (e.g. both setting the same field differently).
+
+### Active resolution — 2026-04-18 merge (upstream PR #1355 — ACP / Cursor)
+
+**Region:** the `queryOptions` literal inside `startSession`.
+
+Upstream added a defensive `effort` type cast (the SDK `Options["effort"]` union lags behind the CLI's `xhigh` value). Our tweak from commit `418e6391` added the `isOpus47 thinking: { type: "adaptive", display: "summarized" }` line.
+
+Take both. Upstream's cast first, our line appended:
+
+```ts
+// The SDK type lags the CLI here: Opus 4.7 accepts `xhigh` even though
+// the published `Options["effort"]` union currently stops at `max`.
+...(effectiveEffort
+  ? {
+      effort: effectiveEffort as unknown as NonNullable<ClaudeQueryOptions["effort"]>,
+    }
+  : {}),
+...(isOpus47 ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
+```
+
+---
+
+## `apps/web/src/components/chat/MessagesTimeline.tsx`
+
+### Policy (SimpleWorkEntryRow render tree)
+
+Both upstream and our fork have converged on an outer `{rawCommand ? (<div>...<p>...{preview && <Tooltip/>}...</p></div>) : (<Tooltip>...</Tooltip>)}` structure inside `SimpleWorkEntryRow`. Any conflicts here are usually about how the rawCommand-truthy branch's `<p>` is styled — not about whether the outer ternary exists.
+
+Prefer upstream's structure when it's cleaner, and let dead code from our older tweaks go. The `rawCommand` check inside the `preview && (...)` section is **dead code once the outer ternary exists** — `rawCommand` is always truthy there.
+
+### Active resolution — 2026-04-18 merge (upstream PR #1355 — ACP / Cursor)
+
+**Region:** `SimpleWorkEntryRow`'s rawCommand-truthy `<p>` around line 1060.
+
+Upstream shipped a cleaner outer `{rawCommand ? ... : ...}` ternary with `title={displayText}` and `/70` opacity. Our old `7ff4ee44` version still had inner `rawCommand ?` conditionals (dead code now) and `/80` opacity / `title={undefined}`.
+
+Take upstream's version wholesale. The `title={undefined}` suppression from our fork was deliberate at the time (avoiding browser-native + rich-Tooltip doubling) but the UX difference is negligible; native browser tooltip as a fallback is fine.
+
+---
+
+## `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts`
+
+### Policy (assistant-delta / completion flow)
+
+This file is a merge hotspot because both upstream and our fork evolve the same assistant-message flow (delta → buffer → flush → complete). Our tweaks here are:
+
+- **Timed streaming flush** (150ms buffered-then-dispatched, with `lastAssistantFlushTimestampByMessageId` + `STREAMING_FLUSH_INTERVAL_MS` constant) — replaces per-token dispatch when `enableAssistantStreaming: true`.
+- **Reasoning / thinking delta handling** — parallel `reasoningDelta` extraction, `if (reasoningDelta > 0)` dispatch block, `reasoningCompletion` extraction, `if (reasoningCompletion)` dispatch block. All carry `role: "thinking"` + `agentKind`.
+
+Upstream's evolving infrastructure (e.g. `getOrCreateAssistantMessageId`, `flushBufferedAssistantMessagesForTurn`, `finalizeActiveAssistantSegmentForTurn`, `pauseForUserTurnId` block) is **adopted wholesale** — our tweaks layer on top of their structure rather than replacing it.
+
+**Reconciliation pattern:**
+
+1. Take upstream's new helpers and block structure unchanged.
+2. Replace upstream's simple streaming branch (direct per-delta dispatch) with our timed flush logic.
+3. Add our `reasoningDelta` extraction next to their `assistantDelta` / `proposedPlanDelta`.
+4. Add our `if (reasoningDelta > 0)` block after the `if (assistantDelta > 0)` block, before `pauseForUserTurnId`.
+5. Add our `reasoningCompletion` extraction next to their `assistantCompletion` / `proposedPlanCompletion`.
+6. Add our `if (reasoningCompletion)` dispatch block after the `if (assistantCompletion)` block, before `if (proposedPlanCompletion)`.
+
+### Active resolution — 2026-04-18 merge (upstream PR #1355 — ACP / Cursor)
+
+**Region:** the entire assistant-delta / reasoning / completion flow (~350 lines, 4 overlapping conflict hunks).
+
+Upstream massively restructured around new helper functions. Our older code was written against the pre-helper structure (manual `MessageId.make(...)`, direct dispatches, 4-space indent block nesting).
+
+Approach used during this merge: **one big surgical replacement of the contested range** rather than hunk-by-hunk resolution. Applied the reconciliation pattern above. Typecheck + tests both green.
+
+If upstream restructures this flow again in the future, repeat the same pattern: take their new structure, then re-inject the reasoning extraction/dispatch blocks + the timed flush streaming branch at the equivalent positions.
+
+### Related downstream side-effect
+
+Upstream's new Cursor adapter and ACP core-runtime-events module emit `ProviderRuntimeEvent` values without `agentKind`. Our thinking-blocks tweak made `agentKind` required on `ProviderRuntimeEventBase`. Fix applied during this merge — documented in `tweakings.md` → "Cursor/ACP adapter — agentKind plumbing". Mirrors the OpenCode pattern (`eefda59d`). Any future ACP-backed provider upstream adds will need the same treatment.

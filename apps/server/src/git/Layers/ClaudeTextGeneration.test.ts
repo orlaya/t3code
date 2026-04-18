@@ -236,7 +236,7 @@ it.layer(ClaudeTextGenerationTestLayer)("ClaudeTextGenerationLive", (it) => {
           diffPatch: "diff --git a/README.md b/README.md",
           modelSelection: {
             provider: "claudeAgent",
-            model: "claude-opus-4-6",
+            model: "claude-opus-4-5",
             options: {
               effort: "max",
               fastMode: true,

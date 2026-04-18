@@ -1,5 +1,10 @@
 import { Effect, Option, Schema, SchemaIssue, Struct } from "effect";
-import { ClaudeModelOptions, CodexModelOptions, OpenCodeModelOptions } from "./model.ts";
+import {
+  ClaudeModelOptions,
+  CodexModelOptions,
+  CursorModelOptions,
+  OpenCodeModelOptions,
+} from "./model.ts";
 import { RepositoryIdentity } from "./environment.ts";
 import {
   AgentKind,
@@ -26,7 +31,7 @@ export const ORCHESTRATION_WS_METHODS = {
   subscribeThread: "orchestration.subscribeThread",
 } as const;
 
-export const ProviderKind = Schema.Literals(["codex", "claudeAgent", "opencode"]);
+export const ProviderKind = Schema.Literals(["codex", "claudeAgent", "cursor", "opencode"]);
 export type ProviderKind = typeof ProviderKind.Type;
 export const ProviderApprovalPolicy = Schema.Literals([
   "untrusted",
@@ -58,6 +63,12 @@ export const ClaudeModelSelection = Schema.Struct({
 });
 export type ClaudeModelSelection = typeof ClaudeModelSelection.Type;
 
+export const CursorModelSelection = Schema.Struct({
+  provider: Schema.Literal("cursor"),
+  model: TrimmedNonEmptyString,
+  options: Schema.optionalKey(CursorModelOptions),
+});
+export type CursorModelSelection = typeof CursorModelSelection.Type;
 export const OpenCodeModelSelection = Schema.Struct({
   provider: Schema.Literal("opencode"),
   model: TrimmedNonEmptyString,
@@ -68,6 +79,7 @@ export type OpenCodeModelSelection = typeof OpenCodeModelSelection.Type;
 export const ModelSelection = Schema.Union([
   CodexModelSelection,
   ClaudeModelSelection,
+  CursorModelSelection,
   OpenCodeModelSelection,
 ]);
 export type ModelSelection = typeof ModelSelection.Type;
@@ -439,6 +451,7 @@ const ProjectDeleteCommand = Schema.Struct({
   type: Schema.Literal("project.delete"),
   commandId: CommandId,
   projectId: ProjectId,
+  force: Schema.optional(Schema.Boolean),
 });
 
 const ThreadCreateCommand = Schema.Struct({

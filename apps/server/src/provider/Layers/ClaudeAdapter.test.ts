@@ -509,7 +509,7 @@ describe("ClaudeAdapterLive", () => {
         provider: "claudeAgent",
         modelSelection: {
           provider: "claudeAgent",
-          model: "claude-opus-4-6",
+          model: "claude-opus-4-5",
           options: {
             fastMode: true,
           },

@@ -195,11 +195,6 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
       start,
       reconcile: () =>
         reconcile.pipe(
-          Effect.catch((error: unknown) =>
-            Effect.logWarning("provider.session.reaper.reconcile-failed", {
-              error,
-            }),
-          ),
           Effect.catchDefect((defect: unknown) =>
             Effect.logWarning("provider.session.reaper.reconcile-defect", {
               defect,
