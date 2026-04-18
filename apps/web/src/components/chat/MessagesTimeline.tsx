@@ -18,6 +18,7 @@ import ChatMarkdown from "../ChatMarkdown";
 import {
   CheckIcon,
   CircleAlertIcon,
+  CircleDashedIcon,
   EyeIcon,
   GlobeIcon,
   type LucideIcon,
@@ -938,7 +939,7 @@ function workToneIcon(tone: TimelineWorkEntry["tone"]): {
   }
   if (tone === "thinking") {
     return {
-      icon: SearchIcon,
+      icon: CircleDashedIcon,
       className: "text-foreground/92",
     };
   }
