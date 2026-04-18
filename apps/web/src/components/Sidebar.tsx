@@ -4,7 +4,8 @@ import {
   ChevronRightIcon,
   CloudIcon,
   GitPullRequestIcon,
-  PinIcon,
+  BookmarkIcon,
+  BookmarkX,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
@@ -667,7 +668,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         onPointerDown={stopPropagationOnPointerDown}
                         onClick={handleTogglePin}
                       >
-                        <PinIcon className="size-3.5" />
+                        {isPinned ? <BookmarkX className="size-3.5" /> : <BookmarkIcon className="size-3.5" />}
                       </button>
                     }
                   />

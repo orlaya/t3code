@@ -13,7 +13,7 @@ import {
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
 import { deriveTimelineEntries, formatElapsed } from "../../session-logic";
 import { type TurnDiffSummary } from "../../types";
-import { summarizeTurnDiffStats } from "../../lib/turnDiffTree";
+import { buildTurnDiffTree, summarizeTurnDiffStats } from "../../lib/turnDiffTree";
 import ChatMarkdown from "../ChatMarkdown";
 import {
   CheckIcon,
@@ -775,13 +775,20 @@ function AssistantChangedFilesSectionInner({
   const setExpanded = useUiStateStore((store) => store.setThreadChangedFilesExpanded);
   const summaryStat = summarizeTurnDiffStats(checkpointFiles);
   const changedFileCountLabel = String(checkpointFiles.length);
+  const hasDirectories = useMemo(
+    () => buildTurnDiffTree(checkpointFiles).some((n) => n.kind === "directory"),
+    [checkpointFiles],
+  );
 
   return (
     <div className="mt-6 mb-2 rounded-lg border border-border/80 bg-card/45 p-2.5 animate-in fade-in duration-300">
       <div
-        className="group/expand mb-1.5 flex cursor-pointer items-center justify-between gap-2"
+        className={cn(
+          "group/expand mb-1.5 flex items-center justify-between gap-2",
+          hasDirectories && "cursor-pointer",
+        )}
         data-scroll-anchor-ignore
-        onClick={() => setExpanded(routeThreadKey, turnSummary.turnId, !allDirectoriesExpanded)}
+        onClick={hasDirectories ? () => setExpanded(routeThreadKey, turnSummary.turnId, !allDirectoriesExpanded) : undefined}
       >
         <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
           <span>Changed files ({changedFileCountLabel})</span>
@@ -800,9 +807,11 @@ function AssistantChangedFilesSectionInner({
           >
             View diff
           </button>
-          <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/expand:text-foreground">
-            {allDirectoriesExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
-          </span>
+          {hasDirectories && (
+            <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/expand:text-foreground">
+              {allDirectoriesExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+            </span>
+          )}
         </div>
       </div>
       <ChangedFilesTree
