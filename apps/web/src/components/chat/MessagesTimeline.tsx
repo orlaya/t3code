@@ -16,14 +16,12 @@ import { type TurnDiffSummary } from "../../types";
 import { summarizeTurnDiffStats } from "../../lib/turnDiffTree";
 import ChatMarkdown from "../ChatMarkdown";
 import {
-  BotIcon,
   CheckIcon,
   CircleAlertIcon,
   EyeIcon,
   GlobeIcon,
-  HammerIcon,
   type LucideIcon,
-  SquarePenIcon,
+  SearchIcon,
   TerminalIcon,
   Undo2Icon,
   WrenchIcon,
@@ -940,7 +938,7 @@ function workToneIcon(tone: TimelineWorkEntry["tone"]): {
   }
   if (tone === "thinking") {
     return {
-      icon: BotIcon,
+      icon: SearchIcon,
       className: "text-foreground/92",
     };
   }
@@ -991,13 +989,13 @@ function workEntryRawCommand(
 function workEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
   if (workEntry.requestKind === "command") return TerminalIcon;
   if (workEntry.requestKind === "file-read") return EyeIcon;
-  if (workEntry.requestKind === "file-change") return SquarePenIcon;
+  if (workEntry.requestKind === "file-change") return SearchIcon;
 
   if (workEntry.itemType === "command_execution" || workEntry.command) {
     return TerminalIcon;
   }
   if (workEntry.itemType === "file_change" || (workEntry.changedFiles?.length ?? 0) > 0) {
-    return SquarePenIcon;
+    return SearchIcon;
   }
   if (workEntry.itemType === "web_search") return GlobeIcon;
   if (workEntry.itemType === "image_view") return EyeIcon;
@@ -1007,7 +1005,7 @@ function workEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
       return WrenchIcon;
     case "dynamic_tool_call":
     case "collab_agent_tool_call":
-      return HammerIcon;
+      return SearchIcon;
   }
 
   return workToneIcon(workEntry.tone).icon;

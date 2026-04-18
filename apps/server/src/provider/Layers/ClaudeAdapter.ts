@@ -519,7 +519,7 @@ function summarizeToolRequest(toolName: string, input: Record<string, unknown>):
   const commandValue = input.command ?? input.cmd;
   const command = typeof commandValue === "string" ? commandValue : undefined;
   if (command && command.trim().length > 0) {
-    return `${toolName}: ${command.trim().slice(0, 400)}`;
+    return command.trim().slice(0, 400);
   }
 
   // For agent/subagent tools, prefer human-readable description or prompt over raw JSON
@@ -536,14 +536,38 @@ function summarizeToolRequest(toolName: string, input: Record<string, unknown>):
     }
   }
 
+  // File-path-based tools — show just the path
+  const filePath =
+    typeof input.file_path === "string"
+      ? input.file_path.trim()
+      : typeof input.path === "string"
+        ? input.path.trim()
+        : undefined;
+  if (filePath) {
+    return filePath.slice(0, 400);
+  }
+
+  // Pattern-based tools (Grep, Glob) — show the pattern
+  const pattern = typeof input.pattern === "string" ? input.pattern.trim() : undefined;
+  if (pattern) {
+    return pattern.slice(0, 400);
+  }
+
   const serialized = JSON.stringify(input);
   if (serialized.length <= 400) {
-    return `${toolName}: ${serialized}`;
+    return serialized;
   }
-  return `${toolName}: ${serialized.slice(0, 397)}...`;
+  return `${serialized.slice(0, 397)}...`;
 }
 
-function titleForTool(itemType: CanonicalItemType): string {
+function titleForTool(itemType: CanonicalItemType, toolName?: string): string {
+  // Use the actual tool name when available — "Read", "Edit", "Grep" etc.
+  // are far more useful than generic category labels.
+  if (toolName) {
+    const friendly = friendlyToolTitle(toolName);
+    if (friendly) return friendly;
+  }
+
   switch (itemType) {
     case "command_execution":
       return "Command run";
@@ -562,6 +586,19 @@ function titleForTool(itemType: CanonicalItemType): string {
     default:
       return "Item";
   }
+}
+
+/** Map known tool names to concise human-readable titles. */
+function friendlyToolTitle(toolName: string): string | null {
+  const n = toolName.toLowerCase();
+  if (n === "read") return "Read";
+  if (n === "edit") return "Edit";
+  if (n === "write") return "Write";
+  if (n === "grep") return "Grep";
+  if (n === "glob") return "Glob";
+  if (n === "bash") return "Bash";
+  if (n === "notebookedit") return "Notebook edit";
+  return null;
 }
 
 const SUPPORTED_CLAUDE_IMAGE_MIME_TYPES = new Set([
@@ -1883,7 +1920,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         itemId,
         itemType,
         toolName,
-        title: titleForTool(itemType),
+        title: titleForTool(itemType, toolName),
         detail,
         input: toolInput,
         partialInputJson: "",
