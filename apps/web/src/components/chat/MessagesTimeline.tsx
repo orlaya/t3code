@@ -18,7 +18,7 @@ import ChatMarkdown from "../ChatMarkdown";
 import {
   CheckIcon,
   CircleAlertIcon,
-  CircleDashedIcon,
+  ExternalLinkIcon,
   EyeIcon,
   GlobeIcon,
   type LucideIcon,
@@ -60,6 +60,8 @@ import {
   textContainsInlineTerminalContextLabels,
 } from "./userMessageTerminalContexts";
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";
+import { readLocalApi } from "~/localApi";
+import { openInPreferredEditor } from "../../editorPreferences";
 
 // ---------------------------------------------------------------------------
 // Context — shared state consumed by every row component via useContext.
@@ -543,13 +545,13 @@ const WorkGroupSection = memo(function WorkGroupSection({
     hasOverflow && !isExpanded
       ? groupedEntries.slice(-MAX_VISIBLE_WORK_LOG_ENTRIES)
       : groupedEntries;
-  const hiddenCount = groupedEntries.length - visibleEntries.length;
+  // const hiddenCount = groupedEntries.length - visibleEntries.length;
   const onlyToolEntries = groupedEntries.every((entry) => entry.tone === "tool");
   const showHeader = hasOverflow || !onlyToolEntries;
   const groupLabel = onlyToolEntries ? "Tool calls" : "Work log";
 
   return (
-    <div className="rounded-xl border border-border/45 bg-card/25 px-2 py-1.5">
+    <div className={cn("rounded-lg border border-border/45 bg-card/25", showHeader ? "px-2 py-1.5" : "px-0.5 py-0.5")}>
       {showHeader && (
         <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
           <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
@@ -561,12 +563,12 @@ const WorkGroupSection = memo(function WorkGroupSection({
               className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75"
               onClick={() => setIsExpanded((v) => !v)}
             >
-              {isExpanded ? "Show less" : `Show ${hiddenCount} more`}
+              {isExpanded ? "Show less" : `Show more`}
             </button>
           )}
         </div>
       )}
-      <div className="space-y-0.5">
+      <div className="space-y-0 [&>*]:py-0.25">
         {visibleEntries.map((workEntry) => (
           <SimpleWorkEntryRow
             key={`work-row:${workEntry.id}`}
@@ -604,8 +606,8 @@ const ThinkingSection = memo(function ThinkingSection({
         .map((line) => line.trim())
         .find((line) => line.length > 0) ?? "";
     return (
-      <div className="flex items-center gap-2 px-2 py-1 text-[11px] italic text-muted-foreground/50">
-        <span className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+      <div className="flex items-center gap-2 px-2 py-1 text-[11px] italic text-muted-foreground/80">
+        <span className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/80">
           Sub-agent thinking
         </span>
         {preview && <span className="min-w-0 flex-1 truncate">{preview}</span>}
@@ -623,7 +625,7 @@ const ThinkingSection = memo(function ThinkingSection({
   const canExpand = message.text.length > THINKING_EXPAND_CHAR_THRESHOLD;
 
   return (
-    <div className="rounded-xl border border-border/45 bg-card/25 px-2 py-1.5">
+    <div className="rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
         <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
            {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
         <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">
@@ -662,7 +664,7 @@ const ThinkingSection = memo(function ThinkingSection({
           />
         </div>
         {canExpand && !isExpanded && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-card/60 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-card/80 to-transparent" />
         )}
       </div>
     </div>
@@ -934,32 +936,52 @@ function workToneIcon(tone: TimelineWorkEntry["tone"]): {
   if (tone === "error") {
     return {
       icon: CircleAlertIcon,
-      className: "text-foreground/92",
+      className: "text-foreground/60",
     };
   }
+   // thinking = sub agents only in claude
   if (tone === "thinking") {
     return {
-      icon: CircleDashedIcon,
-      className: "text-foreground/92",
+      icon: SearchIcon,
+      className: "text-foreground/60",
     };
   }
   if (tone === "info") {
     return {
       icon: CheckIcon,
-      className: "text-foreground/92",
+      className: "text-foreground/60",
     };
   }
   return {
     icon: ZapIcon,
-    className: "text-foreground/92",
+    className: "text-foreground/60",
   };
 }
 
 function workToneClass(tone: "thinking" | "tool" | "info" | "error"): string {
   if (tone === "error") return "text-rose-300/50 dark:text-rose-300/50";
-  if (tone === "tool") return "text-muted-foreground/80";
-  if (tone === "thinking") return "text-muted-foreground/50";
-  return "text-muted-foreground/40";
+  if (tone === "tool") return "text-muted-foreground/90";
+  if (tone === "thinking") return "text-muted-foreground/90";
+  return "text-muted-foreground/90";
+}
+
+/** Return the first absolute file path from a work entry, if one exists. */
+function workEntryPrimaryFilePath(
+  workEntry: Pick<TimelineWorkEntry, "changedFiles" | "detail">,
+  workspaceRoot: string | undefined,
+): string | null {
+  // Prefer changedFiles (already extracted absolute paths)
+  const first = workEntry.changedFiles?.[0];
+  if (first) {
+    if (first.startsWith("/")) return first;
+    if (workspaceRoot) return `${workspaceRoot}/${first}`;
+  }
+  // Fall back to detail — Read/Edit entries store the file path there.
+  // Only trust it when it's already an absolute path; detail is arbitrary
+  // text (could be a bash command, a description, etc.) so no guessing.
+  const detail = workEntry.detail?.trim();
+  if (detail?.startsWith("/")) return detail;
+  return null;
 }
 
 function workEntryPreview(
@@ -1046,10 +1068,21 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
   const displayText = preview ? `${heading} - ${preview}` : heading;
   const hasChangedFiles = (workEntry.changedFiles?.length ?? 0) > 0;
   const previewIsChangedFiles = hasChangedFiles && !workEntry.command && !workEntry.detail;
+  const primaryFilePath = workEntryPrimaryFilePath(workEntry, workspaceRoot);
+
+  const handleOpenInEditor = useCallback(() => {
+    if (!primaryFilePath) return;
+    const api = readLocalApi();
+    if (!api) return;
+    void openInPreferredEditor(api, primaryFilePath);
+  }, [primaryFilePath]);
 
   return (
-    <div className="rounded-lg px-1 py-1">
-      <div className="flex items-center gap-2 transition-[opacity,translate] duration-200">
+    <div
+      className={cn("rounded-lg px-0.25 py-1", primaryFilePath && "group/file cursor-pointer")}
+      onClick={primaryFilePath ? handleOpenInEditor : undefined}
+    >
+      <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
         <span
           className={cn("flex size-5 shrink-0 items-center justify-center", iconConfig.className)}
         >
@@ -1062,7 +1095,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 className={cn(
                   "truncate text-xs leading-5",
                   workToneClass(workEntry.tone),
-                  preview ? "text-muted-foreground/70" : "",
+                  preview ? "text-muted-foreground/80" : "",
                 )}
                 title={displayText}
               >
@@ -1094,6 +1127,23 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 )}
               </p>
             </div>
+          ) : primaryFilePath ? (
+            <p
+              className={cn(
+                "truncate text-[11px] leading-5",
+                workToneClass(workEntry.tone),
+              )}
+            >
+              <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
+                {heading}
+              </span>
+              {preview && (
+                <span className="text-muted-foreground/80">
+                  {" "}- <span className="group-hover/file:text-foreground/70 group-hover/file:underline">{preview}</span>
+                </span>
+              )}
+              <ExternalLinkIcon className="ml-1.5 inline size-3 align-middle opacity-0 transition-opacity group-hover/file:opacity-70" />
+            </p>
           ) : (
             <Tooltip>
               <TooltipTrigger
@@ -1105,13 +1155,13 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                   className={cn(
                     "truncate text-[11px] leading-5",
                     workToneClass(workEntry.tone),
-                    preview ? "text-muted-foreground/70" : "",
+                    preview ? "text-muted-foreground/80" : "",
                   )}
                 >
                   <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
                     {heading}
                   </span>
-                  {preview && <span className="text-muted-foreground/55"> - {preview}</span>}
+                  {preview && <span className="text-muted-foreground/80"> - {preview}</span>}
                 </p>
               </TooltipTrigger>
               <TooltipPopup className="max-w-[min(720px,calc(100vw-2rem))]">
@@ -1138,7 +1188,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
             );
           })}
           {(workEntry.changedFiles?.length ?? 0) > 4 && (
-            <span className="px-1 text-[10px] text-muted-foreground/55">
+            <span className="px-1 text-[10px] text-muted-foreground/80">
               +{(workEntry.changedFiles?.length ?? 0) - 4}
             </span>
           )}

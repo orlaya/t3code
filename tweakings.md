@@ -172,3 +172,27 @@
 - `apps/server/src/provider/Layers/CursorAdapter.ts:305` — `makeEventStamp()` helper now returns `{ eventId, createdAt, agentKind: "primary" as const }`. Cursor has no sub-agent concept currently, so hard-coded. Every event emission in the adapter flows through this helper (either spread as `...(yield* makeEventStamp())` or passed as `stamp:` into the `makeAcp*Event` helpers), so the one change cascades to ~14 event constructions without per-site edits.
 - `apps/server/src/provider/acp/AcpCoreRuntimeEvents.ts` — `AcpEventStamp` interface extended with `readonly agentKind: AgentKind`, added `AgentKind` to the `@t3tools/contracts` import. The existing `...input.stamp` spreads inside the `makeAcp*Event` functions pick up `agentKind` automatically.
 - `apps/server/src/provider/acp/AcpCoreRuntimeEvents.test.ts:15` — test stamp literal updated to include `agentKind: "primary" as const`. If Cursor or a future ACP-over-JSON-RPC provider ever gains sub-agent semantics upstream, replace the hard-coded stamp agentKind with a per-event resolver matching the Claude/Codex pattern.
+
+**Work log visual overhaul (MessagesTimeline.tsx):**
+
+- Border radius: `rounded-xl` → `rounded-lg` on both `WorkGroupSection` and `ThinkingSection` containers.
+- Container padding now conditional on `showHeader`: standalone entries (no header) get `px-0.5 py-0.5` for a tight fit; grouped work log (with header) gets `px-2 py-1.5` to give the "WORK LOG" label breathing room. Uses `cn()` ternary.
+- Entry spacing inside work log tightened: `space-y-0.5` → `space-y-0 [&>*]:py-0.25` on the entries wrapper div. The `[&>*]` selector overrides each child's vertical padding only when inside the work log; standalone entries keep their normal `py-1`.
+- Individual entry horizontal padding shrunk: `px-1` → `px-0.25`, icon-to-text gap `gap-2` → `gap-1`.
+- "Show more" button text simplified: was `Show ${hiddenCount} more`, now just `Show more`. `hiddenCount` variable commented out.
+
+**Work log text brightness bump:**
+
+- `workToneClass()` — all non-error tones bumped to `text-muted-foreground/90` (tool was `/80`, thinking was `/50`, info was `/40`).
+- `workToneIcon()` — all icon opacities lowered from `text-foreground/92` to `text-foreground/60` (icons dimmer, text brighter = better hierarchy).
+- Thinking icon changed from `CircleDashedIcon` to `SearchIcon` (matches sub-agent entries).
+- Preview text in both tooltip and non-tooltip branches: `text-muted-foreground/55` → `text-muted-foreground/80`, and the conditional tone override `/70` → `/80`.
+- Changed files overflow count text: `/55` → `/80`.
+- Sub-agent thinking row: both label and text bumped from `/50`–`/55` to `/80`.
+
+**Clickable file paths — open in IDE (MessagesTimeline.tsx):**
+
+- New imports: `ExternalLinkIcon` (lucide-react, replaces now-unused `CircleDashedIcon`), `readLocalApi` (~/localApi), `openInPreferredEditor` (../../editorPreferences).
+- New helper `workEntryPrimaryFilePath()`: returns the first absolute file path from a work entry. Checks `changedFiles[0]` first (known file paths from tool payloads), then falls back to `detail` but only when it starts with `/` — avoids false positives on bash commands or descriptions.
+- `SimpleWorkEntryRow` gains a third rendering branch (between the `rawCommand` tooltip branch and the plain tooltip branch): when `primaryFilePath` exists, renders without any tooltip, adds `group/file cursor-pointer` to the outer div, and wires `onClick` → `openInPreferredEditor(api, primaryFilePath)` via `useCallback`.
+- Hover effects on the file-path branch: the file path portion (not the heading or dash) gets `group-hover/file:underline group-hover/file:text-foreground/70`. An `ExternalLinkIcon` (size-3) sits inline after the text, `opacity-0` normally, `group-hover/file:opacity-70` on hover with `transition-opacity`. The `/file` group namespace prevents clashes with other group-hover scopes in the tree.
