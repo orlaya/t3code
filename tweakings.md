@@ -5,6 +5,11 @@
 - `apps/desktop/src/main.ts:1930-1931` — Electron `minWidth: 430, minHeight: 400` (was 840/620, then 400/400).
 - `apps/web/src/components/AppSidebarLayout.tsx:9` — `THREAD_MAIN_CONTENT_MIN_WIDTH` set to `25*16`. Note: this constant only governs sidebar-drag behaviour, not any CSS min-width.
 
+**Sidebar mobile breakpoint lowered (768px → 600px):**
+
+- `apps/web/src/hooks/useMediaQuery.ts` — `useIsMobile()` changed from `useMediaQuery("max-md")` (768px) to `useMediaQuery({ max: 600 })`. Sidebar stays persistent/dockable down to 600px; below that it becomes the collapsible sheet/drawer.
+- `apps/web/src/components/ui/sidebar.tsx` — all six `md:` prefixed CSS classes replaced with `min-[600px]:` arbitrary breakpoints to stay in sync with the JS change: wrapper visibility (`md:block`), container flex (`md:flex`), inset variant styling (`md:peer-data-*`), two mobile hit area expansions (`md:after:hidden`), and hover-reveal opacity (`md:opacity-0`). Traffic-light clearance unaffected — `pl-[90px]` triggers on `state === "collapsed"` independently of `isMobile`.
+
 **Desktop sidebar toggle:**
 
 - Removed `md:hidden` from every `SidebarTrigger` usage so it's visible on desktop (`ChatHeader.tsx:74`, `NoActiveThreadState.tsx:20`, `settings.tsx:37`). Also removed the redundant one from `Sidebar.tsx:1964` (was next to T3 Code wordmark) + its unused import.

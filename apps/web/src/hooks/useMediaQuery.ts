@@ -83,5 +83,7 @@ export function useMediaQuery(query: BreakpointQuery | MediaQueryInput | (string
 }
 
 export function useIsMobile(): boolean {
-  return useMediaQuery("max-md");
+  // Sidebar-only: persistent sidebar down to 600px, sheet/drawer below.
+  // Must stay in sync with min-[600px]: classes in ui/sidebar.tsx.
+  return useMediaQuery({ max: 600 });
 }
