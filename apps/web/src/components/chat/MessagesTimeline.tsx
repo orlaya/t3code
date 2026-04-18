@@ -17,8 +17,10 @@ import { summarizeTurnDiffStats } from "../../lib/turnDiffTree";
 import ChatMarkdown from "../ChatMarkdown";
 import {
   CheckIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   CircleAlertIcon,
-  ExternalLinkIcon,
+
   EyeIcon,
   GlobeIcon,
   type LucideIcon,
@@ -568,20 +570,26 @@ const WorkGroupSection = memo(function WorkGroupSection({
   return (
     <div className={cn("rounded-lg border border-border/45 bg-card/25", showHeader ? "px-2 py-1.5" : "px-0.5 py-0.5")}>
       {showHeader && (
-        <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-          <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-            {groupLabel} ({groupedEntries.length})
-          </p>
-          {hasOverflow && (
-            <button
-              type="button"
-              className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75"
-              onClick={() => setIsExpanded((v) => !v)}
-            >
-              {isExpanded ? "Show less" : `Show more`}
-            </button>
-          )}
-        </div>
+        hasOverflow ? (
+          /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
+          <div
+            className="group/wl mb-1.5 flex cursor-pointer items-center justify-between gap-2 px-0.5"
+            onClick={() => setIsExpanded((v) => !v)}
+          >
+            <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+              {groupLabel} ({groupedEntries.length})
+            </p>
+            <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/wl:text-foreground">
+              {isExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+            </span>
+          </div>
+        ) : (
+          <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+            <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+              {groupLabel} ({groupedEntries.length})
+            </p>
+          </div>
+        )
       )}
       <div className="space-y-0 [&>*]:py-0.25">
         {visibleEntries.map((workEntry) => (
@@ -634,21 +642,21 @@ const ThinkingSection = memo(function ThinkingSection({
 
   return (
     <div className="rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
-        <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+        <div
+          className={cn("mb-1.5 flex items-center justify-between gap-2 px-0.5", canExpand && "group/think cursor-pointer")}
+          onClick={canExpand ? () => setIsExpanded((v) => !v) : undefined}
+        >
            {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
-        <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">
-          Thinking
-        </p>
-        {canExpand && (
-          <button
-            type="button"
-            className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75"
-            onClick={() => setIsExpanded((v) => !v)}
-          >
-            {isExpanded ? "Show less" : "Show more"}
-          </button>
-        )}
-      </div>
+          <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">
+            Thinking
+          </p>
+          {canExpand && (
+            <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/think:text-foreground">
+              {isExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+            </span>
+          )}
+        </div>
       <div className="relative">
         <div
           ref={collapsedScrollRef}
@@ -737,8 +745,13 @@ function AssistantChangedFilesSectionInner({
   const changedFileCountLabel = String(checkpointFiles.length);
 
   return (
-    <div className="mt-2 rounded-lg border border-border/80 bg-card/45 p-2.5">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
+    <div className="mt-6 mb-2 rounded-lg border border-border/80 bg-card/45 p-2.5">
+      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+      <div
+        className="group/expand mb-1.5 flex cursor-pointer items-center justify-between gap-2"
+        data-scroll-anchor-ignore
+        onClick={() => setExpanded(routeThreadKey, turnSummary.turnId, !allDirectoriesExpanded)}
+      >
         <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
           <span>Changed files ({changedFileCountLabel})</span>
           {hasNonZeroStat(summaryStat) && (
@@ -748,26 +761,17 @@ function AssistantChangedFilesSectionInner({
             </>
           )}
         </p>
-        <div className="flex items-center gap-1.5">
-          <Button
+        <div className="flex items-center gap-2">
+          <button
             type="button"
-            size="xs"
-            variant="outline"
-            className="text-muted-foreground"
-            data-scroll-anchor-ignore
-            onClick={() => setExpanded(routeThreadKey, turnSummary.turnId, !allDirectoriesExpanded)}
-          >
-            {allDirectoriesExpanded ? "Collapse all" : "Expand all"}
-          </Button>
-          <Button
-            type="button"
-            size="xs"
-            variant="outline"
-            className="text-muted-foreground"
-            onClick={() => onOpenTurnDiff(turnSummary.turnId, checkpointFiles[0]?.path)}
+            className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 transition-colors duration-150 hover:text-foreground"
+            onClick={(e) => { e.stopPropagation(); onOpenTurnDiff(turnSummary.turnId, checkpointFiles[0]?.path); }}
           >
             View diff
-          </Button>
+          </button>
+          <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/expand:text-foreground">
+            {allDirectoriesExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+          </span>
         </div>
       </div>
       <ChangedFilesTree
@@ -1125,9 +1129,8 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                       closeDelay={0}
                       delay={75}
                       render={
-                        <span className="max-w-full cursor-default text-muted-foreground/55 transition-colors hover:text-muted-foreground/75 focus-visible:text-muted-foreground/75">
-                          {" "}
-                          - {preview}
+                        <span className="max-w-full cursor-default text-muted-foreground/85">
+                          {" "}- <span className="font-mono text-[10px]">{preview}</span>
                         </span>
                       }
                     />
@@ -1154,12 +1157,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
                 {heading}
               </span>
-              {preview && (
-                <span className="text-muted-foreground/80">
-                  {" "}- <span className="group-hover/file:text-foreground/70 group-hover/file:underline">{preview}</span>
-                </span>
-              )}
-              <ExternalLinkIcon className="ml-1.5 inline size-3 align-middle opacity-0 transition-opacity group-hover/file:opacity-70" />
+              <span className="text-muted-foreground/85">
+                {" "}- <span className="transition-colors duration-150 group-hover/file:text-foreground/70">{formatWorkspaceRelativePath(primaryFilePath, workspaceRoot)}</span>
+              </span>
             </p>
           ) : (
             <Tooltip>
@@ -1178,7 +1178,11 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                   <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
                     {heading}
                   </span>
-                  {preview && <span className="text-muted-foreground/80"> - {preview}</span>}
+                  {preview && (
+                    <span className="text-muted-foreground/85">
+                      {" "}- {preview}
+                    </span>
+                  )}
                 </p>
               </TooltipTrigger>
               <TooltipPopup className="max-w-[min(720px,calc(100vw-2rem))]">
@@ -1190,27 +1194,34 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
           )}
         </div>
       </div>
-      {hasChangedFiles && !previewIsChangedFiles && (
-        <div className="mt-1 flex flex-wrap gap-1 pl-6">
-          {workEntry.changedFiles?.slice(0, 4).map((filePath) => {
-            const displayPath = formatWorkspaceRelativePath(filePath, workspaceRoot);
-            return (
-              <span
-                key={`${workEntry.id}:${filePath}`}
-                className="rounded-md border border-border/55 bg-background/75 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground/75"
-                title={displayPath}
-              >
-                {displayPath}
+      {hasChangedFiles && !previewIsChangedFiles && (() => {
+        const filteredFiles = primaryFilePath
+          ? workEntry.changedFiles?.filter((fp) => fp !== primaryFilePath && !primaryFilePath.endsWith("/" + fp))
+          : workEntry.changedFiles;
+        const totalFiltered = filteredFiles?.length ?? 0;
+        if (totalFiltered === 0) return null;
+        return (
+          <div className="mt-1 flex flex-wrap gap-1 pl-6">
+            {filteredFiles?.slice(0, 4).map((filePath) => {
+              const displayPath = formatWorkspaceRelativePath(filePath, workspaceRoot);
+              return (
+                <span
+                  key={`${workEntry.id}:${filePath}`}
+                  className="rounded-md bg-background/75 px-0.5 py-0.75 font-mono text-[10.5px] text-muted-foreground/85"
+                  title={displayPath}
+                >
+                  {displayPath}
+                </span>
+              );
+            })}
+            {totalFiltered > 4 && (
+              <span className="px-1 text-[10px] text-muted-foreground/80">
+                +{totalFiltered - 4}
               </span>
-            );
-          })}
-          {(workEntry.changedFiles?.length ?? 0) > 4 && (
-            <span className="px-1 text-[10px] text-muted-foreground/80">
-              +{(workEntry.changedFiles?.length ?? 0) - 4}
-            </span>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 });

@@ -20,7 +20,7 @@ const INLINE_DIFF_STYLE = {
 const COLLAPSED_MAX_HEIGHT = 350;
 
 const TOGGLE_CHEVRON_CLASSES =
-  "text-muted-foreground/40 transition-colors duration-150 hover:text-foreground/70";
+  "text-muted-foreground/70 transition-colors duration-150 hover:text-foreground";
 
 const TOGGLE_TEXT_CLASSES =
   "text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75";
@@ -93,10 +93,11 @@ export const InlineEditDiff = memo(function InlineEditDiff({
         <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/80">
           {displayPath}
         </span>
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         {isOverflowing && (
-          <button type="button" className={`${TOGGLE_CHEVRON_CLASSES} ml-auto shrink-0`} onClick={handleToggle}>
+          <div className={`${TOGGLE_CHEVRON_CLASSES} ml-auto flex flex-1 cursor-pointer items-center justify-end self-stretch shrink-0`} onClick={handleToggle}>
             {isExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
-          </button>
+          </div>
         )}
       </div>
 

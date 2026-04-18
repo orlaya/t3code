@@ -249,3 +249,21 @@
 - `apps/web/src/uiStateStore.test.ts` — `makeUiState` helper updated to include `pinnedThreadKeys: new Set()`.
 - `apps/web/src/lib/threadSort.ts` — `sortThreads` accepts an optional `pinnedThreadIds: ReadonlySet<string>` parameter. When present, pinned threads sort before unpinned; within each group the existing timestamp sort applies.
 - `apps/web/src/components/Sidebar.tsx` — `PinIcon` added to lucide-react imports. `SidebarThreadRow` reads `isPinned` and `toggleThreadPinned` from the UI state store. Pinned threads render their title with `font-semibold`. On hover, a pin button (pin icon, brighter when already pinned) appears to the left of the archive button inside a shared hover-reveal flex container. Both `sortThreads` call sites (the `SidebarProjectItem` useMemo and the top-level `visibleSidebarThreadKeys` useMemo) now derive and pass `pinnedThreadIds`. Thread context menu gains "Pin thread" / "Unpin thread" as its first item.
+
+**Changed files expand/collapse default fix + UI overhaul:**
+
+- `apps/web/src/uiStateStore.ts` — fixed `setThreadChangedFilesExpanded` after the default was flipped from expanded to collapsed. Three changes: (1) `currentExpanded` fallback `?? true` → `?? false` to match new default; (2) branch logic inverted — `if (!expanded)` now deletes entries (collapsing = returning to default), bottom branch stores `true` (expanding = override); (3) persistence filter and `sanitizePersistedThreadChangedFilesExpanded` both flipped from keeping `false` entries to keeping `true` entries, since `false` is now the default that doesn't need storing.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — "Expand all" / "Collapse all" button replaced with a `ChevronDownIcon` / `ChevronUpIcon` toggle. "View diff" changed from an outlined button to plain text (`text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 hover:text-foreground`). Entire header row is now a single click target for expand/collapse (div with `onClick`), with `stopPropagation` on the "View diff" button. Chevron highlights on header hover via `group/expand` + `group-hover/expand:text-foreground`.
+- `ExternalLinkIcon` removed from work entry file path rows; replaced with plain text colour change on hover (`group-hover/file:text-foreground/70`). `ExternalLinkIcon` import removed from the file.
+- File path in work entry rows now uses `formatWorkspaceRelativePath(primaryFilePath, workspaceRoot)` for a clean project-relative path with a dash separator. No monospace, no border/background — matches the same plain text style as bash command entries.
+- Changed files pills below work entries now filter out `primaryFilePath` to avoid duplication (uses both exact and `endsWith` matching). If filtering removes all files, the pills section doesn't render.
+
+**Chevron consistency across collapsible sections:**
+
+- All chevrons (`ChangedFilesTree` folder chevrons, changed files expand/collapse, `InlineEditDiff` expand/collapse) unified to `text-muted-foreground/70` base with `hover:text-foreground`. `InlineEditDiff` was `text-muted-foreground/40 hover:text-foreground/70` — bumped to match.
+- `InlineEditDiff` expand/collapse click target expanded from a small button to a `div` with `flex-1 self-stretch` filling all space to the right of the file path text. Clicking anywhere right of the filename toggles expand/collapse; clicking the filename still opens in IDE.
+
+**Work log + thinking section — chevron toggle replaces text buttons:**
+
+- `WorkGroupSection` — "Show more" / "Show less" text button replaced with `ChevronDownIcon` / `ChevronUpIcon`. Entire header row is clickable when overflow exists (via `group/wl` + `onClick`). Chevron highlights on hover via `group-hover/wl:text-foreground`. When no overflow, header renders as plain label with no chevron or click target.
+- `ThinkingSection` — same treatment. Header gets `cursor-pointer` and click handler only when `canExpand` is true. Chevron uses `group/think` for hover highlight.
