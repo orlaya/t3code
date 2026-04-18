@@ -78,6 +78,11 @@ import {
 } from "../Errors.ts";
 import { ClaudeAdapter, type ClaudeAdapterShape } from "../Services/ClaudeAdapter.ts";
 import { type EventNdjsonLogger, makeEventNdjsonLogger } from "./EventNdjsonLogger.ts";
+import {
+  createClaudeContextWindowTracker,
+  type ClaudeContextWindowTracker,
+  type MessageDeltaUsage,
+} from "./ClaudeContextWindowTracker.ts";
 
 const PROVIDER = "claudeAgent" as const;
 type ClaudeTextStreamKind = Extract<RuntimeContentStreamKind, "assistant_text" | "reasoning_text">;
@@ -172,6 +177,7 @@ interface ClaudeSessionContext {
   turnState: ClaudeTurnState | undefined;
   lastKnownContextWindow: number | undefined;
   lastKnownTokenUsage: ThreadTokenUsageSnapshot | undefined;
+  readonly contextWindowTracker: ClaudeContextWindowTracker;
   lastAssistantUuid: string | undefined;
   lastThreadStartedId: string | undefined;
   stopped: boolean;
@@ -1467,31 +1473,41 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
     // The SDK result.usage contains *accumulated* totals across all API calls
     // (input_tokens, cache_read_input_tokens, etc. summed over every request).
     // This does NOT represent the current context window size.
-    // Instead, use the last known context-window-accurate usage from task_progress
-    // events and treat the accumulated total as totalProcessedTokens.
+    //
+    // The context window tracker captures per-API-call token counts from raw
+    // message_delta stream events which DO reflect the real context fill level.
+    // Prefer the tracker snapshot; fall back to the old accumulated-based logic
+    // only when the tracker has no data (e.g. session just started).
+    if (resultContextWindow !== undefined) {
+      context.contextWindowTracker.setContextWindow(resultContextWindow);
+    }
     const accumulatedSnapshot = normalizeClaudeTokenUsage(
       result?.usage,
       resultContextWindow ?? context.lastKnownContextWindow,
     );
     const accumulatedTotalProcessedTokens =
       accumulatedSnapshot?.totalProcessedTokens ?? accumulatedSnapshot?.usedTokens;
+
+    const trackerSnapshot = context.contextWindowTracker.snapshot(accumulatedTotalProcessedTokens);
     const lastGoodUsage = context.lastKnownTokenUsage;
     const maxTokens = resultContextWindow ?? context.lastKnownContextWindow;
-    const usageSnapshot: ThreadTokenUsageSnapshot | undefined = lastGoodUsage
-      ? {
-          ...lastGoodUsage,
-          ...(typeof maxTokens === "number" && Number.isFinite(maxTokens) && maxTokens > 0
-            ? { maxTokens }
-            : {}),
-          ...(typeof accumulatedTotalProcessedTokens === "number" &&
-          Number.isFinite(accumulatedTotalProcessedTokens) &&
-          accumulatedTotalProcessedTokens > lastGoodUsage.usedTokens
-            ? {
-                totalProcessedTokens: accumulatedTotalProcessedTokens,
-              }
-            : {}),
-        }
-      : accumulatedSnapshot;
+    const usageSnapshot: ThreadTokenUsageSnapshot | undefined = trackerSnapshot
+      ? trackerSnapshot
+      : lastGoodUsage
+        ? {
+            ...lastGoodUsage,
+            ...(typeof maxTokens === "number" && Number.isFinite(maxTokens) && maxTokens > 0
+              ? { maxTokens }
+              : {}),
+            ...(typeof accumulatedTotalProcessedTokens === "number" &&
+            Number.isFinite(accumulatedTotalProcessedTokens) &&
+            accumulatedTotalProcessedTokens > lastGoodUsage.usedTokens
+              ? {
+                  totalProcessedTokens: accumulatedTotalProcessedTokens,
+                }
+              : {}),
+          }
+        : accumulatedSnapshot;
 
     const turnState = context.turnState;
     if (!turnState) {
@@ -1656,6 +1672,18 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
     //     event,
     //   });
     // }
+
+    // Capture per-API-call token usage from message_delta events for accurate
+    // context window tracking. Only record for the primary agent — sub-agent
+    // usage is irrelevant to the primary context window fill level.
+    if (event.type === "message_delta" && resolveAgentKind(context) === "primary") {
+      const deltaUsage = (event as unknown as Record<string, unknown>).usage as
+        | MessageDeltaUsage
+        | undefined;
+      if (deltaUsage) {
+        context.contextWindowTracker.recordMessageDeltaUsage(deltaUsage);
+      }
+    }
 
     if (event.type === "content_block_delta") {
       if (
@@ -2245,8 +2273,24 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           },
         });
         return;
-      case "task_progress":
-        if (message.usage) {
+      case "task_progress": {
+        // Prefer the context window tracker's per-request snapshot over the
+        // SDK's accumulated total_tokens for the usage event. Fall back to the
+        // old normalizeClaudeTokenUsage path when the tracker has no data yet.
+        const taskProgressTrackerSnapshot = context.contextWindowTracker.snapshot();
+        if (taskProgressTrackerSnapshot) {
+          context.lastKnownTokenUsage = taskProgressTrackerSnapshot;
+          const usageStamp = yield* makeEventStamp();
+          yield* offerRuntimeEvent({
+            ...base,
+            eventId: usageStamp.eventId,
+            createdAt: usageStamp.createdAt,
+            type: "thread.token-usage.updated",
+            payload: {
+              usage: taskProgressTrackerSnapshot,
+            },
+          });
+        } else if (message.usage) {
           const normalizedUsage = normalizeClaudeTokenUsage(
             message.usage,
             context.lastKnownContextWindow,
@@ -2277,8 +2321,22 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           },
         });
         return;
-      case "task_notification":
-        if (message.usage) {
+      }
+      case "task_notification": {
+        const taskNotifTrackerSnapshot = context.contextWindowTracker.snapshot();
+        if (taskNotifTrackerSnapshot) {
+          context.lastKnownTokenUsage = taskNotifTrackerSnapshot;
+          const usageStamp = yield* makeEventStamp();
+          yield* offerRuntimeEvent({
+            ...base,
+            eventId: usageStamp.eventId,
+            createdAt: usageStamp.createdAt,
+            type: "thread.token-usage.updated",
+            payload: {
+              usage: taskNotifTrackerSnapshot,
+            },
+          });
+        } else if (message.usage) {
           const normalizedUsage = normalizeClaudeTokenUsage(
             message.usage,
             context.lastKnownContextWindow,
@@ -2308,6 +2366,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           },
         });
         return;
+      }
       case "files_persisted":
         yield* offerRuntimeEvent({
           ...base,
@@ -3056,6 +3115,7 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         turnState: undefined,
         lastKnownContextWindow: undefined,
         lastKnownTokenUsage: undefined,
+        contextWindowTracker: createClaudeContextWindowTracker(),
         lastAssistantUuid: resumeState?.resumeSessionAt,
         lastThreadStartedId: undefined,
         stopped: false,

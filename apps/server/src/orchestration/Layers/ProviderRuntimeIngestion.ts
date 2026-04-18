@@ -410,6 +410,11 @@ function runtimeEventToActivities(
     }
 
     case "thread.token-usage.updated": {
+      // Only surface primary agent context window usage — sub-agent token
+      // counts are irrelevant to the primary conversation's context fill.
+      if (event.agentKind === "sub") {
+        return [];
+      }
       const payload = buildContextWindowActivityPayload(event);
       if (!payload) {
         return [];
