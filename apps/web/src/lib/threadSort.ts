@@ -50,8 +50,15 @@ export function getThreadSortTimestamp(
 export function sortThreads<T extends Pick<Thread, "id"> & ThreadSortInput>(
   threads: readonly T[],
   sortOrder: SidebarThreadSortOrder,
+  pinnedThreadIds?: ReadonlySet<string>,
 ): T[] {
   return threads.toSorted((left, right) => {
+    if (pinnedThreadIds && pinnedThreadIds.size > 0) {
+      const leftPinned = pinnedThreadIds.has(left.id);
+      const rightPinned = pinnedThreadIds.has(right.id);
+      if (leftPinned && !rightPinned) return -1;
+      if (!leftPinned && rightPinned) return 1;
+    }
     const rightTimestamp = getThreadSortTimestamp(right, sortOrder);
     const leftTimestamp = getThreadSortTimestamp(left, sortOrder);
     const byTimestamp =

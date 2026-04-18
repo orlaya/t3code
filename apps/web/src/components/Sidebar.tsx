@@ -4,6 +4,7 @@ import {
   ChevronRightIcon,
   CloudIcon,
   GitPullRequestIcon,
+  PinIcon,
   PlusIcon,
   SearchIcon,
   SettingsIcon,
@@ -339,6 +340,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
   const threadRef = scopeThreadRef(thread.environmentId, thread.id);
   const threadKey = scopedThreadKey(threadRef);
   const lastVisitedAt = useUiStateStore((state) => state.threadLastVisitedAtById[threadKey]);
+  const isPinned = useUiStateStore((state) => state.pinnedThreadKeys.has(threadKey));
+  const toggleThreadPinned = useUiStateStore((state) => state.toggleThreadPinned);
   const isSelected = useThreadSelectionStore((state) => state.selectedThreadKeys.has(threadKey));
   const hasSelection = useThreadSelectionStore((state) => state.selectedThreadKeys.size > 0);
   const runningTerminalIds = useTerminalStateStore(
@@ -542,6 +545,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     },
     [attemptArchiveThread, threadRef],
   );
+  const handleTogglePin = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleThreadPinned(threadKey);
+    },
+    [toggleThreadPinned, threadKey],
+  );
   const rowButtonRender = useMemo(() => <div role="button" tabIndex={0} />, []);
 
   return (
@@ -606,7 +617,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               <TooltipTrigger
                 render={
                   <span
-                    className="min-w-0 flex-1 truncate text-xs"
+                    className={`min-w-0 flex-1 truncate text-xs${isPinned ? " font-semibold" : ""}`}
                     data-testid={`thread-title-${thread.id}`}
                   >
                     {thread.title}
@@ -645,8 +656,25 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                 Confirm
               </button>
             ) : !isThreadRunning ? (
-              appSettingsConfirmThreadArchive ? (
-                <div className="pointer-events-none absolute top-1/2 right-1 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover/menu-sub-item:pointer-events-auto group-hover/menu-sub-item:opacity-100 group-focus-within/menu-sub-item:pointer-events-auto group-focus-within/menu-sub-item:opacity-100">
+              <div className="pointer-events-none absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/menu-sub-item:pointer-events-auto group-hover/menu-sub-item:opacity-100 group-focus-within/menu-sub-item:pointer-events-auto group-focus-within/menu-sub-item:opacity-100">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        data-thread-selection-safe
+                        aria-label={isPinned ? `Unpin ${thread.title}` : `Pin ${thread.title}`}
+                        className={`inline-flex size-5 cursor-pointer items-center justify-center transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ${isPinned ? "text-foreground" : "text-muted-foreground"}`}
+                        onPointerDown={stopPropagationOnPointerDown}
+                        onClick={handleTogglePin}
+                      >
+                        <PinIcon className="size-3.5" />
+                      </button>
+                    }
+                  />
+                  <TooltipPopup side="top">{isPinned ? "Unpin" : "Pin"}</TooltipPopup>
+                </Tooltip>
+                {appSettingsConfirmThreadArchive ? (
                   <button
                     type="button"
                     data-thread-selection-safe
@@ -658,12 +686,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                   >
                     <ArchiveIcon className="size-3.5" />
                   </button>
-                </div>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <div className="pointer-events-none absolute top-1/2 right-1 -translate-y-1/2 opacity-0 transition-opacity duration-150 group-hover/menu-sub-item:pointer-events-auto group-hover/menu-sub-item:opacity-100 group-focus-within/menu-sub-item:pointer-events-auto group-focus-within/menu-sub-item:opacity-100">
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
                         <button
                           type="button"
                           data-thread-selection-safe
@@ -675,12 +701,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         >
                           <ArchiveIcon className="size-3.5" />
                         </button>
-                      </div>
-                    }
-                  />
-                  <TooltipPopup side="top">Archive</TooltipPopup>
-                </Tooltip>
-              )
+                      }
+                    />
+                    <TooltipPopup side="top">Archive</TooltipPopup>
+                  </Tooltip>
+                )}
+              </div>
             ) : null}
             <span className={threadMetaClassName}>
               <span className="inline-flex items-center gap-1">
@@ -958,6 +984,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const { updateSettings } = useUpdateSettings();
   const router = useRouter();
   const markThreadUnread = useUiStateStore((state) => state.markThreadUnread);
+  const toggleThreadPinnedAction = useUiStateStore((state) => state.toggleThreadPinned);
   const toggleProject = useUiStateStore((state) => state.toggleProject);
   const toggleThreadSelection = useThreadSelectionStore((state) => state.toggleThread);
   const rangeSelectTo = useThreadSelectionStore((state) => state.rangeSelectTo);
@@ -1060,6 +1087,16 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       ),
     ),
   );
+  const pinnedThreadKeys = useUiStateStore((state) => state.pinnedThreadKeys);
+  const pinnedThreadIds = useMemo(() => {
+    if (pinnedThreadKeys.size === 0) return pinnedThreadKeys;
+    const ids = new Set<string>();
+    for (const thread of projectThreads) {
+      const key = scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id));
+      if (pinnedThreadKeys.has(key)) ids.add(thread.id);
+    }
+    return ids;
+  }, [pinnedThreadKeys, projectThreads]);
   const [renamingThreadKey, setRenamingThreadKey] = useState<string | null>(null);
   const [renamingTitle, setRenamingTitle] = useState("");
   const [confirmingArchiveThreadKey, setConfirmingArchiveThreadKey] = useState<string | null>(null);
@@ -1122,6 +1159,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     const visibleProjectThreads = sortThreads(
       projectThreads.filter((thread) => thread.archivedAt === null),
       threadSortOrder,
+      pinnedThreadIds,
     );
     const projectStatus = resolveProjectStatusIndicator(
       visibleProjectThreads.map((thread) => resolveProjectThreadStatus(thread)),
@@ -1133,7 +1171,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       projectStatus,
       visibleProjectThreads,
     };
-  }, [projectThreads, threadLastVisitedAts, threadSortOrder]);
+  }, [projectThreads, threadLastVisitedAts, threadSortOrder, pinnedThreadIds]);
 
   const pinnedCollapsedThread = useMemo(() => {
     const activeThreadKey = activeRouteThreadKey ?? undefined;
@@ -1952,8 +1990,10 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         scopedProjectKey(scopeProjectRef(thread.environmentId, thread.projectId)),
       );
       const threadWorkspacePath = thread.worktreePath ?? threadProject?.cwd ?? project.cwd ?? null;
+      const isCurrentlyPinned = pinnedThreadKeys.has(threadKey);
       const clicked = await api.contextMenu.show(
         [
+          { id: "toggle-pin", label: isCurrentlyPinned ? "Unpin thread" : "Pin thread" },
           { id: "rename", label: "Rename thread" },
           { id: "mark-unread", label: "Mark unread" },
           { id: "copy-path", label: "Copy Path" },
@@ -1962,6 +2002,11 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         ],
         position,
       );
+
+      if (clicked === "toggle-pin") {
+        toggleThreadPinnedAction(threadKey);
+        return;
+      }
 
       if (clicked === "rename") {
         setRenamingThreadKey(threadKey);
@@ -2011,6 +2056,8 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       deleteThread,
       markThreadUnread,
       memberProjectByScopedKey,
+      pinnedThreadKeys,
+      toggleThreadPinnedAction,
       project.cwd,
     ],
   );
@@ -2065,9 +2112,9 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             ) : null}
           </span>
         </SidebarMenuButton>
-        {/* Environment badge – visible by default, crossfades with the
-            "new thread" button on hover using the same pointer-events +
-            opacity pattern as the thread row archive/timestamp swap. */}
+        {/* Environment badge – visible by default, hides on hover when
+            the terminal button appears. Positioned to the left of the
+            always-visible new-thread button. */}
         {project.environmentPresence === "remote-only" && (
           <Tooltip>
             <TooltipTrigger
@@ -2078,7 +2125,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                       ? "Remote project"
                       : "Available in multiple environments"
                   }
-                  className="pointer-events-none absolute top-1 right-1.5 inline-flex size-5 items-center justify-center rounded-md text-muted-foreground/50 transition-opacity duration-150 group-hover/project-header:opacity-0 group-focus-within/project-header:opacity-0"
+                  className="pointer-events-none absolute top-1 right-8 inline-flex size-5 items-center justify-center rounded-md text-muted-foreground/50 transition-opacity duration-150 group-hover/project-header:opacity-0 group-focus-within/project-header:opacity-0"
                 />
               }
             >
@@ -2089,23 +2136,25 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             </TooltipPopup>
           </Tooltip>
         )}
-        <div className="pointer-events-none absolute top-1 right-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/project-header:pointer-events-auto group-hover/project-header:opacity-100 group-focus-within/project-header:pointer-events-auto group-focus-within/project-header:opacity-100">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  aria-label={`New terminal in ${project.displayName}`}
-                  data-testid="new-terminal-button"
-                  className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/70 hover:bg-secondary hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
-                  onClick={handleCreateTerminalClick}
-                >
-                  <TerminalIcon className="size-3.5" />
-                </button>
-              }
-            />
-            <TooltipPopup side="top">New terminal</TooltipPopup>
-          </Tooltip>
+        <div className="absolute top-1 right-1.5 flex items-center gap-0.5">
+          <div className="pointer-events-none flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/project-header:pointer-events-auto group-hover/project-header:opacity-100 group-focus-within/project-header:pointer-events-auto group-focus-within/project-header:opacity-100">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={`New terminal in ${project.displayName}`}
+                    data-testid="new-terminal-button"
+                    className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/70 hover:bg-secondary hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                    onClick={handleCreateTerminalClick}
+                  >
+                    <TerminalIcon className="size-3.5" />
+                  </button>
+                }
+              />
+              <TooltipPopup side="top">New terminal</TooltipPopup>
+            </Tooltip>
+          </div>
           <Tooltip>
             <TooltipTrigger
               render={
@@ -2116,7 +2165,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                   className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/70 hover:bg-secondary hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
                   onClick={handleCreateThreadClick}
                 >
-                  <SquarePenIcon className="size-3.5" />
+                  <PlusIcon className="size-3.5" />
                 </button>
               }
             />
@@ -2658,11 +2707,11 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
         </SidebarGroup>
       ) : null}
       <SidebarGroup className="px-2 py-2">
-        <div className="mb-1 flex items-center justify-between pl-2 pr-1.5">
+        <div className="group/projects-header mb-1 flex items-center justify-between pl-2 pr-1.5">
           <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
             Projects
           </span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/projects-header:opacity-100 group-focus-within/projects-header:opacity-100">
             <ProjectSortMenu
               projectSortOrder={projectSortOrder}
               threadSortOrder={threadSortOrder}
@@ -2779,6 +2828,7 @@ export default function Sidebar() {
   const projectExpandedById = useUiStateStore((store) => store.projectExpandedById);
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const reorderProjects = useUiStateStore((store) => store.reorderProjects);
+  const sidebarPinnedThreadKeys = useUiStateStore((store) => store.pinnedThreadKeys);
   const navigate = useNavigate();
   const pathname = useLocation({ select: (loc) => loc.pathname });
   const isOnSettings = pathname.startsWith("/settings");
@@ -3056,12 +3106,22 @@ export default function Sidebar() {
   const visibleSidebarThreadKeys = useMemo(
     () =>
       sortedProjects.flatMap((project) => {
-        const projectThreads = sortThreads(
-          (threadsByProjectKey.get(project.projectKey) ?? []).filter(
-            (thread) => thread.archivedAt === null,
-          ),
-          sidebarThreadSortOrder,
+        const rawProjectThreads = (threadsByProjectKey.get(project.projectKey) ?? []).filter(
+          (thread) => thread.archivedAt === null,
         );
+        const projectPinnedIds =
+          sidebarPinnedThreadKeys.size > 0
+            ? new Set(
+                rawProjectThreads
+                  .filter((t) =>
+                    sidebarPinnedThreadKeys.has(
+                      scopedThreadKey(scopeThreadRef(t.environmentId, t.id)),
+                    ),
+                  )
+                  .map((t) => t.id),
+              )
+            : undefined;
+        const projectThreads = sortThreads(rawProjectThreads, sidebarThreadSortOrder, projectPinnedIds);
         const projectExpanded = projectExpandedById[project.projectKey] ?? true;
         const activeThreadKey = routeThreadKey ?? undefined;
         const pinnedCollapsedThread =
@@ -3089,6 +3149,7 @@ export default function Sidebar() {
       }),
     [
       sidebarThreadSortOrder,
+      sidebarPinnedThreadKeys,
       expandedThreadListsByProject,
       projectExpandedById,
       routeThreadKey,
