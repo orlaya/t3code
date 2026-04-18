@@ -1,4 +1,4 @@
-import { type TimelineEntry, type WorkLogEntry } from "../../session-logic";
+import { type EditDiffEntry, type TimelineEntry, type WorkLogEntry } from "../../session-logic";
 import { type ChatMessage, type ProposedPlan, type TurnDiffSummary } from "../../types";
 import { type MessageId } from "@t3tools/contracts";
 
@@ -40,6 +40,12 @@ export type MessagesTimelineRow =
       id: string;
       createdAt: string;
       proposedPlan: ProposedPlan;
+    }
+  | {
+      kind: "edit";
+      id: string;
+      createdAt: string;
+      editEntry: EditDiffEntry;
     }
   | { kind: "working"; id: string; createdAt: string | null };
 
@@ -162,6 +168,16 @@ export function deriveMessagesTimelineRows(input: {
       continue;
     }
 
+    if (timelineEntry.kind === "edit") {
+      nextRows.push({
+        kind: "edit",
+        id: timelineEntry.id,
+        createdAt: timelineEntry.createdAt,
+        editEntry: timelineEntry.editEntry,
+      });
+      continue;
+    }
+
     if (timelineEntry.message.role === "thinking") {
       nextRows.push({
         kind: "thinking",
@@ -255,5 +271,8 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
 
     case "thinking":
       return a.message === (b as typeof a).message;
+
+    case "edit":
+      return a.editEntry === (b as typeof a).editEntry;
   }
 }

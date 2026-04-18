@@ -196,3 +196,25 @@
 - New helper `workEntryPrimaryFilePath()`: returns the first absolute file path from a work entry. Checks `changedFiles[0]` first (known file paths from tool payloads), then falls back to `detail` but only when it starts with `/` — avoids false positives on bash commands or descriptions.
 - `SimpleWorkEntryRow` gains a third rendering branch (between the `rawCommand` tooltip branch and the plain tooltip branch): when `primaryFilePath` exists, renders without any tooltip, adds `group/file cursor-pointer` to the outer div, and wires `onClick` → `openInPreferredEditor(api, primaryFilePath)` via `useCallback`.
 - Hover effects on the file-path branch: the file path portion (not the heading or dash) gets `group-hover/file:underline group-hover/file:text-foreground/70`. An `ExternalLinkIcon` (size-3) sits inline after the text, `opacity-0` normally, `group-hover/file:opacity-70` on hover with `transition-opacity`. The `/file` group namespace prevents clashes with other group-hover scopes in the tree.
+
+**Inline edit diffs in the timeline (NEW feature):**
+
+- `apps/web/package.json` — added `diff` (^8.0.3) as an explicit dependency (already in the tree transitively via `@pierre/diffs`).
+- `apps/web/src/session-logic.ts` — new `EditDiffEntry` interface and `deriveEditDiffEntries()` function. Filters `tool.completed` activities with `old_string`/`new_string`/`file_path` in the payload. NO turn filtering — edit diffs persist across all turns (unlike work log entries which only show for the latest turn). Edit entry IDs prefixed with `edit:` to avoid key collisions with work log entries that derive from the same underlying activity. Extended `TimelineEntry` union with `kind: "edit"`. Extended `deriveTimelineEntries()` signature with `editEntries` parameter.
+- `apps/web/src/components/ChatView.tsx` — added `editDiffEntries` memo derived from `threadActivities`, passed through to `deriveTimelineEntries()`.
+- `apps/web/src/components/chat/MessagesTimeline.logic.ts` — added `kind: "edit"` to `MessagesTimelineRow` union with `editEntry: EditDiffEntry`. Handled in `deriveMessagesTimelineRows()` (each edit is its own row, no grouping) and `isRowUnchanged()` stability comparison.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — one import + one JSX line to render `<InlineEditDiff>` for edit rows, passing `workspaceRoot` and `resolvedTheme` from `TimelineRowCtx`.
+- `apps/web/src/components/chat/InlineEditDiff.tsx` — **new file**. Standalone component rendering inline edit diffs. Uses `diff.createPatch()` to generate a unified diff string from `old_string`/`new_string`, feeds it to `@pierre/diffs` `parsePatchFiles()` + `FileDiff` for rendering with Shiki syntax highlighting and line wrapping. `disableFileHeader: true` hides the built-in pierre header (our own file path header replaces it). Font size overridden to 11px/15px via `style` prop with CSS custom properties (`--diffs-font-size`, `--diffs-line-height`). `disableLineNumbers: true` hides gutter line numbers (they were always wrong — relative to the snippet, not the file). `hunkSeparators: "simple"` for a subtle bar between hunks. Old/new strings are newline-terminated before `createPatch()` to suppress the "No newline at end of file" marker. Whole block is clickable to open the file in the preferred IDE via `openInPreferredEditor()`. File path header uses `formatWorkspaceRelativePath()`.
+- `apps/web/src/session-logic.ts` — `deriveEditDiffEntries()` extended to also capture Write tool activities (`data.toolName === "Write"` with `input.content`). For Writes, `oldString` is set to `""` and `newString` to `input.content`, producing an all-added diff. Edit tool matching unchanged.
+- `apps/web/src/session-logic.test.ts` — updated both `deriveTimelineEntries` call sites with the new `editEntries` parameter (empty array).
+- Key bug fix: edit entry IDs initially used raw `activity.id`, causing duplicate keys in LegendList (same activity produces both a work log entry and an edit diff entry). Prefixing with `edit:` resolved phantom gaps and duplicate `data-index` values in the virtualised timeline.
+
+**Git diff panel hunk separators:**
+
+- `apps/web/src/components/DiffPanel.tsx` — added `hunkSeparators: "simple"` to `FileDiff` options. Replaces the "N unmodified lines" expandable block with a subtle bar separator.
+
+**Monospace font — Source Code Pro:**
+
+- `apps/web/src/index.css` `@theme inline` — added `--font-mono: "Source Code Pro", "SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace`. Tailwind's `font-mono` utility now uses this stack everywhere.
+- `apps/web/src/index.css` `:root` — added `--diffs-font-family: var(--font-mono)`. Pierre's shadow DOM inherits this globally — applies to both `DiffPanel` and `InlineEditDiff` without per-component style props.
+- `apps/web/src/index.css` `pre, code` rule — simplified from a hardcoded font stack to `var(--font-mono)`.

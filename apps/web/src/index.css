@@ -5,6 +5,8 @@
 @custom-variant wco (&:is(.wco, .wco *));
 
 @theme inline {
+  --font-mono: "Source Code Pro", "SF Mono", "SFMono-Regular", Consolas,
+    "Liberation Mono", Menlo, monospace;
   --animate-skeleton: skeleton 2s -1s infinite linear;
   --color-warning-foreground: var(--warning-foreground);
   --color-warning: var(--warning);
@@ -89,6 +91,7 @@
 :root {
   color-scheme: light;
   --radius: 0.625rem;
+  --diffs-font-family: var(--font-mono);
   --background: var(--color-white);
   --app-chrome-background: var(--background);
   --foreground: var(--color-neutral-800);
@@ -185,7 +188,7 @@ body::after {
 
 pre,
 code {
-  font-family: "SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: var(--font-mono);
 }
 
 /* Window drag region (frameless titlebar) */

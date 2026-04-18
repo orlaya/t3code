@@ -88,6 +88,17 @@ export interface LatestProposedPlanState {
   implementationThreadId: ThreadId | null;
 }
 
+export interface EditDiffEntry {
+  id: string;
+  createdAt: string;
+  turnId: string | null;
+  filePath: string;
+  oldString: string;
+  newString: string;
+  replaceAll: boolean;
+  toolName: string;
+}
+
 export type TimelineEntry =
   | {
       id: string;
@@ -106,6 +117,12 @@ export type TimelineEntry =
       kind: "work";
       createdAt: string;
       entry: WorkLogEntry;
+    }
+  | {
+      id: string;
+      kind: "edit";
+      createdAt: string;
+      editEntry: EditDiffEntry;
     };
 
 export function formatDuration(durationMs: number): string {
@@ -1157,10 +1174,55 @@ export function hasToolActivityForTurn(
   return activities.some((activity) => activity.turnId === turnId && activity.tone === "tool");
 }
 
+export function deriveEditDiffEntries(
+  activities: ReadonlyArray<OrchestrationThreadActivity>,
+): EditDiffEntry[] {
+  return [...activities]
+    .filter((activity) => {
+      if (activity.kind !== "tool.completed") return false;
+      const payload = activity.payload as Record<string, unknown> | null;
+      if (!payload) return false;
+      const data = payload.data as Record<string, unknown> | undefined;
+      if (!data) return false;
+      const input = data.input as Record<string, unknown> | undefined;
+      if (!input) return false;
+      if (typeof input.file_path !== "string") return false;
+      // Edit tool: old_string + new_string
+      const isEdit =
+        typeof input.old_string === "string" &&
+        typeof input.new_string === "string";
+      // Write tool: content (full file written, no old content)
+      const isWrite =
+        data.toolName === "Write" && typeof input.content === "string";
+      return isEdit || isWrite;
+    })
+    .toSorted(compareActivitiesByOrder)
+    .map((activity) => {
+      const payload = activity.payload as Record<string, unknown>;
+      const data = payload.data as Record<string, unknown>;
+      const input = data.input as Record<string, unknown>;
+      const toolName = (data.toolName as string) ?? "Edit";
+      const isWrite = toolName === "Write";
+      return {
+        id: `edit:${activity.id}`,
+        createdAt: activity.createdAt,
+        turnId: activity.turnId,
+        filePath: input.file_path as string,
+        oldString: isWrite ? "" : (input.old_string as string),
+        newString: isWrite
+          ? (input.content as string)
+          : (input.new_string as string),
+        replaceAll: isWrite ? false : ((input.replace_all as boolean) ?? false),
+        toolName,
+      };
+    });
+}
+
 export function deriveTimelineEntries(
   messages: ChatMessage[],
   proposedPlans: ProposedPlan[],
   workEntries: WorkLogEntry[],
+  editEntries: EditDiffEntry[],
   latestTurnId?: TurnId,
 ): TimelineEntry[] {
   const visibleMessages = messages.filter((message) => {
@@ -1185,7 +1247,13 @@ export function deriveTimelineEntries(
     createdAt: entry.createdAt,
     entry,
   }));
-  return [...messageRows, ...proposedPlanRows, ...workRows].toSorted((a, b) =>
+  const editRows: TimelineEntry[] = editEntries.map((editEntry) => ({
+    id: editEntry.id,
+    kind: "edit",
+    createdAt: editEntry.createdAt,
+    editEntry,
+  }));
+  return [...messageRows, ...proposedPlanRows, ...workRows, ...editRows].toSorted((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
   );
 }

@@ -33,6 +33,7 @@ import { buildExpandedImagePreview, ExpandedImagePreview } from "./ExpandedImage
 import { ProposedPlanCard } from "./ProposedPlanCard";
 import { ChangedFilesTree } from "./ChangedFilesTree";
 import { DiffStatLabel, hasNonZeroStat } from "./DiffStatLabel";
+import { InlineEditDiff } from "./InlineEditDiff";
 import { MessageCopyButton } from "./MessageCopyButton";
 import {
   computeStableMessagesTimelineRows,
@@ -299,6 +300,14 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
       {row.kind === "work" && <WorkGroupSection groupedEntries={row.groupedEntries} />}
 
       {row.kind === "thinking" && <ThinkingSection message={row.message} />}
+
+      {row.kind === "edit" && (
+        <InlineEditDiff
+          editEntry={row.editEntry}
+          workspaceRoot={ctx.workspaceRoot}
+          resolvedTheme={ctx.resolvedTheme}
+        />
+      )}
 
       {row.kind === "message" &&
         row.message.role === "user" &&

@@ -624,6 +624,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
                         fileDiff={fileDiff}
                         options={{
                           diffStyle: diffRenderMode === "split" ? "split" : "unified",
+                          hunkSeparators: "simple",
                           lineDiffType: "none",
                           overflow: diffWordWrap ? "wrap" : "scroll",
                           theme: resolveDiffThemeName(resolvedTheme),

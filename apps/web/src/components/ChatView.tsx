@@ -48,6 +48,7 @@ import {
   derivePendingApprovals,
   derivePendingUserInputs,
   derivePhase,
+  deriveEditDiffEntries,
   deriveTimelineEntries,
   deriveActiveWorkStartedAt,
   deriveActivePlanState,
@@ -1061,6 +1062,10 @@ export default function ChatView(props: ChatViewProps) {
     () => deriveWorkLogEntries(threadActivities, activeLatestTurn?.turnId ?? undefined),
     [activeLatestTurn?.turnId, threadActivities],
   );
+  const editDiffEntries = useMemo(
+    () => deriveEditDiffEntries(threadActivities),
+    [threadActivities],
+  );
   const latestTurnHasToolActivity = useMemo(
     () => hasToolActivityForTurn(threadActivities, activeLatestTurn?.turnId),
     [activeLatestTurn?.turnId, threadActivities],
@@ -1356,9 +1361,10 @@ export default function ChatView(props: ChatViewProps) {
         timelineMessages,
         activeThread?.proposedPlans ?? [],
         workLogEntries,
+        editDiffEntries,
         activeLatestTurn?.turnId ?? undefined,
       ),
-    [activeLatestTurn?.turnId, activeThread?.proposedPlans, timelineMessages, workLogEntries],
+    [activeLatestTurn?.turnId, activeThread?.proposedPlans, editDiffEntries, timelineMessages, workLogEntries],
   );
   const { turnDiffSummaries, inferredCheckpointTurnCountByTurnId } =
     useTurnDiffSummaries(activeThread);
