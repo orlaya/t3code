@@ -192,10 +192,10 @@
 
 **Clickable file paths — open in IDE (MessagesTimeline.tsx):**
 
-- New imports: `ExternalLinkIcon` (lucide-react, replaces now-unused `CircleDashedIcon`), `readLocalApi` (~/localApi), `openInPreferredEditor` (../../editorPreferences).
-- New helper `workEntryPrimaryFilePath()`: returns the first absolute file path from a work entry. Checks `changedFiles[0]` first (known file paths from tool payloads), then falls back to `detail` but only when it starts with `/` — avoids false positives on bash commands or descriptions.
+- New imports: `readLocalApi` (~/localApi), `openInPreferredEditor` (../../editorPreferences).
+- New helper `workEntryPrimaryFilePath()`: returns the first absolute file path from a work entry. Checks `changedFiles[0]` first (known file paths from tool payloads), then falls back to `detail` but only when it starts with `/` — avoids false positives on bash commands or descriptions. For Read tool summaries that include line range suffixes (`path:0-100` or `path:50+`), a regex strips the range and converts to standard `path:line` format (e.g. `/foo/bar.ts:0-100` → `/foo/bar.ts:0`) so the editor receives a valid position. Normal `path:line:column` suffixes pass through `splitPathAndPosition` as before.
 - `SimpleWorkEntryRow` gains a third rendering branch (between the `rawCommand` tooltip branch and the plain tooltip branch): when `primaryFilePath` exists, renders without any tooltip, adds `group/file cursor-pointer` to the outer div, and wires `onClick` → `openInPreferredEditor(api, primaryFilePath)` via `useCallback`.
-- Hover effects on the file-path branch: the file path portion (not the heading or dash) gets `group-hover/file:underline group-hover/file:text-foreground/70`. An `ExternalLinkIcon` (size-3) sits inline after the text, `opacity-0` normally, `group-hover/file:opacity-70` on hover with `transition-opacity`. The `/file` group namespace prevents clashes with other group-hover scopes in the tree.
+- Hover effects on the file-path branch: the file path portion (not the heading or dash) gets `group-hover/file:underline group-hover/file:text-foreground/70`. Plain text colour change on hover, no external link icon.
 
 **Inline edit diffs in the timeline (NEW feature):**
 

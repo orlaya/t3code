@@ -67,6 +67,7 @@ import {
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";
 import { readLocalApi } from "~/localApi";
 import { openInPreferredEditor } from "../../editorPreferences";
+import { splitPathAndPosition } from "../../terminal-links";
 
 // ---------------------------------------------------------------------------
 // Context — shared state consumed by every row component via useContext.
@@ -1009,7 +1010,18 @@ function workEntryPrimaryFilePath(
   // Only trust it when it's already an absolute path; detail is arbitrary
   // text (could be a bash command, a description, etc.) so no guessing.
   const detail = workEntry.detail?.trim();
-  if (detail?.startsWith("/") || /^[A-Za-z]:[\\/]/.test(detail ?? "")) return detail!;
+  if (detail?.startsWith("/") || /^[A-Za-z]:[\\/]/.test(detail ?? "")) {
+    // Normalise range suffixes produced by tool summaries (e.g. path:0-100 or
+    // path:50+) into the standard path:line format that editors understand.
+    const rangeMatch = detail!.match(/:(\d+)[-+](\d*)$/);
+    if (rangeMatch?.[1]) {
+      const path = detail!.slice(0, -(rangeMatch[0].length));
+      const startLine = rangeMatch[1];
+      return `${path}:${startLine}`;
+    }
+    const { path, line } = splitPathAndPosition(detail!);
+    return line ? `${path}:${line}` : path;
+  }
   return null;
 }
 
