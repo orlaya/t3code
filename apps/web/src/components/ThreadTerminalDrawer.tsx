@@ -1178,7 +1178,7 @@ export default function ThreadTerminalDrawer({
                       }
                     }}
                   >
-                    <div className="h-full p-1">
+                    <div className="h-full pb-1 pr-1 pl-3 pt-3">
                       <TerminalViewport
                         threadRef={threadRef}
                         threadId={threadId}
@@ -1200,7 +1200,7 @@ export default function ThreadTerminalDrawer({
                 ))}
               </div>
             ) : (
-              <div className="h-full p-1">
+              <div className="h-full pb-1 pr-1 pl-3 pt-3">
                 <TerminalViewport
                   key={resolvedActiveTerminalId}
                   threadRef={threadRef}

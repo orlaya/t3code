@@ -115,6 +115,7 @@ import { getProviderModelCapabilities, resolveSelectableProvider } from "../prov
 import { useSettings } from "../hooks/useSettings";
 import { resolveAppModelSelection } from "../modelSelection";
 import { isTerminalFocused } from "../lib/terminalFocus";
+import { isTerminalThread } from "../lib/terminalThread";
 import { deriveLogicalProjectKeyFromSettings } from "../logicalProject";
 import {
   useSavedEnvironmentRegistryStore,
@@ -551,12 +552,18 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
     [onAddTerminalContext, visible],
   );
 
-  if (!project || !terminalState.terminalOpen || !cwd) {
+  const isTerminalOnlyThread = isTerminalThread(threadRef.threadId);
+
+  if (!project || (!isTerminalOnlyThread && !terminalState.terminalOpen) || !cwd) {
     return null;
   }
 
   return (
-    <div className={visible ? undefined : "hidden"}>
+    <div className={cn(
+      visible
+        ? (isTerminalOnlyThread ? "flex min-h-0 flex-1 flex-col [&>.thread-terminal-drawer]:!h-full" : undefined)
+        : "hidden",
+    )}>
       <ThreadTerminalDrawer
         threadRef={threadRef}
         threadId={threadId}
@@ -825,7 +832,11 @@ export default function ChatView(props: ChatViewProps) {
         currentThreadIds,
         openThreadIds: existingOpenTerminalThreadKeys,
         activeThreadId: activeThreadKey,
-        activeThreadTerminalOpen: Boolean(activeThreadKey && terminalState.terminalOpen),
+        activeThreadTerminalOpen: Boolean(
+          activeThreadKey &&
+            (terminalState.terminalOpen ||
+              (activeThread && isTerminalThread(activeThread.id))),
+        ),
         maxHiddenThreadCount: MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
       });
       return currentThreadIds.length === nextThreadIds.length &&
@@ -3230,10 +3241,12 @@ export default function ChatView(props: ChatViewProps) {
     return <NoActiveThreadState />;
   }
 
+  const isTerminalOnly = isTerminalThread(activeThread.id);
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
       {/* Top bar */}
-      <header
+      {!isTerminalOnly && <header
         className={cn(
           "border-b border-border pr-3 sm:pr-5",
           isElectron
@@ -3271,8 +3284,9 @@ export default function ChatView(props: ChatViewProps) {
           onToggleTerminal={toggleTerminalVisibility}
           onToggleDiff={onToggleDiff}
         />
-      </header>
+      </header>}
 
+      {!isTerminalOnly && <>
       {/* Error banner */}
       <ProviderStatusBanner status={activeProviderStatus} />
       <ThreadErrorBanner
@@ -3458,13 +3472,14 @@ export default function ChatView(props: ChatViewProps) {
         ) : null}
       </div>
       {/* end horizontal flex container */}
+      </>}
 
       {mountedTerminalThreadRefs.map(({ key: mountedThreadKey, threadRef: mountedThreadRef }) => (
         <PersistentThreadTerminalDrawer
           key={mountedThreadKey}
           threadRef={mountedThreadRef}
           threadId={mountedThreadRef.threadId}
-          visible={mountedThreadKey === activeThreadKey && terminalState.terminalOpen}
+          visible={mountedThreadKey === activeThreadKey && (isTerminalOnly || terminalState.terminalOpen)}
           launchContext={
             mountedThreadKey === activeThreadKey ? (activeTerminalLaunchContext ?? null) : null
           }

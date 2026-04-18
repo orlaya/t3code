@@ -38,6 +38,7 @@ import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import {
   type ContextMenuItem,
+  DEFAULT_MODEL_BY_PROVIDER,
   type DesktopUpdateState,
   ProjectId,
   type ScopedThreadRef,
@@ -61,6 +62,11 @@ import { usePrimaryEnvironmentId } from "../environments/primary";
 import { isElectron } from "../env";
 import { APP_STAGE_LABEL, APP_VERSION } from "../branding";
 import { isTerminalFocused } from "../lib/terminalFocus";
+import {
+  isTerminalThread,
+  newTerminalThreadId,
+  DEFAULT_TERMINAL_THREAD_TITLE,
+} from "../lib/terminalThread";
 import { isMacPlatform, newCommandId } from "../lib/utils";
 import {
   selectProjectByRef,
@@ -379,6 +385,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
   const pr = resolveThreadPr(thread.branch, gitStatus.data);
   const prStatus = prStatusIndicator(pr);
   const terminalStatus = terminalStatusFromRunningIds(runningTerminalIds);
+  const isTerminal = isTerminalThread(thread.id);
   const isConfirmingArchive = confirmingArchiveThreadKey === threadKey && !isThreadRunning;
   const threadMetaClassName = isConfirmingArchive
     ? "pointer-events-none opacity-0"
@@ -558,24 +565,32 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         onContextMenu={handleRowContextMenu}
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
-          {prStatus && (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <button
-                    type="button"
-                    aria-label={prStatus.tooltip}
-                    className={`inline-flex items-center justify-center ${prStatus.colorClass} cursor-pointer rounded-sm outline-hidden focus-visible:ring-1 focus-visible:ring-ring`}
-                    onClick={handlePrClick}
-                  >
-                    <GitPullRequestIcon className="size-3" />
-                  </button>
-                }
-              />
-              <TooltipPopup side="top">{prStatus.tooltip}</TooltipPopup>
-            </Tooltip>
+          {isTerminal ? (
+            <span className="inline-flex items-center justify-center text-muted-foreground">
+              <TerminalIcon className="size-3" />
+            </span>
+          ) : (
+            <>
+              {prStatus && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        aria-label={prStatus.tooltip}
+                        className={`inline-flex items-center justify-center ${prStatus.colorClass} cursor-pointer rounded-sm outline-hidden focus-visible:ring-1 focus-visible:ring-ring`}
+                        onClick={handlePrClick}
+                      >
+                        <GitPullRequestIcon className="size-3" />
+                      </button>
+                    }
+                  />
+                  <TooltipPopup side="top">{prStatus.tooltip}</TooltipPopup>
+                </Tooltip>
+              )}
+              {threadStatus && <ThreadStatusLabel status={threadStatus} />}
+            </>
           )}
-          {threadStatus && <ThreadStatusLabel status={threadStatus} />}
           {renamingThreadKey === threadKey ? (
             <input
               ref={handleRenameInputRef}
@@ -1711,6 +1726,71 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     [createThreadForProjectMember, project.groupedProjectCount, project.memberProjects],
   );
 
+  const handleCreateTerminalClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const member = project.memberProjects[0];
+      if (!member) return;
+
+      const api = readEnvironmentApi(member.environmentId);
+      if (!api) return;
+
+      const threadId = newTerminalThreadId();
+      const title = DEFAULT_TERMINAL_THREAD_TITLE;
+
+      const threadRef = scopeThreadRef(member.environmentId, threadId);
+
+      void (async () => {
+        try {
+          await api.orchestration.dispatchCommand({
+            type: "thread.create",
+            commandId: newCommandId(),
+            threadId,
+            projectId: member.id,
+            title,
+            modelSelection: {
+              provider: "codex",
+              model: DEFAULT_MODEL_BY_PROVIDER.codex,
+            },
+            runtimeMode: "full-access",
+            interactionMode: "default",
+            branch: null,
+            worktreePath: null,
+            createdAt: new Date().toISOString(),
+          });
+          // Wait for the thread to appear in the store before navigating
+          await new Promise<void>((resolve) => {
+            if (selectThreadByRef(useStore.getState(), threadRef)) {
+              resolve();
+              return;
+            }
+            const unsubscribe = useStore.subscribe((state) => {
+              if (selectThreadByRef(state, threadRef)) {
+                unsubscribe();
+                resolve();
+              }
+            });
+            // Timeout fallback — navigate anyway after 2s
+            setTimeout(() => {
+              unsubscribe();
+              resolve();
+            }, 2_000);
+          });
+          navigateToThread(threadRef);
+        } catch (error) {
+          toastManager.add({
+            type: "error",
+            title: "Failed to create terminal",
+            description: error instanceof Error ? error.message : "An error occurred.",
+          });
+        }
+      })();
+    },
+    [navigateToThread, project.memberProjects],
+  );
+
   const attemptArchiveThread = useCallback(
     async (threadRef: ScopedThreadRef) => {
       try {
@@ -2009,10 +2089,26 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
             </TooltipPopup>
           </Tooltip>
         )}
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <div className="pointer-events-none absolute top-1 right-1.5 opacity-0 transition-opacity duration-150 group-hover/project-header:pointer-events-auto group-hover/project-header:opacity-100 group-focus-within/project-header:pointer-events-auto group-focus-within/project-header:opacity-100">
+        <div className="pointer-events-none absolute top-1 right-1.5 flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/project-header:pointer-events-auto group-hover/project-header:opacity-100 group-focus-within/project-header:pointer-events-auto group-focus-within/project-header:opacity-100">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label={`New terminal in ${project.displayName}`}
+                  data-testid="new-terminal-button"
+                  className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/70 hover:bg-secondary hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                  onClick={handleCreateTerminalClick}
+                >
+                  <TerminalIcon className="size-3.5" />
+                </button>
+              }
+            />
+            <TooltipPopup side="top">New terminal</TooltipPopup>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
                 <button
                   type="button"
                   aria-label={`Create new thread in ${project.displayName}`}
@@ -2022,13 +2118,13 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                 >
                   <SquarePenIcon className="size-3.5" />
                 </button>
-              </div>
-            }
-          />
-          <TooltipPopup side="top">
-            {newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
-          </TooltipPopup>
-        </Tooltip>
+              }
+            />
+            <TooltipPopup side="top">
+              {newThreadShortcutLabel ? `New thread (${newThreadShortcutLabel})` : "New thread"}
+            </TooltipPopup>
+          </Tooltip>
+        </div>
       </div>
 
       <SidebarProjectThreadList
