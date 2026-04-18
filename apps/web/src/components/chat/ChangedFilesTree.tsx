@@ -17,6 +17,10 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
 }) {
   const { files, allDirectoriesExpanded, onOpenTurnDiff, turnId } = props;
   const treeNodes = useMemo(() => buildTurnDiffTree(files), [files]);
+  const hasDirectories = useMemo(
+    () => treeNodes.some((n) => n.kind === "directory"),
+    [treeNodes],
+  );
   const directoryPathsKey = useMemo(
     () => collectDirectoryPaths(treeNodes).join("\u0000"),
     [treeNodes],
@@ -98,10 +102,10 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
         key={`file:${node.path}`}
         type="button"
         className="group flex w-full items-center gap-1.5 rounded-md py-1 pr-2 text-left hover:bg-background/80"
-        style={{ paddingLeft: `${leftPadding}px` }}
+        style={{ paddingLeft: `${hasDirectories ? leftPadding : 8}px` }}
         onClick={() => onOpenTurnDiff(turnId, node.path)}
       >
-        <span aria-hidden="true" className="size-3.5 shrink-0" />
+        {hasDirectories && <span aria-hidden="true" className="size-3.5 shrink-0" />}
         <span className="truncate font-mono text-[11px] text-muted-foreground/80 group-hover:text-foreground/90">
           {node.name}
         </span>

@@ -396,7 +396,7 @@ function toUserInputQuestions(payload: Record<string, unknown> | undefined) {
 
 function toThreadState(
   value: unknown,
-): "active" | "idle" | "archived" | "closed" | "compacted" | "error" {
+): "active" | "idle" | "archived" | "closed" | "compacting" | "compacted" | "error" {
   switch (value) {
     case "idle":
       return "idle";
@@ -404,6 +404,8 @@ function toThreadState(
       return "archived";
     case "closed":
       return "closed";
+    case "compacting":
+      return "compacting";
     case "compacted":
       return "compacted";
     case "error":

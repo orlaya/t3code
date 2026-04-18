@@ -64,6 +64,7 @@ const RuntimeThreadState = Schema.Literals([
   "idle",
   "archived",
   "closed",
+  "compacting",
   "compacted",
   "error",
 ]);

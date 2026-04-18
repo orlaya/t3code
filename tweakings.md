@@ -311,3 +311,12 @@
 - `apps/web/src/components/ChatView.tsx` — added `oxlint-disable-next-line eslint-plugin-react-hooks(exhaustive-deps)` to 6 `useCallback` sites that reference `composerRef.current` (refs are intentionally excluded from deps). Extracted `activeThreadIsTerminal` and `activeThreadTerminalOpen` out of the terminal reconciliation `useEffect` to satisfy the exhaustive-deps rule without adding `activeThread` directly.
 - `apps/web/src/environments/runtime/catalog.test.ts` — suppressed `consistent-function-scoping` false positive on `resolveRegistryRead` (a `let` that gets reassigned later in the test body).
 - `apps/web/src/components/CommandPalette.logic.ts` — suppressed `no-map-spread` warning on the thread command items builder (conditional optional properties, negligible on command palette list sizes).
+
+**Context compaction — "compacting" in-progress indicator:**
+
+- `packages/contracts/src/providerRuntime.ts` — added `"compacting"` to `RuntimeThreadState` union.
+- `apps/server/src/provider/Layers/ClaudeAdapter.ts` — `case "status"` handler now also yields a `thread.state.changed` event with `state: "compacting"` when the SDK reports `status: "compacting"`. Previously this only emitted a `session.state.changed` (waiting), so the compaction-started signal was swallowed.
+- `apps/server/src/provider/Layers/CodexAdapter.ts` — `toThreadState` updated with `"compacting"` case.
+- `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — `thread.state.changed` handler now accepts both `"compacting"` and `"compacted"`, emitting a `context-compaction` activity for each (summary `"Context compacting"` / `"Context compacted"`).
+- `apps/web/src/session-logic.ts` — `WorkLogEntry` gains `isCompacting?: boolean`. In `deriveWorkLogEntries`, if a `"compacted"` entry exists the earlier `"compacting"` entry is filtered out (superseded). If only `"compacting"` exists, it's marked `isCompacting = true`.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — `CircleSmallIcon` added. `SimpleWorkEntryRow` checks `isCompacting` → `LoaderIcon` with slow spin (`[animation-duration:3s]`); compacted → `CircleSmallIcon` as a neutral done indicator.

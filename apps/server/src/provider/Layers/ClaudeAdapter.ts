@@ -2245,6 +2245,16 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         });
         return;
       case "status":
+        if (message.status === "compacting") {
+          yield* offerRuntimeEvent({
+            ...base,
+            type: "thread.state.changed",
+            payload: {
+              state: "compacting",
+              detail: message,
+            },
+          });
+        }
         yield* offerRuntimeEvent({
           ...base,
           type: "session.state.changed",

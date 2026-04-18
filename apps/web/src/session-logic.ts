@@ -49,6 +49,8 @@ export interface WorkLogEntry {
   requestKind?: PendingApproval["requestKind"];
   /** True when this is a sub-agent tool call that hasn't completed yet. */
   isSubAgentInProgress?: boolean;
+  /** True when context compaction is in progress (spinner). */
+  isCompacting?: boolean;
   /** Raw activity payload + kind for debugging. */
   _debug?: { kind: string; payload: unknown };
 }
@@ -534,8 +536,26 @@ export function deriveWorkLogEntries(
     }
   }
 
-  return collapsed.map(
-    ({ activityKind, collapseKey, toolCallId, ...entry }) => {
+  // Context compaction: if a "compacted" activity exists, drop the earlier
+  // "compacting" entry so only the finished state renders. If compaction is
+  // still in progress (no "compacted" yet), mark the entry with isCompacting.
+  const hasCompacted = collapsed.some(
+    (e) => e.activityKind === "context-compaction" && e.label === "Context compacted",
+  );
+
+  return collapsed
+    .filter((entry) => {
+      // Drop the "compacting" entry when "compacted" exists — it's superseded.
+      if (
+        hasCompacted &&
+        entry.activityKind === "context-compaction" &&
+        entry.label === "Context compacting"
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .map(({ activityKind, collapseKey, toolCallId, ...entry }) => {
       if (
         entry.itemType === "collab_agent_tool_call" &&
         activityKind !== "tool.completed" &&
@@ -544,9 +564,14 @@ export function deriveWorkLogEntries(
       ) {
         entry.isSubAgentInProgress = true;
       }
+      if (
+        activityKind === "context-compaction" &&
+        entry.label === "Context compacting"
+      ) {
+        entry.isCompacting = true;
+      }
       return entry;
-    },
-  );
+    });
 }
 
 function isPlanBoundaryToolActivity(activity: OrchestrationThreadActivity): boolean {

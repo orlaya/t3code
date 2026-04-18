@@ -407,7 +407,7 @@ function runtimeEventToActivities(
     }
 
     case "thread.state.changed": {
-      if (event.payload.state !== "compacted") {
+      if (event.payload.state !== "compacted" && event.payload.state !== "compacting") {
         return [];
       }
 
@@ -417,7 +417,10 @@ function runtimeEventToActivities(
           createdAt: event.createdAt,
           tone: "info",
           kind: "context-compaction",
-          summary: "Context compacted",
+          summary:
+            event.payload.state === "compacting"
+              ? "Context compacting"
+              : "Context compacted",
           payload: {
             state: event.payload.state,
             ...(event.payload.detail !== undefined ? { detail: event.payload.detail } : {}),

@@ -20,6 +20,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   CircleAlertIcon,
+  CircleSmallIcon,
 
   EyeIcon,
   GlobeIcon,
@@ -622,7 +623,7 @@ const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
 
   return (
     <div className="flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-2 py-1.5">
-      <LoaderIcon className="size-3 shrink-0 animate-spin text-primary/70" />
+      <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:3s] text-primary/70" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[11px] leading-5 text-foreground/90">
           {heading}
@@ -1110,6 +1111,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
   const hasChangedFiles = (workEntry.changedFiles?.length ?? 0) > 0;
   const previewIsChangedFiles = hasChangedFiles && !workEntry.command && !workEntry.detail;
   const primaryFilePath = workEntryPrimaryFilePath(workEntry, workspaceRoot);
+  const isCompactionEntry = workEntry.isCompacting || workEntry.label === "Context compacted";
 
   const handleOpenInEditor = useCallback(() => {
     if (!primaryFilePath) return;
@@ -1127,7 +1129,15 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
         <span
           className={cn("flex size-5 shrink-0 items-center justify-center", iconConfig.className)}
         >
-          <EntryIcon className="size-3" />
+          {isCompactionEntry ? (
+            workEntry.isCompacting ? (
+              <LoaderIcon className="size-3 animate-spin [animation-duration:3s]" />
+            ) : (
+              <CircleSmallIcon className="size-3" />
+            )
+          ) : (
+            <EntryIcon className="size-3" />
+          )}
         </span>
         <div className="min-w-0 flex-1 overflow-hidden">
           {rawCommand ? (
