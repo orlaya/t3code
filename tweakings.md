@@ -267,3 +267,47 @@
 
 - `WorkGroupSection` — "Show more" / "Show less" text button replaced with `ChevronDownIcon` / `ChevronUpIcon`. Entire header row is clickable when overflow exists (via `group/wl` + `onClick`). Chevron highlights on hover via `group-hover/wl:text-foreground`. When no overflow, header renders as plain label with no chevron or click target.
 - `ThinkingSection` — same treatment. Header gets `cursor-pointer` and click handler only when `canExpand` is true. Chevron uses `group/think` for hover highlight.
+
+**Virtualizer stability — inline edit diffs + streaming jitter fixes:**
+
+- `apps/web/src/components/chat/InlineEditDiff.tsx` — `maxHeight: 350px` is now applied unconditionally on first render (not just when `isOverflowing` is true). Previously `isOverflowing` started `false` → no maxHeight → Shiki rendered at full height in the shadow DOM → ResizeObserver fired → `isOverflowing` flipped true → height snapped down to 350px. That render-then-collapse bounce caused the virtualizer's cached measurement to become stale mid-scroll, producing severe flicker (seizure-hazard level) when scrolling up past larger diffs. The ResizeObserver still runs and controls whether the expand chevron/button appears, but no longer triggers a height change. Gradient fade only renders when `isOverflowing` is confirmed.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — added `getEstimatedItemSize` callback to LegendList, providing per-row-type size hints instead of the blanket `estimatedItemSize={90}` for all rows. Edit rows get 400px (close to collapsed 350px + header + padding), work log 70px, thinking 120px, proposed-plan 200px, message 90px. Reduces layout thrash when the virtualizer calculates scroll positions for rows it hasn't rendered yet.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` + `MessagesTimeline.logic.ts` + `apps/web/src/components/ChatView.tsx` — "Working for Xs" indicator pulled out of the virtualised row system entirely. Was previously appended as a `kind: "working"` row in `deriveMessagesTimelineRows`, competing with streaming content for layout space and causing the indicator to jump up/down as new rows were inserted. Now rendered as a static `WorkingIndicator` component in `ChatView.tsx`, positioned between the LegendList and the composer input. Self-ticking (1s interval), completely outside the virtualizer's jurisdiction. The `kind: "working"` type remains in the `MessagesTimelineRow` union and `isWorking`/`activeTurnStartedAt` params remain on `deriveMessagesTimelineRows` as harmless dead code.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — `LiveMessageMeta` (self-ticking per-message elapsed timer) no longer renders during streaming. The static `WorkingIndicator` outside the list already shows elapsed time. Hiding the in-list timer eliminates a source of per-second re-renders inside virtualised rows, which caused micro-jitter during streaming. The timestamp + elapsed duration appears once the turn completes (via the existing static `formatMessageMeta` path).
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — turn-completion elements (completion divider pill, changed files section, timestamp/elapsed meta) now fade in via `animate-in fade-in duration-300` instead of snapping into existence. Smooths the visual transition when a turn finishes and multiple UI elements appear simultaneously.
+
+**Sub-agent pinning in work log:**
+
+- `apps/web/src/session-logic.ts` — `WorkLogEntry` gains `isSubAgentInProgress?: boolean` and `_debug?: { kind: string; payload: unknown }`. After the existing collapse pass in `deriveWorkLogEntries`, a post-collapse scan collects `collapseKey` values from all `tool.completed` entries with `itemType === "collab_agent_tool_call"`, then marks any remaining collab_agent_tool_call entries that aren't completed as `isSubAgentInProgress = true`. Uses `collapseKey` (composite of `[itemType, normalizedLabel, detail]`) rather than `toolCallId` because collab_agent_tool_call events have no `toolCallId` in their payload — unlike regular tool calls (Read, Edit, Bash etc).
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — `WorkGroupSection` splits entries into `pinnedSubAgents` (those with `isSubAgentInProgress`) and `regularEntries`. Pinned sub-agents render between the section header and the regular entries via a new `PinnedSubAgentEntry` component: a bordered card with a spinning `LoaderIcon`, the tool heading, and an optional detail suffix. Header count includes both pinned and regular entries. `showHeader` forces true when pinned entries exist.
+- `PinnedSubAgentEntry` component: `border-primary/25 bg-primary/5` card, `LoaderIcon` spinner at `size-3`, truncated heading text at `text-[11px]`. Uses `toolWorkEntryHeading` and `workEntryPreview` helpers for display text; deduplicates when heading and preview normalise to the same string.
+
+**JSON turn copy button on assistant messages:**
+
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — `LogsIcon` from lucide-react added next to the existing `MessageCopyButton` on assistant message rows. Clicking copies the entire turn's raw JSON (all messages + activities for that `turnId`) to clipboard via a new `onCopyTurnJson` callback on `TimelineRowSharedState` and `MessagesTimelineProps`.
+- `apps/web/src/components/ChatView.tsx` — `onCopyTurnJson` callback filters `activeThread.messages` and `activeThread.activities` by `turnId`, serialises as pretty-printed JSON, and writes to `navigator.clipboard`.
+- Test files (`MessagesTimeline.test.tsx`, `MessagesTimeline.browser.tsx`) updated with `onCopyTurnJson` in their prop builders.
+
+**Test fixes + Bun compatibility:**
+
+- `apps/web/src/uiStateStore.test.ts` — two `setThreadChangedFilesExpanded` tests updated to match the collapsed-by-default semantics. Tests now pass `true` (expanding = override → store) and `false` (collapsing = return to default → delete). Previously tested the inverse, leftover from when the default was expanded.
+- `apps/web/src/components/chat/MessagesTimeline.test.tsx` — replaced `vi.stubGlobal` (Vitest-only API, not supported by Bun's test runner) with `globalThis` assignments + `Object.defineProperty` for `window`. Added `afterAll` cleanup to restore originals. `vi.mock` → kept (Bun supports it), but switched the inner `await import("react")` back from `require("react")` since vitest imports are retained.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — `workEntryPrimaryFilePath()` now recognises Windows drive paths (`/^[A-Za-z]:[\\\/]/`) as absolute, preventing the workspace root from being prepended to already-absolute paths like `C:/Users/mike/...`. Same fix applied to the `detail` fallback branch.
+
+**Dead code removal:**
+
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — removed `WorkingTimer`, `LiveMessageMeta` (unused after the WorkingIndicator extraction to ChatView), and `formatWorkingTimer` (only caller was `WorkingTimer`).
+- `apps/server/src/server.test.ts` — removed unused module-level `workspaceAndProjectServicesLayer` (shadowed by an identical local declaration inside the test helper).
+- `apps/web/src/session-logic.test.ts` — removed unused `PROVIDER_OPTIONS` import.
+- `apps/web/src/components/chat/ChangedFilesTree.tsx` — removed unused `resolvedTheme` destructure.
+- `apps/web/src/components/Sidebar.tsx` — removed unused `SquarePenIcon` import.
+
+**Lint cleanup (oxlint):**
+
+- `apps/server/src/provider/Layers/ClaudeAdapter.ts` — `resolveAgentKind` hoisted from inside `makeClaudeAdapter` to module level (pure function, no closures over parent scope).
+- `apps/server/src/provider/Layers/CodexAdapter.ts` — `eventRawSource` hoisted from inside `createCodexEventMapper` to module level (same reason).
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — removed 3 stale `eslint-disable-next-line jsx-a11y/...` directives (oxlint doesn't run jsx-a11y rules, so the directives were flagged as unused).
+- `apps/web/src/components/chat/InlineEditDiff.tsx` — removed 1 stale `eslint-disable-next-line jsx-a11y/...` directive (same reason).
+- `apps/web/src/components/ChatView.tsx` — added `oxlint-disable-next-line eslint-plugin-react-hooks(exhaustive-deps)` to 6 `useCallback` sites that reference `composerRef.current` (refs are intentionally excluded from deps). Extracted `activeThreadIsTerminal` and `activeThreadTerminalOpen` out of the terminal reconciliation `useEffect` to satisfy the exhaustive-deps rule without adding `activeThread` directly.
+- `apps/web/src/environments/runtime/catalog.test.ts` — suppressed `consistent-function-scoping` false positive on `resolveRegistryRead` (a `let` that gets reassigned later in the test body).
+- `apps/web/src/components/CommandPalette.logic.ts` — suppressed `no-map-spread` warning on the thread command items builder (conditional optional properties, negligible on command palette list sizes).

@@ -826,17 +826,19 @@ export default function ChatView(props: ChatViewProps) {
       return threadIds;
     }, [activeLatestTurn?.sourceProposedPlan?.threadId, activeThread?.id]),
   );
+  const activeThreadIsTerminal = Boolean(
+    activeThreadKey && activeThread && isTerminalThread(activeThread.id),
+  );
+  const activeThreadTerminalOpen = Boolean(
+    activeThreadKey && (terminalState.terminalOpen || activeThreadIsTerminal),
+  );
   useEffect(() => {
     setMountedTerminalThreadKeys((currentThreadIds) => {
       const nextThreadIds = reconcileMountedTerminalThreadIds({
         currentThreadIds,
         openThreadIds: existingOpenTerminalThreadKeys,
         activeThreadId: activeThreadKey,
-        activeThreadTerminalOpen: Boolean(
-          activeThreadKey &&
-            (terminalState.terminalOpen ||
-              (activeThread && isTerminalThread(activeThread.id))),
-        ),
+        activeThreadTerminalOpen,
         maxHiddenThreadCount: MAX_HIDDEN_MOUNTED_TERMINAL_THREADS,
       });
       return currentThreadIds.length === nextThreadIds.length &&
@@ -844,7 +846,7 @@ export default function ChatView(props: ChatViewProps) {
         ? currentThreadIds
         : nextThreadIds;
     });
-  }, [activeThreadKey, existingOpenTerminalThreadKeys, terminalState.terminalOpen]);
+  }, [activeThreadKey, activeThreadTerminalOpen, existingOpenTerminalThreadKeys]);
   const latestTurnSettled = isLatestTurnSettled(activeLatestTurn, activeThread?.session ?? null);
   const activeProjectRef = activeThread
     ? scopeProjectRef(activeThread.environmentId, activeThread.projectId)
@@ -1596,6 +1598,7 @@ export default function ChatView(props: ChatViewProps) {
 
   const focusComposer = useCallback(() => {
     composerRef.current?.focusAtEnd();
+  // oxlint-disable-next-line eslint-plugin-react-hooks(exhaustive-deps) -- ref.current is intentionally excluded
   }, []);
   const scheduleComposerFocus = useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -1604,6 +1607,7 @@ export default function ChatView(props: ChatViewProps) {
   }, [focusComposer]);
   const addTerminalContextToDraft = useCallback((selection: TerminalContextSelection) => {
     composerRef.current?.addTerminalContext(selection);
+  // oxlint-disable-next-line eslint-plugin-react-hooks(exhaustive-deps) -- ref.current is intentionally excluded
   }, []);
   const setTerminalOpen = useCallback(
     (open: boolean) => {
@@ -2799,6 +2803,7 @@ export default function ChatView(props: ChatViewProps) {
       promptRef.current = "";
       composerRef.current?.resetCursorState({ cursor: 0 });
     },
+    // oxlint-disable-next-line eslint-plugin-react-hooks(exhaustive-deps) -- ref.current is intentionally excluded
     [activePendingProgress?.activeQuestion, activePendingUserInput],
   );
 
@@ -2833,6 +2838,7 @@ export default function ChatView(props: ChatViewProps) {
         composerRef.current?.focusAt(nextCursor);
       }
     },
+    // oxlint-disable-next-line eslint-plugin-react-hooks(exhaustive-deps) -- ref.current is intentionally excluded
     [activePendingUserInput],
   );
 
@@ -2991,6 +2997,7 @@ export default function ChatView(props: ChatViewProps) {
         resetLocalDispatch();
       }
     },
+    // oxlint-disable-next-line eslint-plugin-react-hooks(exhaustive-deps) -- ref.current is intentionally excluded
     [
       activeThread,
       activeProposedPlan,
@@ -3121,6 +3128,7 @@ export default function ChatView(props: ChatViewProps) {
         });
       })
       .then(finish, finish);
+  // oxlint-disable-next-line eslint-plugin-react-hooks(exhaustive-deps) -- ref.current is intentionally excluded
   }, [
     activeProject,
     activeProposedPlan,
@@ -3236,6 +3244,17 @@ export default function ChatView(props: ChatViewProps) {
     void onRevertToTurnCountRef.current(targetTurnCount);
   }, []);
 
+  const onCopyTurnJson = useCallback(
+    (turnId: TurnId) => {
+      if (!activeThread) return;
+      const turnMessages = activeThread.messages.filter((m) => m.turnId === turnId);
+      const turnActivities = activeThread.activities.filter((a) => a.turnId === turnId);
+      const json = JSON.stringify({ turnId, messages: turnMessages, activities: turnActivities }, null, 2);
+      void navigator.clipboard.writeText(json);
+    },
+    [activeThread],
+  );
+
   // Empty state: no active thread
   if (!activeThread) {
     return <NoActiveThreadState />;
@@ -3319,6 +3338,7 @@ export default function ChatView(props: ChatViewProps) {
               onRevertUserMessage={onRevertUserMessage}
               isRevertingCheckpoint={isRevertingCheckpoint}
               onImageExpand={onExpandTimelineImage}
+              onCopyTurnJson={onCopyTurnJson}
               markdownCwd={gitCwd ?? undefined}
               resolvedTheme={resolvedTheme}
               timestampFormat={timestampFormat}
@@ -3340,6 +3360,11 @@ export default function ChatView(props: ChatViewProps) {
               </div>
             )}
           </div>
+
+          {/* Working indicator — static element outside the virtualizer */}
+          {isWorking && (
+            <WorkingIndicator startedAt={activeWorkStartedAt} />
+          )}
 
           {/* Input bar */}
           <div className={cn("px-3 pt-1.5 sm:px-5 sm:pt-2", isGitRepo ? "pb-1" : "pb-3 sm:pb-4")}>
@@ -3510,6 +3535,38 @@ export default function ChatView(props: ChatViewProps) {
       {expandedImage && (
         <ExpandedImageDialog preview={expandedImage} onClose={closeExpandedImage} />
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// WorkingIndicator — static element rendered outside the virtualised list.
+// Self-ticking timer so it doesn't cause any parent re-renders.
+// ---------------------------------------------------------------------------
+
+function WorkingIndicator({ startedAt }: { startedAt: string | null }) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+
+  const elapsed = startedAt
+    ? formatElapsed(startedAt, new Date(nowMs).toISOString())
+    : null;
+
+  return (
+    <div className="mx-auto w-full max-w-3xl px-3 sm:px-5">
+      <div className="py-0.5 pb-1.5 pl-1.5">
+        <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground/80">
+          <span className="inline-flex items-center gap-[3px]">
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
+          </span>
+          <span>{elapsed ? `Working for ${elapsed}` : "Working..."}</span>
+        </div>
+      </div>
     </div>
   );
 }

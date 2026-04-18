@@ -212,13 +212,9 @@ export function deriveMessagesTimelineRows(input: {
     });
   }
 
-  if (input.isWorking) {
-    nextRows.push({
-      kind: "working",
-      id: "working-indicator-row",
-      createdAt: input.activeTurnStartedAt,
-    });
-  }
+  // NOTE: the "working" indicator is no longer a virtualized row — it lives
+  // in ListFooterComponent so it doesn't participate in height estimation
+  // or cause layout thrash when new streaming rows are inserted above it.
 
   return nextRows;
 }

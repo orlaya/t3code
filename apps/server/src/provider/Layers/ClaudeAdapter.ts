@@ -531,7 +531,7 @@ function summarizeToolRequest(toolName: string, input: Record<string, unknown>):
     }
   }
 
-  // File-path-based tools — show just the path
+  // File-path-based tools — show the path, with line range for Read
   const filePath =
     typeof input.file_path === "string"
       ? input.file_path.trim()
@@ -539,6 +539,14 @@ function summarizeToolRequest(toolName: string, input: Record<string, unknown>):
         ? input.path.trim()
         : undefined;
   if (filePath) {
+    const offset = typeof input.offset === "number" ? input.offset : undefined;
+    const limit = typeof input.limit === "number" ? input.limit : undefined;
+    if (offset != null || limit != null) {
+      const start = offset ?? 0;
+      const end = limit != null ? start + limit : undefined;
+      const range = end != null ? `${start}-${end}` : `${start}+`;
+      return `${filePath.slice(0, 390)}:${range}`;
+    }
     return filePath.slice(0, 400);
   }
 
@@ -1008,6 +1016,13 @@ function sdkNativeItemId(message: SDKMessage): string | undefined {
   return undefined;
 }
 
+function resolveAgentKind(context: ClaudeSessionContext): AgentKind {
+  if (context.primarySessionId === undefined) {
+    return "primary";
+  }
+  return context.resumeSessionId === context.primarySessionId ? "primary" : "sub";
+}
+
 const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
   options?: ClaudeAdapterLiveOptions,
 ) {
@@ -1042,13 +1057,6 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
 
   const offerRuntimeEvent = (event: ProviderRuntimeEvent): Effect.Effect<void> =>
     Queue.offer(runtimeEventQueue, event).pipe(Effect.asVoid);
-
-  const resolveAgentKind = (context: ClaudeSessionContext): AgentKind => {
-    if (context.primarySessionId === undefined) {
-      return "primary";
-    }
-    return context.resumeSessionId === context.primarySessionId ? "primary" : "sub";
-  };
 
   const logNativeSdkMessage = Effect.fn("logNativeSdkMessage")(function* (
     context: ClaudeSessionContext,

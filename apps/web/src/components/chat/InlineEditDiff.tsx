@@ -82,7 +82,13 @@ export const InlineEditDiff = memo(function InlineEditDiff({
 
   if (!fileDiff) return null;
 
-  const collapsed = isOverflowing && !isExpanded;
+  // Always constrain height until explicitly expanded. This prevents the
+  // render-then-collapse bounce: without this, `isOverflowing` starts false →
+  // no maxHeight → Shiki renders at full height → ResizeObserver fires →
+  // isOverflowing flips true → maxHeight snaps to 350 → height shrinks
+  // dramatically → virtualizer's cached measurement is wrong → scroll jumps.
+  // By always starting constrained, the height is stable from first paint.
+  const showExpanded = isOverflowing && isExpanded;
 
   return (
     <div
@@ -93,7 +99,6 @@ export const InlineEditDiff = memo(function InlineEditDiff({
         <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/80">
           {displayPath}
         </span>
-        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         {isOverflowing && (
           <div className={`${TOGGLE_CHEVRON_CLASSES} ml-auto flex flex-1 cursor-pointer items-center justify-end self-stretch shrink-0`} onClick={handleToggle}>
             {isExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
@@ -104,7 +109,7 @@ export const InlineEditDiff = memo(function InlineEditDiff({
       <div
         ref={diffContainerRef}
         className="relative"
-        style={collapsed ? { maxHeight: COLLAPSED_MAX_HEIGHT, overflow: "hidden" } : undefined}
+        style={showExpanded ? undefined : { maxHeight: COLLAPSED_MAX_HEIGHT, overflow: "hidden" }}
       >
         <FileDiff
           fileDiff={fileDiff}
@@ -120,7 +125,7 @@ export const InlineEditDiff = memo(function InlineEditDiff({
             themeType: resolvedTheme,
           }}
         />
-        {collapsed && (
+        {!showExpanded && isOverflowing && (
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card/90 to-transparent" />
         )}
       </div>

@@ -1,7 +1,7 @@
 import { EnvironmentId, MessageId } from "@t3tools/contracts";
 import { createRef } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { LegendListRef } from "@legendapp/list/react";
 
 vi.mock("@legendapp/list/react", async () => {
@@ -39,6 +39,10 @@ function matchMedia() {
   };
 }
 
+const originalWindow = globalThis.window;
+const originalDocument = globalThis.document;
+const originalLocalStorage = globalThis.localStorage;
+
 beforeAll(() => {
   const classList = {
     add: () => {},
@@ -47,29 +51,41 @@ beforeAll(() => {
     contains: () => false,
   };
 
-  vi.stubGlobal("localStorage", {
+  globalThis.localStorage = {
     getItem: () => null,
     setItem: () => {},
     removeItem: () => {},
     clear: () => {},
-  });
-  vi.stubGlobal("window", {
-    matchMedia,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    requestAnimationFrame: (callback: FrameRequestCallback) => {
-      callback(0);
-      return 0;
+  } as unknown as Storage;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      matchMedia,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0);
+        return 0;
+      },
+      cancelAnimationFrame: () => {},
+      desktopBridge: undefined,
     },
-    cancelAnimationFrame: () => {},
-    desktopBridge: undefined,
   });
-  vi.stubGlobal("document", {
+  globalThis.document = {
     documentElement: {
       classList,
       offsetHeight: 0,
     },
+  } as unknown as Document;
+});
+
+afterAll(() => {
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: originalWindow,
   });
+  globalThis.document = originalDocument;
+  globalThis.localStorage = originalLocalStorage;
 });
 
 const ACTIVE_THREAD_ENVIRONMENT_ID = EnvironmentId.make("environment-local");
@@ -87,6 +103,7 @@ function buildProps() {
     agentEditedFilesByTurnId: new Map(),
     routeThreadKey: "environment-local:thread-1",
     onOpenTurnDiff: () => {},
+    onCopyTurnJson: () => {},
     revertTurnCountByUserMessageId: new Map(),
     onRevertUserMessage: () => {},
     isRevertingCheckpoint: false,

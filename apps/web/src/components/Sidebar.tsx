@@ -8,7 +8,6 @@ import {
   PlusIcon,
   SearchIcon,
   SettingsIcon,
-  SquarePenIcon,
   TerminalIcon,
   TriangleAlertIcon,
 } from "lucide-react";

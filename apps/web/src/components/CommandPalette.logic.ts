@@ -134,6 +134,7 @@ export function buildThreadActionItems<TThread extends BuildThreadActionItemsThr
   const visibleThreads =
     input.limit === undefined ? sortedThreads : sortedThreads.slice(0, input.limit);
 
+  // oxlint-disable-next-line oxc(no-map-spread) -- conditional optional properties, negligible on command palette list sizes
   return visibleThreads.map((thread) => {
     const projectTitle = input.projectTitleById.get(thread.projectId);
     const descriptionParts: string[] = [];

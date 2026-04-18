@@ -23,6 +23,8 @@ import {
 
   EyeIcon,
   GlobeIcon,
+  LoaderIcon,
+  LogsIcon,
   type LucideIcon,
   SearchIcon,
   TerminalIcon,
@@ -88,6 +90,7 @@ interface TimelineRowSharedState {
   onRevertUserMessage: (messageId: MessageId) => void;
   onImageExpand: (preview: ExpandedImagePreview) => void;
   onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
+  onCopyTurnJson: (turnId: TurnId) => void;
   agentEditedFilesByTurnId: Map<TurnId, Set<string>>;
 }
 
@@ -114,6 +117,7 @@ interface MessagesTimelineProps {
   onRevertUserMessage: (messageId: MessageId) => void;
   isRevertingCheckpoint: boolean;
   onImageExpand: (preview: ExpandedImagePreview) => void;
+  onCopyTurnJson: (turnId: TurnId) => void;
   activeThreadEnvironmentId: EnvironmentId;
   markdownCwd: string | undefined;
   resolvedTheme: "light" | "dark";
@@ -143,6 +147,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   onRevertUserMessage,
   isRevertingCheckpoint,
   onImageExpand,
+  onCopyTurnJson,
   activeThreadEnvironmentId,
   markdownCwd,
   resolvedTheme,
@@ -214,6 +219,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onRevertUserMessage,
       onImageExpand,
       onOpenTurnDiff,
+      onCopyTurnJson,
       agentEditedFilesByTurnId,
     }),
     [
@@ -231,9 +237,31 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onRevertUserMessage,
       onImageExpand,
       onOpenTurnDiff,
+      onCopyTurnJson,
       agentEditedFilesByTurnId,
     ],
   );
+
+  // Per-row size hints so the virtualizer doesn't assume 90px for everything.
+  // Edit diffs render at ~350px (collapsed max-height + header + padding),
+  // work log groups are typically ~60-80px, thinking sections ~120px.
+  // Better estimates = less layout thrash when rows enter the viewport.
+  const getEstimatedItemSize = useCallback((item: MessagesTimelineRow) => {
+    switch (item.kind) {
+      case "edit":
+        return 400;
+      case "work":
+        return 70;
+      case "thinking":
+        return 120;
+      case "proposed-plan":
+        return 200;
+      case "message":
+        return 90;
+      default:
+        return 90;
+    }
+  }, []);
 
   // Stable renderItem — no closure deps. Row components read shared state
   // from TimelineRowCtx, which propagates through LegendList's memo.
@@ -263,6 +291,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         data={rows}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
+        getEstimatedItemSize={getEstimatedItemSize}
         estimatedItemSize={90}
         initialScrollAtEnd
         maintainScrollAtEnd
@@ -418,7 +447,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
           return (
             <>
               {row.showCompletionDivider && (
-                <div className="my-3 flex items-center gap-3">
+                <div className="my-3 flex items-center gap-3 animate-in fade-in duration-300">
                   <span className="h-px flex-1 bg-border" />
                   <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
                     {ctx.completionSummary ? `Response • ${ctx.completionSummary}` : "Response"}
@@ -440,29 +469,39 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                   onOpenTurnDiff={ctx.onOpenTurnDiff}
                 />
                 <div className="mt-1.5 flex items-center gap-2">
-                  <p className="text-[11px] text-muted-foreground/80">
-                    {row.message.streaming ? (
-                      <LiveMessageMeta
-                        createdAt={row.message.createdAt}
-                        durationStart={row.durationStart}
-                        timestampFormat={ctx.timestampFormat}
-                      />
-                    ) : (
-                      formatMessageMeta(
+                  {/* During streaming the static WorkingIndicator (outside
+                      the virtualizer) already shows elapsed time. Hiding the
+                      per-message live timer avoids a self-ticking component
+                      inside a virtualized row which causes micro-jitter. */}
+                  {!row.message.streaming && (
+                    <p className="text-[11px] text-muted-foreground/80 animate-in fade-in duration-300">
+                      {formatMessageMeta(
                         row.message.createdAt,
                         formatElapsed(row.durationStart, row.message.completedAt),
                         ctx.timestampFormat,
-                      )
-                    )}
-                  </p>
+                      )}
+                    </p>
+                  )}
                   {assistantCopyState.visible ? (
-                    <div className="flex items-center opacity-0 transition-opacity duration-200  group-hover/assistant:opacity-100">
+                    <div className="flex items-center gap-0.5 opacity-0 transition-opacity duration-200  group-hover/assistant:opacity-100">
                       <MessageCopyButton
                         text={assistantCopyState.text ?? ""}
                         size="icon-xs"
                         variant="ghost"
                         className="text-muted-foreground/80 hover:text-foreground"
                       />
+                      {row.message.turnId && (
+                        <Button
+                          type="button"
+                          size="icon-xs"
+                          variant="ghost"
+                          className="text-muted-foreground/80 hover:text-foreground"
+                          title="Copy turn JSON"
+                          onClick={() => ctx.onCopyTurnJson(row.message.turnId!)}
+                        >
+                          <LogsIcon className="size-3" />
+                        </Button>
+                      )}
                     </div>
                   ) : null}
                 </div>
@@ -482,67 +521,12 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
         </div>
       )}
 
-      {row.kind === "working" && (
-        <div className="py-0.5 pl-1.5">
-          <div className="flex items-center gap-2 pt-1 text-[11px] text-muted-foreground/80">
-            <span className="inline-flex items-center gap-[3px]">
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse" />
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
-              <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
-            </span>
-            <span>
-              {row.createdAt ? (
-                <>
-                  Working for <WorkingTimer createdAt={row.createdAt} />
-                </>
-              ) : (
-                "Working..."
-              )}
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Working indicator moved to ListFooterComponent — not a virtualized row */}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Self-ticking components — bypass LegendList memoisation entirely.
-// Each owns a `nowMs` state value consumed in the render output so the
-// React Compiler cannot elide the re-render as a no-op.
-// ---------------------------------------------------------------------------
-
-/** Live "Working for Xs" label. */
-function WorkingTimer({ createdAt }: { createdAt: string }) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [createdAt]);
-  return <>{formatWorkingTimer(createdAt, new Date(nowMs).toISOString()) ?? "0s"}</>;
-}
-
-/** Live timestamp + elapsed duration for a streaming assistant message. */
-function LiveMessageMeta({
-  createdAt,
-  durationStart,
-  timestampFormat,
-}: {
-  createdAt: string;
-  durationStart: string | null | undefined;
-  timestampFormat: TimestampFormat;
-}) {
-  const [nowMs, setNowMs] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [durationStart]);
-  const elapsed = durationStart
-    ? formatElapsed(durationStart, new Date(nowMs).toISOString())
-    : null;
-  return <>{formatMessageMeta(createdAt, elapsed, timestampFormat)}</>;
-}
-
 // ---------------------------------------------------------------------------
 // Extracted row sections — own their state / store subscriptions so changes
 // re-render only the affected row, not the entire list.
@@ -557,54 +541,100 @@ const WorkGroupSection = memo(function WorkGroupSection({
 }) {
   const { workspaceRoot } = use(TimelineRowCtx);
   const [isExpanded, setIsExpanded] = useState(false);
-  const hasOverflow = groupedEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
+
+  // Split out active sub-agent entries — they pin at the top.
+  const pinnedSubAgents = groupedEntries.filter((e) => e.isSubAgentInProgress);
+  const regularEntries = groupedEntries.filter((e) => !e.isSubAgentInProgress);
+
+  const hasOverflow = regularEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
   const visibleEntries =
     hasOverflow && !isExpanded
-      ? groupedEntries.slice(-MAX_VISIBLE_WORK_LOG_ENTRIES)
-      : groupedEntries;
-  // const hiddenCount = groupedEntries.length - visibleEntries.length;
-  const onlyToolEntries = groupedEntries.every((entry) => entry.tone === "tool");
-  const showHeader = hasOverflow || !onlyToolEntries;
+      ? regularEntries.slice(-MAX_VISIBLE_WORK_LOG_ENTRIES)
+      : regularEntries;
+  const onlyToolEntries = regularEntries.every((entry) => entry.tone === "tool") && pinnedSubAgents.length === 0;
+  const showHeader = hasOverflow || !onlyToolEntries || pinnedSubAgents.length > 0;
   const groupLabel = onlyToolEntries ? "Tool calls" : "Work log";
 
   return (
-    <div className={cn("rounded-lg border border-border/45 bg-card/25", showHeader ? "px-2 py-1.5" : "px-0.5 py-0.5")}>
+    <div className={cn("rounded-lg border border-border/45 bg-card/25", showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5")}>
       {showHeader && (
         hasOverflow ? (
-          /* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */
+
           <div
             className="group/wl mb-1.5 flex cursor-pointer items-center justify-between gap-2 px-0.5"
             onClick={() => setIsExpanded((v) => !v)}
           >
             <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-              {groupLabel} ({groupedEntries.length})
+              {groupLabel} ({regularEntries.length + pinnedSubAgents.length})
             </p>
             <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/wl:text-foreground">
               {isExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
             </span>
           </div>
-        ) : (
+        ) : regularEntries.length > 0 || pinnedSubAgents.length > 0 ? (
           <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
             <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-              {groupLabel} ({groupedEntries.length})
+              {groupLabel} ({regularEntries.length + pinnedSubAgents.length})
             </p>
           </div>
-        )
+        ) : null
       )}
-      <div className="space-y-0 [&>*]:py-0.25">
-        {visibleEntries.map((workEntry) => (
-          <SimpleWorkEntryRow
-            key={`work-row:${workEntry.id}`}
-            workEntry={workEntry}
-            workspaceRoot={workspaceRoot}
-          />
-        ))}
+      {pinnedSubAgents.length > 0 && (
+        <div className={cn("space-y-0.5", visibleEntries.length > 0 && "mb-1")}>
+          {pinnedSubAgents.map((entry) => (
+            <PinnedSubAgentEntry
+              key={`pinned-subagent:${entry.id}`}
+              workEntry={entry}
+              workspaceRoot={workspaceRoot}
+            />
+          ))}
+        </div>
+      )}
+      {visibleEntries.length > 0 && (
+        <div className="space-y-0 [&>*]:py-0.25">
+          {visibleEntries.map((workEntry) => (
+            <SimpleWorkEntryRow
+              key={`work-row:${workEntry.id}`}
+              workEntry={workEntry}
+              workspaceRoot={workspaceRoot}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
+/** Pinned sub-agent entry — shown at the top of the work log while in progress. */
+const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
+  workEntry,
+  workspaceRoot,
+}: {
+  workEntry: TimelineWorkEntry;
+  workspaceRoot: string | undefined;
+}) {
+  const heading = toolWorkEntryHeading(workEntry);
+  const preview = workEntryPreview(workEntry, workspaceRoot);
+  const displayText = preview && normalizeCompactToolLabel(preview).toLowerCase() !== normalizeCompactToolLabel(heading).toLowerCase()
+    ? preview
+    : null;
+
+  return (
+    <div className="flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-2 py-1.5">
+      <LoaderIcon className="size-3 shrink-0 animate-spin text-primary/70" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[11px] leading-5 text-foreground/90">
+          {heading}
+          {displayText && (
+            <span className="text-muted-foreground/70"> — {displayText}</span>
+          )}
+        </p>
       </div>
     </div>
   );
 });
 
-const THINKING_EXPAND_CHAR_THRESHOLD = 240;
+const THINKING_EXPAND_CHAR_THRESHOLD = 300;
 
 const ThinkingSection = memo(function ThinkingSection({
   message,
@@ -642,7 +672,7 @@ const ThinkingSection = memo(function ThinkingSection({
 
   return (
     <div className="rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
-        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+
         <div
           className={cn("mb-1.5 flex items-center justify-between gap-2 px-0.5", canExpand && "group/think cursor-pointer")}
           onClick={canExpand ? () => setIsExpanded((v) => !v) : undefined}
@@ -745,8 +775,7 @@ function AssistantChangedFilesSectionInner({
   const changedFileCountLabel = String(checkpointFiles.length);
 
   return (
-    <div className="mt-6 mb-2 rounded-lg border border-border/80 bg-card/45 p-2.5">
-      {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
+    <div className="mt-6 mb-2 rounded-lg border border-border/80 bg-card/45 p-2.5 animate-in fade-in duration-300">
       <div
         className="group/expand mb-1.5 flex cursor-pointer items-center justify-between gap-2"
         data-scroll-anchor-ignore
@@ -918,28 +947,7 @@ function useStableRows(rows: MessagesTimelineRow[]): MessagesTimelineRow[] {
 // Pure helpers
 // ---------------------------------------------------------------------------
 
-function formatWorkingTimer(startIso: string, endIso: string): string | null {
-  const startedAtMs = Date.parse(startIso);
-  const endedAtMs = Date.parse(endIso);
-  if (!Number.isFinite(startedAtMs) || !Number.isFinite(endedAtMs)) {
-    return null;
-  }
 
-  const elapsedSeconds = Math.max(0, Math.floor((endedAtMs - startedAtMs) / 1000));
-  if (elapsedSeconds < 60) {
-    return `${elapsedSeconds}s`;
-  }
-
-  const hours = Math.floor(elapsedSeconds / 3600);
-  const minutes = Math.floor((elapsedSeconds % 3600) / 60);
-  const seconds = elapsedSeconds % 60;
-
-  if (hours > 0) {
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-  }
-
-  return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
-}
 
 function formatMessageMeta(
   createdAt: string,
@@ -994,14 +1002,14 @@ function workEntryPrimaryFilePath(
   // Prefer changedFiles (already extracted absolute paths)
   const first = workEntry.changedFiles?.[0];
   if (first) {
-    if (first.startsWith("/")) return first;
+    if (first.startsWith("/") || /^[A-Za-z]:[\\/]/.test(first)) return first;
     if (workspaceRoot) return `${workspaceRoot}/${first}`;
   }
   // Fall back to detail — Read/Edit entries store the file path there.
   // Only trust it when it's already an absolute path; detail is arbitrary
   // text (could be a bash command, a description, etc.) so no guessing.
   const detail = workEntry.detail?.trim();
-  if (detail?.startsWith("/")) return detail;
+  if (detail?.startsWith("/") || /^[A-Za-z]:[\\/]/.test(detail ?? "")) return detail!;
   return null;
 }
 

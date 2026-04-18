@@ -47,6 +47,10 @@ export interface WorkLogEntry {
   toolTitle?: string;
   itemType?: ToolLifecycleItemType;
   requestKind?: PendingApproval["requestKind"];
+  /** True when this is a sub-agent tool call that hasn't completed yet. */
+  isSubAgentInProgress?: boolean;
+  /** Raw activity payload + kind for debugging. */
+  _debug?: { kind: string; payload: unknown };
 }
 
 interface DerivedWorkLogEntry extends WorkLogEntry {
@@ -511,8 +515,37 @@ export function deriveWorkLogEntries(
     .filter((activity) => activity.summary !== "Checkpoint captured")
     .filter((activity) => !isPlanBoundaryToolActivity(activity))
     .map(toDerivedWorkLogEntry);
-  return collapseDerivedWorkLogEntries(entries).map(
-    ({ activityKind: _activityKind, collapseKey: _collapseKey, ...entry }) => entry,
+  const collapsed = collapseDerivedWorkLogEntries(entries);
+
+  // The tool.updated and tool.completed for a collab_agent_tool_call are
+  // usually NOT consecutive (task.progress entries sit between them), so
+  // they don't collapse into one entry. Collect identifiers of completed
+  // sub-agents so we can mark the remaining tool.updated entries as done.
+  // collab_agent_tool_call events have NO toolCallId — match by collapseKey
+  // (derived from [itemType, label, detail]) instead.
+  const completedSubAgentKeys = new Set<string>();
+  for (const entry of collapsed) {
+    if (
+      entry.itemType === "collab_agent_tool_call" &&
+      entry.activityKind === "tool.completed"
+    ) {
+      if (entry.toolCallId) completedSubAgentKeys.add(entry.toolCallId);
+      if (entry.collapseKey) completedSubAgentKeys.add(entry.collapseKey);
+    }
+  }
+
+  return collapsed.map(
+    ({ activityKind, collapseKey, toolCallId, ...entry }) => {
+      if (
+        entry.itemType === "collab_agent_tool_call" &&
+        activityKind !== "tool.completed" &&
+        !(toolCallId && completedSubAgentKeys.has(toolCallId)) &&
+        !(collapseKey && completedSubAgentKeys.has(collapseKey))
+      ) {
+        entry.isSubAgentInProgress = true;
+      }
+      return entry;
+    },
   );
 }
 
@@ -596,6 +629,7 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   if (toolCallId) {
     entry.toolCallId = toolCallId;
   }
+  entry._debug = { kind: activity.kind, payload: activity.payload };
   const collapseKey = deriveToolLifecycleCollapseKey(entry);
   if (collapseKey) {
     entry.collapseKey = collapseKey;

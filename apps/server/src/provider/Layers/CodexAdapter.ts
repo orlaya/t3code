@@ -472,6 +472,12 @@ interface CodexEventMapper {
   ) => ReadonlyArray<ProviderRuntimeEvent>;
 }
 
+function eventRawSource(
+  event: ProviderEvent,
+): NonNullable<ProviderRuntimeEvent["raw"]>["source"] {
+  return event.kind === "request" ? "codex.app-server.request" : "codex.app-server.notification";
+}
+
 function createCodexEventMapper(subAgentTaskIds: Set<string>): CodexEventMapper {
   function codexEventBase(
     event: ProviderEvent,
@@ -504,12 +510,6 @@ function createCodexEventMapper(subAgentTaskIds: Set<string>): CodexEventMapper 
       ...(requestId ? { requestId: asRuntimeRequestId(requestId) } : {}),
       ...(Object.keys(providerRefs).length > 0 ? { providerRefs } : {}),
     };
-  }
-
-  function eventRawSource(
-    event: ProviderEvent,
-  ): NonNullable<ProviderRuntimeEvent["raw"]>["source"] {
-    return event.kind === "request" ? "codex.app-server.request" : "codex.app-server.notification";
   }
 
   function providerRefsFromEvent(
