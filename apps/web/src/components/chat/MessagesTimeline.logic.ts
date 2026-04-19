@@ -133,6 +133,10 @@ export function deriveMessagesTimelineRows(input: {
   );
   const terminalAssistantMessageIds = deriveTerminalAssistantMessageIds(input.timelineEntries);
 
+  // Active compacting entry gets pulled out of the work group and pinned at
+  // the very bottom of the timeline so it's always the last visible thing.
+  let pinnedCompacting: { id: string; createdAt: string; entry: WorkLogEntry } | null = null;
+
   for (let index = 0; index < input.timelineEntries.length; index += 1) {
     const timelineEntry = input.timelineEntries[index];
     if (!timelineEntry) {
@@ -140,11 +144,30 @@ export function deriveMessagesTimelineRows(input: {
     }
 
     if (timelineEntry.kind === "work") {
+      // Save compacting entries for pinning at the bottom — skip normal grouping.
+      if (timelineEntry.entry.isCompacting) {
+        pinnedCompacting = {
+          id: timelineEntry.id,
+          createdAt: timelineEntry.createdAt,
+          entry: timelineEntry.entry,
+        };
+        continue;
+      }
+
       const groupedEntries = [timelineEntry.entry];
       let cursor = index + 1;
       while (cursor < input.timelineEntries.length) {
         const nextEntry = input.timelineEntries[cursor];
         if (!nextEntry || nextEntry.kind !== "work") break;
+        if (nextEntry.entry.isCompacting) {
+          pinnedCompacting = {
+            id: nextEntry.id,
+            createdAt: nextEntry.createdAt,
+            entry: nextEntry.entry,
+          };
+          cursor += 1;
+          continue;
+        }
         groupedEntries.push(nextEntry.entry);
         cursor += 1;
       }
@@ -215,6 +238,17 @@ export function deriveMessagesTimelineRows(input: {
   // NOTE: the "working" indicator is no longer a virtualized row — it lives
   // in ListFooterComponent so it doesn't participate in height estimation
   // or cause layout thrash when new streaming rows are inserted above it.
+
+  // Pin active compacting at the very bottom so it's always the last thing
+  // the user sees while compaction is in progress.
+  if (pinnedCompacting) {
+    nextRows.push({
+      kind: "work",
+      id: pinnedCompacting.id,
+      createdAt: pinnedCompacting.createdAt,
+      groupedEntries: [pinnedCompacting.entry],
+    });
+  }
 
   return nextRows;
 }
