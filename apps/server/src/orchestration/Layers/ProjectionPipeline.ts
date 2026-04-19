@@ -1332,6 +1332,35 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
           return;
         }
 
+        // When a session stops (crash, reap, normal exit), auto-resolve any
+        // pending approvals for that thread — the provider callbacks are gone
+        // so they can never be fulfilled.
+        case "thread.session-set": {
+          const TERMINAL_STATUSES = new Set(["stopped", "error", "closed"]);
+          if (!TERMINAL_STATUSES.has(event.payload.session.status)) {
+            return;
+          }
+          const pendingRows = yield* projectionPendingApprovalRepository.listByThreadId({
+            threadId: event.payload.threadId,
+          });
+          const now = event.payload.session.updatedAt ?? event.occurredAt;
+          yield* Effect.forEach(
+            pendingRows.filter((row) => row.status === "pending"),
+            (row) =>
+              projectionPendingApprovalRepository.upsert({
+                requestId: row.requestId,
+                threadId: row.threadId,
+                turnId: row.turnId,
+                status: "resolved",
+                decision: "cancel",
+                createdAt: row.createdAt,
+                resolvedAt: now,
+              }),
+            { concurrency: 1 },
+          ).pipe(Effect.asVoid);
+          return;
+        }
+
         default:
           return;
       }

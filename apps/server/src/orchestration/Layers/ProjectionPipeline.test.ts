@@ -1606,7 +1606,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
             id: EventId.make("activity-stale-approval-failed"),
             tone: "error",
             kind: "provider.approval.respond.failed",
-            summary: "Provider approval response failed",
+            summary: "Approval expired",
             payload: {
               requestId: "approval-request-stale-1",
               detail: "Unknown pending permission request: approval-request-stale-1",
@@ -1749,7 +1749,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
             id: EventId.make("activity-nonstale-approval-failed-existing"),
             tone: "error",
             kind: "provider.approval.respond.failed",
-            summary: "Provider approval response failed",
+            summary: "Approval expired",
             payload: {
               requestId: "approval-request-nonstale-existing",
               detail: "Provider timed out while responding to approval request",
@@ -1776,7 +1776,7 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
             id: EventId.make("activity-nonstale-approval-failed-missing"),
             tone: "error",
             kind: "provider.approval.respond.failed",
-            summary: "Provider approval response failed",
+            summary: "Approval expired",
             payload: {
               requestId: "approval-request-nonstale-missing",
               detail: "Provider timed out while responding to approval request",

@@ -124,7 +124,7 @@ function stalePendingRequestDetail(
   requestKind: "approval" | "user-input",
   requestId: string,
 ): string {
-  return `Stale pending ${requestKind} request: ${requestId}. Provider callback state does not survive app restarts or recovered sessions. Restart the turn to continue.`;
+  return `Stale pending ${requestKind} request: ${requestId}`;
 }
 
 function buildGeneratedWorktreeBranchName(raw: string): string {
@@ -695,7 +695,7 @@ const make = Effect.gen(function* () {
       return yield* appendProviderFailureActivity({
         threadId: event.payload.threadId,
         kind: "provider.approval.respond.failed",
-        summary: "Provider approval response failed",
+        summary: "Approval failed",
         detail: "No active provider session is bound to this thread.",
         turnId: null,
         createdAt: event.payload.createdAt,
@@ -715,7 +715,7 @@ const make = Effect.gen(function* () {
             yield* appendProviderFailureActivity({
               threadId: event.payload.threadId,
               kind: "provider.approval.respond.failed",
-              summary: "Provider approval response failed",
+              summary: "Approval failed",
               detail: isUnknownPendingApprovalRequestError(cause)
                 ? stalePendingRequestDetail("approval", event.payload.requestId)
                 : Cause.pretty(cause),

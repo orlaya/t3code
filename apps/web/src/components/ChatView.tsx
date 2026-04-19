@@ -1087,9 +1087,10 @@ export default function ChatView(props: ChatViewProps) {
     () => hasToolActivityForTurn(threadActivities, activeLatestTurn?.turnId),
     [activeLatestTurn?.turnId, threadActivities],
   );
+  const sessionCreatedAt = activeThread?.session?.createdAt ?? null;
   const pendingApprovals = useMemo(
-    () => derivePendingApprovals(threadActivities, phase),
-    [threadActivities, phase],
+    () => derivePendingApprovals(threadActivities, phase, sessionCreatedAt),
+    [threadActivities, phase, sessionCreatedAt],
   );
   const pendingUserInputs = useMemo(
     () => derivePendingUserInputs(threadActivities, phase),

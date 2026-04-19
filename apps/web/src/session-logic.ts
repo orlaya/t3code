@@ -210,23 +210,11 @@ function requestKindFromRequestType(requestType: unknown): PendingApproval["requ
   }
 }
 
-function isStalePendingRequestFailureDetail(detail: string | undefined): boolean {
-  const normalized = detail?.toLowerCase();
-  if (!normalized) {
-    return false;
-  }
-  return (
-    normalized.includes("stale pending approval request") ||
-    normalized.includes("stale pending user-input request") ||
-    normalized.includes("unknown pending approval request") ||
-    normalized.includes("unknown pending permission request") ||
-    normalized.includes("unknown pending user-input request")
-  );
-}
 
 export function derivePendingApprovals(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
   sessionPhase?: SessionPhase | null,
+  sessionCreatedAt?: string | null,
 ): PendingApproval[] {
   // When the session is disconnected (provider process died, laptop sleep, etc.)
   // any pending approvals are stale — the provider callback that was waiting for
@@ -279,17 +267,21 @@ export function derivePendingApprovals(
       continue;
     }
 
-    if (
-      activity.kind === "provider.approval.respond.failed" &&
-      requestId &&
-      isStalePendingRequestFailureDetail(detail)
-    ) {
+    if (activity.kind === "provider.approval.respond.failed" && requestId) {
       openByRequestId.delete(requestId);
       continue;
     }
   }
 
-  return [...openByRequestId.values()].toSorted((left, right) =>
+  let pending = [...openByRequestId.values()];
+
+  // Discard approvals from a previous session — the provider callbacks that
+  // were waiting for the response no longer exist after a session restart.
+  if (sessionCreatedAt) {
+    pending = pending.filter((a) => a.createdAt >= sessionCreatedAt);
+  }
+
+  return pending.toSorted((left, right) =>
     left.createdAt.localeCompare(right.createdAt),
   );
 }
@@ -385,11 +377,7 @@ export function derivePendingUserInputs(
       continue;
     }
 
-    if (
-      activity.kind === "provider.user-input.respond.failed" &&
-      requestId &&
-      isStalePendingRequestFailureDetail(detail)
-    ) {
+    if (activity.kind === "provider.user-input.respond.failed" && requestId) {
       openByRequestId.delete(requestId);
     }
   }
@@ -529,6 +517,8 @@ export function deriveWorkLogEntries(
     .filter((activity) => activity.kind !== "tool.started")
     .filter((activity) => activity.kind !== "task.started")
     .filter((activity) => activity.kind !== "context-window.updated")
+    .filter((activity) => activity.kind !== "provider.approval.respond.failed")
+    .filter((activity) => activity.kind !== "provider.user-input.respond.failed")
     .filter((activity) => activity.summary !== "Checkpoint captured")
     .filter((activity) => !isPlanBoundaryToolActivity(activity))
     .map(toDerivedWorkLogEntry);
