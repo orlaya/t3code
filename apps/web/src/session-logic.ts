@@ -59,6 +59,8 @@ export interface WorkLogEntry {
   };
   /** Only present on completed collab_agent_tool_call entries. */
   subAgentResult?: string;
+  /** Task ID — present on task.progress entries and matched subagent entries. */
+  taskId?: string;
 }
 
 interface DerivedWorkLogEntry extends WorkLogEntry {
@@ -545,6 +547,30 @@ export function deriveWorkLogEntries(
     }
   }
 
+  // Build a map from subagent description → taskId using task.started activities.
+  // task.started has payload.detail matching the subagent's input.description,
+  // and payload.taskId which the task.progress entries also carry.
+  const taskStartedByDetail = new Map<string, string>();
+  for (const activity of ordered) {
+    if (activity.kind !== "task.started") continue;
+    const p =
+      activity.payload && typeof activity.payload === "object"
+        ? (activity.payload as Record<string, unknown>)
+        : null;
+    if (p && typeof p.taskId === "string" && typeof p.detail === "string") {
+      taskStartedByDetail.set(p.detail, p.taskId);
+    }
+  }
+  // Assign taskId to subagent entries by matching their description.
+  for (const entry of collapsed) {
+    if (entry.itemType === "collab_agent_tool_call" && entry.subAgentBrief) {
+      const matchedTaskId = taskStartedByDetail.get(entry.subAgentBrief.description);
+      if (matchedTaskId) {
+        entry.taskId = matchedTaskId;
+      }
+    }
+  }
+
   // Context compaction: if a "compacted" activity exists, drop the earlier
   // "compacting" entry so only the finished state renders. If compaction is
   // still in progress (no "compacted" yet), mark the entry with isCompacting.
@@ -562,15 +588,20 @@ export function deriveWorkLogEntries(
       ) {
         return false;
       }
+      // Drop the tool.updated sub-agent entry when a tool.completed exists —
+      // the completed entry supersedes it and carries the full result data.
+      if (
+        entry.itemType === "collab_agent_tool_call" &&
+        entry.activityKind !== "tool.completed" &&
+        ((entry.toolCallId && completedSubAgentKeys.has(entry.toolCallId)) ||
+          (entry.collapseKey && completedSubAgentKeys.has(entry.collapseKey)))
+      ) {
+        return false;
+      }
       return true;
     })
     .map(({ activityKind, collapseKey, toolCallId, ...entry }) => {
-      if (
-        entry.itemType === "collab_agent_tool_call" &&
-        activityKind !== "tool.completed" &&
-        !(toolCallId && completedSubAgentKeys.has(toolCallId)) &&
-        !(collapseKey && completedSubAgentKeys.has(collapseKey))
-      ) {
+      if (entry.itemType === "collab_agent_tool_call" && activityKind !== "tool.completed") {
         entry.isSubAgentInProgress = true;
       }
       if (activityKind === "context-compaction" && entry.label === "Context compacting") {
@@ -659,6 +690,10 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   }
   if (toolCallId) {
     entry.toolCallId = toolCallId;
+  }
+  // Extract taskId from task.progress / task.completed activities.
+  if (isTaskActivity && payload && typeof payload.taskId === "string") {
+    entry.taskId = payload.taskId;
   }
   if (itemType === "collab_agent_tool_call") {
     const data =

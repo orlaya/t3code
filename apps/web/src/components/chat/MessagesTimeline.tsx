@@ -33,6 +33,7 @@ import {
   ZapIcon,
 } from "lucide-react";
 import { Button } from "../ui/button";
+import { Dialog, DialogPanel, DialogPopup } from "../ui/dialog";
 import { buildExpandedImagePreview, ExpandedImagePreview } from "./ExpandedImagePreview";
 import { ProposedPlanCard } from "./ProposedPlanCard";
 import { ChangedFilesTree } from "./ChangedFilesTree";
@@ -545,9 +546,9 @@ const WorkGroupSection = memo(function WorkGroupSection({
   const { workspaceRoot } = use(TimelineRowCtx);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Split out active sub-agent entries — they pin at the top.
-  const pinnedSubAgents = groupedEntries.filter((e) => e.isSubAgentInProgress);
-  const regularEntries = groupedEntries.filter((e) => !e.isSubAgentInProgress);
+  // Split out sub-agent entries — they always pin at the top regardless of status.
+  const pinnedSubAgents = groupedEntries.filter((e) => e.itemType === "collab_agent_tool_call");
+  const regularEntries = groupedEntries.filter((e) => e.itemType !== "collab_agent_tool_call");
 
   const hasOverflow = regularEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
   const visibleEntries =
@@ -599,6 +600,7 @@ const WorkGroupSection = memo(function WorkGroupSection({
               key={`pinned-subagent:${entry.id}`}
               workEntry={entry}
               workspaceRoot={workspaceRoot}
+              allEntries={groupedEntries}
             />
           ))}
         </div>
@@ -618,14 +620,17 @@ const WorkGroupSection = memo(function WorkGroupSection({
   );
 });
 
-/** Pinned sub-agent entry — shown at the top of the work log while in progress. */
+/** Pinned sub-agent entry — always shown at the top of the work log. */
 const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
   workEntry,
   workspaceRoot,
+  allEntries,
 }: {
   workEntry: TimelineWorkEntry;
   workspaceRoot: string | undefined;
+  allEntries: ReadonlyArray<TimelineWorkEntry>;
 }) {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const heading = toolWorkEntryHeading(workEntry);
   const preview = workEntryPreview(workEntry, workspaceRoot);
   const displayText =
@@ -634,17 +639,157 @@ const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
       normalizeCompactToolLabel(heading).toLowerCase()
       ? preview
       : null;
+  const inProgress = workEntry.isSubAgentInProgress === true;
+  const hasBrief = workEntry.subAgentBrief != null;
 
   return (
-    <div className="flex items-center gap-1.5 rounded-md bg-primary/5 px-1.5 py-0.5">
-      <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[11px] leading-5 text-foreground/90">
-          {heading}
-          {displayText && <span className="text-muted-foreground/70"> — {displayText}</span>}
-        </p>
-      </div>
-    </div>
+    <>
+      <button
+        type="button"
+        className={cn(
+          "flex w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left",
+          inProgress ? "bg-primary/5" : "bg-muted/40",
+          hasBrief && "cursor-pointer hover:bg-muted/60",
+        )}
+        onClick={() => {
+          if (hasBrief) setDialogOpen(true);
+        }}
+      >
+        {inProgress ? (
+          <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
+        ) : (
+          <CheckIcon className="size-3 shrink-0 text-primary/70" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "truncate text-[11px] leading-5",
+              inProgress ? "text-foreground/90" : "font-medium text-foreground/80",
+            )}
+          >
+            {heading}
+            {displayText && <span className="text-muted-foreground/70"> — {displayText}</span>}
+          </p>
+        </div>
+      </button>
+
+      {hasBrief && (
+        <SubAgentDetailDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          workEntry={workEntry}
+          allEntries={allEntries}
+          workspaceRoot={workspaceRoot}
+        />
+      )}
+    </>
+  );
+});
+
+/** Dialog showing the sub-agent's brief, work log, and (when available) its response. */
+const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
+  open,
+  onOpenChange,
+  workEntry,
+  allEntries,
+  workspaceRoot,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  workEntry: TimelineWorkEntry;
+  allEntries: ReadonlyArray<TimelineWorkEntry>;
+  workspaceRoot: string | undefined;
+}) {
+  const brief = workEntry.subAgentBrief;
+  if (!brief) return null;
+
+  const heading = toolWorkEntryHeading(workEntry);
+  const preview = workEntryPreview(workEntry, undefined);
+  const displayText =
+    preview &&
+    normalizeCompactToolLabel(preview).toLowerCase() !==
+      normalizeCompactToolLabel(heading).toLowerCase()
+      ? preview
+      : null;
+  const inProgress = workEntry.isSubAgentInProgress === true;
+
+  // Filter work log entries belonging to this sub-agent's task.
+  const taskEntries = useMemo(() => {
+    if (!workEntry.taskId) return [];
+    return allEntries.filter(
+      (e) => e.taskId === workEntry.taskId && e.itemType !== "collab_agent_tool_call",
+    );
+  }, [allEntries, workEntry.taskId]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogPopup
+        className="max-w-lg max-h-[75vh] [&_[data-slot=scroll-area-scrollbar]]:me-0"
+        showCloseButton
+      >
+        <DialogPanel className="pt-8 pr-8 pb-8">
+          {/* Sub-agent heading — mirrors the pinned entry row */}
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3.5 py-2",
+              inProgress ? "border border-border/45 bg-primary/5" : "bg-muted/40",
+            )}
+          >
+            {inProgress ? (
+              <LoaderIcon className="size-3.5 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
+            ) : (
+              <CheckIcon className="size-3.5 shrink-0 text-primary/70" />
+            )}
+            <p className="text-[13px] leading-5 text-foreground/85">
+              <span className="font-semibold">{heading}</span>
+              {displayText && <span className="text-foreground/55"> — {displayText}</span>}
+            </p>
+          </div>
+
+          {/* Brief prompt text */}
+          <div className="mt-4 px-4 pb-4 rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
+            <p className="pb-1 pt-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+              Brief
+            </p>
+            <div className="text-[12.5px] italic leading-relaxed text-foreground/50 whitespace-pre-wrap">
+              {brief.prompt}
+            </div>
+          </div>
+
+          {/* Sub-agent work log — tools used by this agent */}
+          {taskEntries.length > 0 && (
+            <div className="mt-4 py-2.5 px-3\ rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
+              <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+                <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+                  Work log ({taskEntries.length})
+                </p>
+              </div>
+              <div className="space-y-0 [&>*]:py-0.25">
+                {taskEntries.map((entry) => (
+                  <SimpleWorkEntryRow
+                    key={`subagent-work:${entry.id}`}
+                    workEntry={entry}
+                    workspaceRoot={workspaceRoot}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Response — divider styled like the main chat completion divider */}
+          {workEntry.subAgentResult != null && (
+            <>
+              <div className="my-3 mt-6 flex items-center gap-3">
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <div className="px-1 pt-2 text-[12.5px] leading-snug">
+                <ChatMarkdown text={workEntry.subAgentResult} cwd={undefined} />
+              </div>
+            </>
+          )}
+        </DialogPanel>
+      </DialogPopup>
+    </Dialog>
   );
 });
 
