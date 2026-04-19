@@ -21,11 +21,22 @@ function stripRelativePrefixes(path: string): string {
   return path.replace(/^\.\/+/, "").replace(/^\/+/, "");
 }
 
+const RANGE_SUFFIX_PATTERN = /:(\d+[-+]\d*)$/;
+
 export function formatWorkspaceRelativePath(
   pathWithPosition: string,
   workspaceRoot: string | undefined,
 ): string {
-  const { path, line, column } = splitPathAndPosition(pathWithPosition);
+  // Handle range suffixes (e.g. path:0-100, path:50+) produced by tool
+  // summaries — strip before splitPathAndPosition (which only knows
+  // path:line:column) and re-append to the final display string.
+  const rangeMatch = pathWithPosition.match(RANGE_SUFFIX_PATTERN);
+  const inputForSplit = rangeMatch
+    ? pathWithPosition.slice(0, -rangeMatch[0].length)
+    : pathWithPosition;
+  const rangeSuffix = rangeMatch ? `:${rangeMatch[1]}` : "";
+
+  const { path, line, column } = splitPathAndPosition(inputForSplit);
   const normalizedPath = canonicalizeWindowsDrivePath(normalizePathSeparators(path));
 
   let displayPath = normalizedPath;
@@ -52,6 +63,6 @@ export function formatWorkspaceRelativePath(
     }
   }
 
-  if (!line) return displayPath;
-  return `${displayPath}:${line}${column ? `:${column}` : ""}`;
+  if (!line) return `${displayPath}${rangeSuffix}`;
+  return `${displayPath}:${line}${column ? `:${column}` : ""}${rangeSuffix}`;
 }

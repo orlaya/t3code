@@ -1120,6 +1120,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
   const hasChangedFiles = (workEntry.changedFiles?.length ?? 0) > 0;
   const previewIsChangedFiles = hasChangedFiles && !workEntry.command && !workEntry.detail;
   const primaryFilePath = workEntryPrimaryFilePath(workEntry, workspaceRoot);
+  const primaryFileDisplayPath = primaryFilePath
+    ? formatWorkspaceRelativePath(workEntry.detail?.trim() ?? primaryFilePath, workspaceRoot)
+    : null;
   const isCompactionEntry = workEntry.isCompacting || workEntry.label === "Context compacted";
 
   const handleOpenInEditor = useCallback(() => {
@@ -1197,7 +1200,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 {heading}
               </span>
               <span className="text-muted-foreground/85">
-                {" "}- <span className="transition-colors duration-150 group-hover/file:text-foreground/70">{formatWorkspaceRelativePath(primaryFilePath, workspaceRoot)}</span>
+                {" "}- <span className="transition-colors duration-150 group-hover/file:text-foreground/70">{primaryFileDisplayPath}</span>
               </span>
             </p>
           ) : (
