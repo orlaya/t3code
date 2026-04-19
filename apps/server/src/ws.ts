@@ -670,11 +670,13 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             Effect.gen(function* () {
               // Reconcile orphaned sessions before delivering the snapshot so
               // the client sees corrected state on reconnect.
-              yield* sessionReaper.reconcile().pipe(
-                Effect.catchCause((cause) =>
-                  Effect.logWarning("provider.session.reconcile-on-connect-failed", { cause }),
-                ),
-              );
+              yield* sessionReaper
+                .reconcile()
+                .pipe(
+                  Effect.catchCause((cause) =>
+                    Effect.logWarning("provider.session.reconcile-on-connect-failed", { cause }),
+                  ),
+                );
 
               const snapshot = yield* projectionSnapshotQuery.getShellSnapshot().pipe(
                 Effect.mapError(

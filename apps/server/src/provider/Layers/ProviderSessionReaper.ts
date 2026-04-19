@@ -112,7 +112,13 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
       const liveSessions = yield* providerService.listSessions();
       const liveThreadIds = new Set(liveSessions.map((s) => s.threadId));
 
-      const NON_TERMINAL_STATUSES = new Set(["idle", "starting", "running", "ready", "interrupted"]);
+      const NON_TERMINAL_STATUSES = new Set([
+        "idle",
+        "starting",
+        "running",
+        "ready",
+        "interrupted",
+      ]);
 
       let reconciledCount = 0;
 

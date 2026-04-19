@@ -212,6 +212,7 @@ function runtimeEventToActivities(
             ...(requestKind ? { requestKind } : {}),
             requestType: event.payload.requestType,
             ...(event.payload.detail ? { detail: truncateDetail(event.payload.detail) } : {}),
+            ...(event.payload.args !== undefined ? { args: event.payload.args } : {}),
           },
           turnId: toTurnId(event.turnId) ?? null,
           ...maybeSequence,
@@ -418,9 +419,7 @@ function runtimeEventToActivities(
           tone: "info",
           kind: "context-compaction",
           summary:
-            event.payload.state === "compacting"
-              ? "Context compacting"
-              : "Context compacted",
+            event.payload.state === "compacting" ? "Context compacting" : "Context compacted",
           payload: {
             state: event.payload.state,
             ...(event.payload.detail !== undefined ? { detail: event.payload.detail } : {}),

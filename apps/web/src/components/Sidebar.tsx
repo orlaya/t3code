@@ -668,7 +668,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         onPointerDown={stopPropagationOnPointerDown}
                         onClick={handleTogglePin}
                       >
-                        {isPinned ? <BookmarkX className="size-3.5" /> : <BookmarkIcon className="size-3.5" />}
+                        {isPinned ? (
+                          <BookmarkX className="size-3.5" />
+                        ) : (
+                          <BookmarkIcon className="size-3.5" />
+                        )}
                       </button>
                     }
                   />
@@ -3121,7 +3125,11 @@ export default function Sidebar() {
                   .map((t) => t.id),
               )
             : undefined;
-        const projectThreads = sortThreads(rawProjectThreads, sidebarThreadSortOrder, projectPinnedIds);
+        const projectThreads = sortThreads(
+          rawProjectThreads,
+          sidebarThreadSortOrder,
+          projectPinnedIds,
+        );
         const projectExpanded = projectExpandedById[project.projectKey] ?? true;
         const activeThreadKey = routeThreadKey ?? undefined;
         const pinnedCollapsedThread =

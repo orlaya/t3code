@@ -59,9 +59,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
       ],
       supportsFastMode: false,
       supportsThinkingToggle: false,
-      contextWindowOptions: [
-        { value: "200k", label: "200k", isDefault: true },
-      ],
+      contextWindowOptions: [{ value: "200k", label: "200k", isDefault: true }],
       promptInjectedEffortLevels: ["ultrathink"],
     } satisfies ModelCapabilities,
   },
@@ -79,9 +77,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
       ],
       supportsFastMode: false,
       supportsThinkingToggle: false,
-      contextWindowOptions: [
-        { value: "200k", label: "200k", isDefault: true },
-      ],
+      contextWindowOptions: [{ value: "200k", label: "200k", isDefault: true }],
       promptInjectedEffortLevels: ["ultrathink"],
     } satisfies ModelCapabilities,
   },
@@ -115,9 +111,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
       ],
       supportsFastMode: false,
       supportsThinkingToggle: false,
-      contextWindowOptions: [
-        { value: "200k", label: "200k", isDefault: true },
-      ],
+      contextWindowOptions: [{ value: "200k", label: "200k", isDefault: true }],
       promptInjectedEffortLevels: ["ultrathink"],
     } satisfies ModelCapabilities,
   },

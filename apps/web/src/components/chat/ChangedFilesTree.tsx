@@ -17,10 +17,7 @@ export const ChangedFilesTree = memo(function ChangedFilesTree(props: {
 }) {
   const { files, allDirectoriesExpanded, onOpenTurnDiff, turnId } = props;
   const treeNodes = useMemo(() => buildTurnDiffTree(files), [files]);
-  const hasDirectories = useMemo(
-    () => treeNodes.some((n) => n.kind === "directory"),
-    [treeNodes],
-  );
+  const hasDirectories = useMemo(() => treeNodes.some((n) => n.kind === "directory"), [treeNodes]);
   const directoryPathsKey = useMemo(
     () => collectDirectoryPaths(treeNodes).join("\u0000"),
     [treeNodes],

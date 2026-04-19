@@ -50,27 +50,29 @@ Upstream gated the button on a new `props.showInteractionModeToggle` prop (openc
 Adopt upstream's gate; keep our classes inside it.
 
 ```tsx
-{props.showInteractionModeToggle ? (
-  <>
-    <Button
-      variant="ghost"
-      className="shrink-0 whitespace-nowrap px-2 text-muted-foreground/70 hover:text-foreground/80 sm:px-3"
-      size="sm"
-      type="button"
-      onClick={props.onToggleInteractionMode}
-      title={
-        props.interactionMode === "plan"
-          ? "Plan mode — click to return to normal build mode"
-          : "Default mode — click to enter plan mode"
-      }
-    >
-      <BotIcon className="hidden sm:inline" />
-      <span>{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
-    </Button>
+{
+  props.showInteractionModeToggle ? (
+    <>
+      <Button
+        variant="ghost"
+        className="shrink-0 whitespace-nowrap px-2 text-muted-foreground/70 hover:text-foreground/80 sm:px-3"
+        size="sm"
+        type="button"
+        onClick={props.onToggleInteractionMode}
+        title={
+          props.interactionMode === "plan"
+            ? "Plan mode — click to return to normal build mode"
+            : "Default mode — click to enter plan mode"
+        }
+      >
+        <BotIcon className="hidden sm:inline" />
+        <span>{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
+      </Button>
 
-    <Separator orientation="vertical" className="mx-0.5 h-4" />
-  </>
-) : null}
+      <Separator orientation="vertical" className="mx-0.5 h-4" />
+    </>
+  ) : null;
+}
 ```
 
 The `ComposerFooterModeControls` prop type signature gains `showInteractionModeToggle: boolean` as the first field. Upstream added this to their version of the signature; auto-merge should apply it to our signature without a conflict hunk, but verify during the rebase pause.
@@ -86,12 +88,14 @@ Keep our gutted body. Upstream's inserted `<ComposerFooterModeControls>` inside 
 Final state for the conflict region:
 
 ```tsx
-{providerTraitsPicker ? (
-  <>
-    <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
-    {providerTraitsPicker}
-  </>
-) : null}
+{
+  providerTraitsPicker ? (
+    <>
+      <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
+      {providerTraitsPicker}
+    </>
+  ) : null;
+}
 <ComposerFooterModeControls
   showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
   interactionMode={interactionMode}
@@ -102,7 +106,7 @@ Final state for the conflict region:
   onToggleInteractionMode={toggleInteractionMode}
   onRuntimeModeChange={handleRuntimeModeChange}
   onTogglePlanSidebar={togglePlanSidebar}
-/>
+/>;
 ```
 
 Note the `showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}` prop added to our existing flat call. This will NOT come through auto-merge — we have to add it by hand, because our call site was an addition-by-ours that auto-merge won't touch.

@@ -474,9 +474,7 @@ interface CodexEventMapper {
   ) => ReadonlyArray<ProviderRuntimeEvent>;
 }
 
-function eventRawSource(
-  event: ProviderEvent,
-): NonNullable<ProviderRuntimeEvent["raw"]>["source"] {
+function eventRawSource(event: ProviderEvent): NonNullable<ProviderRuntimeEvent["raw"]>["source"] {
   return event.kind === "request" ? "codex.app-server.request" : "codex.app-server.notification";
 }
 

@@ -61,11 +61,18 @@ interface DerivedWorkLogEntry extends WorkLogEntry {
   toolCallId?: string;
 }
 
+export interface PendingApprovalArgs {
+  toolName?: string;
+  input?: Record<string, unknown>;
+  toolUseId?: string;
+}
+
 export interface PendingApproval {
   requestId: ApprovalRequestId;
   requestKind: "command" | "file-read" | "file-change";
   createdAt: string;
   detail?: string;
+  args?: PendingApprovalArgs;
 }
 
 export interface PendingUserInput {
@@ -248,6 +255,10 @@ export function derivePendingApprovals(
           ? requestKindFromRequestType(payload.requestType)
           : null;
     const detail = payload && typeof payload.detail === "string" ? payload.detail : undefined;
+    const args =
+      payload && payload.args && typeof payload.args === "object"
+        ? (payload.args as PendingApprovalArgs)
+        : undefined;
 
     if (activity.kind === "approval.requested" && requestId && requestKind) {
       openByRequestId.set(requestId, {
@@ -255,6 +266,7 @@ export function derivePendingApprovals(
         requestKind,
         createdAt: activity.createdAt,
         ...(detail ? { detail } : {}),
+        ...(args ? { args } : {}),
       });
       continue;
     }
@@ -527,10 +539,7 @@ export function deriveWorkLogEntries(
   // (derived from [itemType, label, detail]) instead.
   const completedSubAgentKeys = new Set<string>();
   for (const entry of collapsed) {
-    if (
-      entry.itemType === "collab_agent_tool_call" &&
-      entry.activityKind === "tool.completed"
-    ) {
+    if (entry.itemType === "collab_agent_tool_call" && entry.activityKind === "tool.completed") {
       if (entry.toolCallId) completedSubAgentKeys.add(entry.toolCallId);
       if (entry.collapseKey) completedSubAgentKeys.add(entry.collapseKey);
     }
@@ -564,10 +573,7 @@ export function deriveWorkLogEntries(
       ) {
         entry.isSubAgentInProgress = true;
       }
-      if (
-        activityKind === "context-compaction" &&
-        entry.label === "Context compacting"
-      ) {
+      if (activityKind === "context-compaction" && entry.label === "Context compacting") {
         entry.isCompacting = true;
       }
       return entry;
@@ -1247,12 +1253,9 @@ export function deriveEditDiffEntries(
       if (!input) return false;
       if (typeof input.file_path !== "string") return false;
       // Edit tool: old_string + new_string
-      const isEdit =
-        typeof input.old_string === "string" &&
-        typeof input.new_string === "string";
+      const isEdit = typeof input.old_string === "string" && typeof input.new_string === "string";
       // Write tool: content (full file written, no old content)
-      const isWrite =
-        data.toolName === "Write" && typeof input.content === "string";
+      const isWrite = data.toolName === "Write" && typeof input.content === "string";
       return isEdit || isWrite;
     })
     .toSorted(compareActivitiesByOrder)
@@ -1268,9 +1271,7 @@ export function deriveEditDiffEntries(
         turnId: activity.turnId,
         filePath: input.file_path as string,
         oldString: isWrite ? "" : (input.old_string as string),
-        newString: isWrite
-          ? (input.content as string)
-          : (input.new_string as string),
+        newString: isWrite ? (input.content as string) : (input.new_string as string),
         replaceAll: isWrite ? false : ((input.replace_all as boolean) ?? false),
         toolName,
       };

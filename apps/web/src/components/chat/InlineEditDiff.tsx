@@ -100,8 +100,15 @@ export const InlineEditDiff = memo(function InlineEditDiff({
           {displayPath}
         </span>
         {isOverflowing && (
-          <div className={`${TOGGLE_CHEVRON_CLASSES} ml-auto flex flex-1 cursor-pointer items-center justify-end self-stretch shrink-0`} onClick={handleToggle}>
-            {isExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+          <div
+            className={`${TOGGLE_CHEVRON_CLASSES} ml-auto flex flex-1 cursor-pointer items-center justify-end self-stretch shrink-0`}
+            onClick={handleToggle}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="size-3.5" />
+            ) : (
+              <ChevronDownIcon className="size-3.5" />
+            )}
           </div>
         )}
       </div>

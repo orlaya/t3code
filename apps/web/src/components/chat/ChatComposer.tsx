@@ -410,6 +410,7 @@ export interface ChatComposerProps {
   resolvedTheme: "light" | "dark";
   settings: UnifiedSettings;
   gitCwd: string | null;
+  workspaceRoot: string | undefined;
 
   // Refs the parent needs kept in sync
   promptRef: React.MutableRefObject<string>;
@@ -497,6 +498,7 @@ export const ChatComposer = memo(
       resolvedTheme,
       settings,
       gitCwd,
+      workspaceRoot,
       promptRef,
       composerImagesRef,
       composerTerminalContextsRef,
@@ -1751,6 +1753,8 @@ export const ChatComposer = memo(
                 <ComposerPendingApprovalPanel
                   approval={activePendingApproval}
                   pendingCount={pendingApprovals.length}
+                  workspaceRoot={workspaceRoot}
+                  resolvedTheme={resolvedTheme}
                 />
               </div>
             ) : pendingUserInputs.length > 0 ? (

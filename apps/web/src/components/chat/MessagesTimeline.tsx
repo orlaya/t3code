@@ -21,7 +21,6 @@ import {
   ChevronUpIcon,
   CircleAlertIcon,
   CircleSmallIcon,
-
   EyeIcon,
   GlobeIcon,
   LoaderIcon,
@@ -553,15 +552,20 @@ const WorkGroupSection = memo(function WorkGroupSection({
     hasOverflow && !isExpanded
       ? regularEntries.slice(-MAX_VISIBLE_WORK_LOG_ENTRIES)
       : regularEntries;
-  const onlyToolEntries = regularEntries.every((entry) => entry.tone === "tool") && pinnedSubAgents.length === 0;
+  const onlyToolEntries =
+    regularEntries.every((entry) => entry.tone === "tool") && pinnedSubAgents.length === 0;
   const showHeader = hasOverflow || !onlyToolEntries || pinnedSubAgents.length > 0;
   const groupLabel = onlyToolEntries ? "Tool calls" : "Work log";
 
   return (
-    <div className={cn("rounded-lg border border-border/45 bg-card/25", showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5")}>
-      {showHeader && (
-        hasOverflow ? (
-
+    <div
+      className={cn(
+        "rounded-lg border border-border/45 bg-card/25",
+        showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5",
+      )}
+    >
+      {showHeader &&
+        (hasOverflow ? (
           <div
             className="group/wl mb-1.5 flex cursor-pointer items-center justify-between gap-2 px-0.5"
             onClick={() => setIsExpanded((v) => !v)}
@@ -570,7 +574,11 @@ const WorkGroupSection = memo(function WorkGroupSection({
               {groupLabel} ({regularEntries.length + pinnedSubAgents.length})
             </p>
             <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/wl:text-foreground">
-              {isExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+              {isExpanded ? (
+                <ChevronUpIcon className="size-3.5" />
+              ) : (
+                <ChevronDownIcon className="size-3.5" />
+              )}
             </span>
           </div>
         ) : regularEntries.length > 0 || pinnedSubAgents.length > 0 ? (
@@ -579,8 +587,7 @@ const WorkGroupSection = memo(function WorkGroupSection({
               {groupLabel} ({regularEntries.length + pinnedSubAgents.length})
             </p>
           </div>
-        ) : null
-      )}
+        ) : null)}
       {pinnedSubAgents.length > 0 && (
         <div className={cn("space-y-0.5", visibleEntries.length > 0 && "mb-1")}>
           {pinnedSubAgents.map((entry) => (
@@ -617,9 +624,12 @@ const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
 }) {
   const heading = toolWorkEntryHeading(workEntry);
   const preview = workEntryPreview(workEntry, workspaceRoot);
-  const displayText = preview && normalizeCompactToolLabel(preview).toLowerCase() !== normalizeCompactToolLabel(heading).toLowerCase()
-    ? preview
-    : null;
+  const displayText =
+    preview &&
+    normalizeCompactToolLabel(preview).toLowerCase() !==
+      normalizeCompactToolLabel(heading).toLowerCase()
+      ? preview
+      : null;
 
   return (
     <div className="flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-2 py-1.5">
@@ -627,9 +637,7 @@ const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
       <div className="min-w-0 flex-1">
         <p className="truncate text-[11px] leading-5 text-foreground/90">
           {heading}
-          {displayText && (
-            <span className="text-muted-foreground/70"> — {displayText}</span>
-          )}
+          {displayText && <span className="text-muted-foreground/70"> — {displayText}</span>}
         </p>
       </div>
     </div>
@@ -647,7 +655,6 @@ const ThinkingSection = memo(function ThinkingSection({
   const [isExpanded, setIsExpanded] = useState(false);
   const collapsedScrollRef = useRef<HTMLDivElement | null>(null);
   const isSubAgent = message.agentKind === "sub";
-
 
   useEffect(() => {
     if (isExpanded || !collapsedScrollRef.current) return;
@@ -674,21 +681,25 @@ const ThinkingSection = memo(function ThinkingSection({
 
   return (
     <div className="rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
-
-        <div
-          className={cn("mb-1.5 flex items-center justify-between gap-2 px-0.5", canExpand && "group/think cursor-pointer")}
-          onClick={canExpand ? () => setIsExpanded((v) => !v) : undefined}
-        >
-           {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
-          <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">
-            Thinking
-          </p>
-          {canExpand && (
-            <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/think:text-foreground">
-              {isExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
-            </span>
-          )}
-        </div>
+      <div
+        className={cn(
+          "mb-1.5 flex items-center justify-between gap-2 px-0.5",
+          canExpand && "group/think cursor-pointer",
+        )}
+        onClick={canExpand ? () => setIsExpanded((v) => !v) : undefined}
+      >
+        {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
+        <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">Thinking</p>
+        {canExpand && (
+          <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/think:text-foreground">
+            {isExpanded ? (
+              <ChevronUpIcon className="size-3.5" />
+            ) : (
+              <ChevronDownIcon className="size-3.5" />
+            )}
+          </span>
+        )}
+      </div>
       <div className="relative">
         <div
           ref={collapsedScrollRef}
@@ -788,7 +799,11 @@ function AssistantChangedFilesSectionInner({
           hasDirectories && "cursor-pointer",
         )}
         data-scroll-anchor-ignore
-        onClick={hasDirectories ? () => setExpanded(routeThreadKey, turnSummary.turnId, !allDirectoriesExpanded) : undefined}
+        onClick={
+          hasDirectories
+            ? () => setExpanded(routeThreadKey, turnSummary.turnId, !allDirectoriesExpanded)
+            : undefined
+        }
       >
         <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
           <span>Changed files ({changedFileCountLabel})</span>
@@ -803,13 +818,20 @@ function AssistantChangedFilesSectionInner({
           <button
             type="button"
             className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 transition-colors duration-150 hover:text-foreground"
-            onClick={(e) => { e.stopPropagation(); onOpenTurnDiff(turnSummary.turnId, checkpointFiles[0]?.path); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenTurnDiff(turnSummary.turnId, checkpointFiles[0]?.path);
+            }}
           >
             View diff
           </button>
           {hasDirectories && (
             <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/expand:text-foreground">
-              {allDirectoriesExpanded ? <ChevronUpIcon className="size-3.5" /> : <ChevronDownIcon className="size-3.5" />}
+              {allDirectoriesExpanded ? (
+                <ChevronUpIcon className="size-3.5" />
+              ) : (
+                <ChevronDownIcon className="size-3.5" />
+              )}
             </span>
           )}
         </div>
@@ -958,8 +980,6 @@ function useStableRows(rows: MessagesTimelineRow[]): MessagesTimelineRow[] {
 // Pure helpers
 // ---------------------------------------------------------------------------
 
-
-
 function formatMessageMeta(
   createdAt: string,
   duration: string | null,
@@ -979,7 +999,7 @@ function workToneIcon(tone: TimelineWorkEntry["tone"]): {
       className: "text-foreground/60",
     };
   }
-   // thinking = sub agents only in claude
+  // thinking = sub agents only in claude
   if (tone === "thinking") {
     return {
       icon: SearchIcon,
@@ -1025,7 +1045,7 @@ function workEntryPrimaryFilePath(
     // path:50+) into the standard path:line format that editors understand.
     const rangeMatch = detail!.match(/:(\d+)[-+](\d*)$/);
     if (rangeMatch?.[1]) {
-      const path = detail!.slice(0, -(rangeMatch[0].length));
+      const path = detail!.slice(0, -rangeMatch[0].length);
       const startLine = rangeMatch[1];
       return `${path}:${startLine}`;
     }
@@ -1172,7 +1192,8 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                       delay={75}
                       render={
                         <span className="max-w-full cursor-default text-muted-foreground/85">
-                          {" "}- <span className="font-mono text-[10px]">{preview}</span>
+                          {" "}
+                          - <span className="font-mono text-[10px]">{preview}</span>
                         </span>
                       }
                     />
@@ -1190,17 +1211,16 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               </p>
             </div>
           ) : primaryFilePath ? (
-            <p
-              className={cn(
-                "truncate text-[11px] leading-5",
-                workToneClass(workEntry.tone),
-              )}
-            >
+            <p className={cn("truncate text-[11px] leading-5", workToneClass(workEntry.tone))}>
               <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
                 {heading}
               </span>
               <span className="text-muted-foreground/85">
-                {" "}- <span className="transition-colors duration-150 group-hover/file:text-foreground/70">{primaryFileDisplayPath}</span>
+                {" "}
+                -{" "}
+                <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
+                  {primaryFileDisplayPath}
+                </span>
               </span>
             </p>
           ) : (
@@ -1220,11 +1240,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                   <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
                     {heading}
                   </span>
-                  {preview && (
-                    <span className="text-muted-foreground/85">
-                      {" "}- {preview}
-                    </span>
-                  )}
+                  {preview && <span className="text-muted-foreground/85"> - {preview}</span>}
                 </p>
               </TooltipTrigger>
               <TooltipPopup className="max-w-[min(720px,calc(100vw-2rem))]">
@@ -1236,34 +1252,38 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
           )}
         </div>
       </div>
-      {hasChangedFiles && !previewIsChangedFiles && (() => {
-        const filteredFiles = primaryFilePath
-          ? workEntry.changedFiles?.filter((fp) => fp !== primaryFilePath && !primaryFilePath.endsWith("/" + fp))
-          : workEntry.changedFiles;
-        const totalFiltered = filteredFiles?.length ?? 0;
-        if (totalFiltered === 0) return null;
-        return (
-          <div className="mt-1 flex flex-wrap gap-1 pl-6">
-            {filteredFiles?.slice(0, 4).map((filePath) => {
-              const displayPath = formatWorkspaceRelativePath(filePath, workspaceRoot);
-              return (
-                <span
-                  key={`${workEntry.id}:${filePath}`}
-                  className="rounded-md bg-background/75 px-0.5 py-0.75 font-mono text-[10.5px] text-muted-foreground/85"
-                  title={displayPath}
-                >
-                  {displayPath}
+      {hasChangedFiles &&
+        !previewIsChangedFiles &&
+        (() => {
+          const filteredFiles = primaryFilePath
+            ? workEntry.changedFiles?.filter(
+                (fp) => fp !== primaryFilePath && !primaryFilePath.endsWith("/" + fp),
+              )
+            : workEntry.changedFiles;
+          const totalFiltered = filteredFiles?.length ?? 0;
+          if (totalFiltered === 0) return null;
+          return (
+            <div className="mt-1 flex flex-wrap gap-1 pl-6">
+              {filteredFiles?.slice(0, 4).map((filePath) => {
+                const displayPath = formatWorkspaceRelativePath(filePath, workspaceRoot);
+                return (
+                  <span
+                    key={`${workEntry.id}:${filePath}`}
+                    className="rounded-md bg-background/75 px-0.5 py-0.75 font-mono text-[10.5px] text-muted-foreground/85"
+                    title={displayPath}
+                  >
+                    {displayPath}
+                  </span>
+                );
+              })}
+              {totalFiltered > 4 && (
+                <span className="px-1 text-[10px] text-muted-foreground/80">
+                  +{totalFiltered - 4}
                 </span>
-              );
-            })}
-            {totalFiltered > 4 && (
-              <span className="px-1 text-[10px] text-muted-foreground/80">
-                +{totalFiltered - 4}
-              </span>
-            )}
-          </div>
-        );
-      })()}
+              )}
+            </div>
+          );
+        })()}
     </div>
   );
 });
