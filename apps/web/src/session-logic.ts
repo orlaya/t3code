@@ -51,8 +51,14 @@ export interface WorkLogEntry {
   isSubAgentInProgress?: boolean;
   /** True when context compaction is in progress (spinner). */
   isCompacting?: boolean;
-  /** Raw activity payload + kind for debugging. */
-  _debug?: { kind: string; payload: unknown };
+  /** Only present on collab_agent_tool_call entries. */
+  subAgentBrief?: {
+    prompt: string;
+    description: string;
+    agentType?: string;
+  };
+  /** Only present on completed collab_agent_tool_call entries. */
+  subAgentResult?: string;
 }
 
 interface DerivedWorkLogEntry extends WorkLogEntry {
@@ -649,7 +655,31 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
   if (toolCallId) {
     entry.toolCallId = toolCallId;
   }
-  entry._debug = { kind: activity.kind, payload: activity.payload };
+  if (itemType === "collab_agent_tool_call") {
+    const data =
+      payload && typeof (payload as Record<string, unknown>).data === "object"
+        ? ((payload as Record<string, unknown>).data as Record<string, unknown>)
+        : null;
+    const input =
+      data && typeof data.input === "object" ? (data.input as Record<string, unknown>) : null;
+    if (input && typeof input.prompt === "string") {
+      entry.subAgentBrief = {
+        prompt: input.prompt,
+        description: typeof input.description === "string" ? input.description : entry.label,
+        ...(typeof input.subagent_type === "string" ? { agentType: input.subagent_type } : {}),
+      };
+    }
+    const result =
+      data && typeof data.result === "object" ? (data.result as Record<string, unknown>) : null;
+    if (result && Array.isArray(result.content)) {
+      const textBlock = (result.content as Array<Record<string, unknown>>).find(
+        (block) => block.type === "text" && typeof block.text === "string",
+      );
+      if (textBlock) {
+        entry.subAgentResult = textBlock.text as string;
+      }
+    }
+  }
   const collapseKey = deriveToolLifecycleCollapseKey(entry);
   if (collapseKey) {
     entry.collapseKey = collapseKey;

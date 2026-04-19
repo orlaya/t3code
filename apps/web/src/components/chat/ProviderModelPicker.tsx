@@ -48,6 +48,15 @@ function providerIconClassName(
   return provider === "claudeAgent" ? "text-[#d97757]" : fallbackClassName;
 }
 
+/** Strip the provider prefix (e.g. "Claude ") from a model name for compact display. */
+function shortenModelLabel(label: string): string {
+  const prefixes = ["Claude ", "OpenAI ", "GPT-"];
+  for (const prefix of prefixes) {
+    if (label.startsWith(prefix)) return label.slice(prefix.length);
+  }
+  return label;
+}
+
 export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   provider: ProviderKind;
   model: string;
@@ -56,6 +65,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   modelOptionsByProvider: Record<ProviderKind, ReadonlyArray<{ slug: string; name: string }>>;
   activeProviderIconClassName?: string;
   compact?: boolean;
+  semiCompact?: boolean;
   disabled?: boolean;
   triggerVariant?: VariantProps<typeof buttonVariants>["variant"];
   triggerClassName?: string;
@@ -64,8 +74,9 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const activeProvider = props.lockedProvider ?? props.provider;
   const selectedProviderOptions = props.modelOptionsByProvider[activeProvider];
-  const selectedModelLabel =
+  const fullLabel =
     selectedProviderOptions.find((option) => option.slug === props.model)?.name ?? props.model;
+  const selectedModelLabel = props.semiCompact ? shortenModelLabel(fullLabel) : fullLabel;
   const ProviderIcon = PROVIDER_ICON_BY_PROVIDER[activeProvider];
   const handleModelChange = (provider: ProviderKind, value: string) => {
     if (props.disabled) return;
@@ -99,7 +110,7 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
             data-chat-provider-model-picker="true"
             className={cn(
               "min-w-0 justify-start overflow-hidden whitespace-nowrap px-2 text-muted-foreground/70 hover:text-foreground/80 [&_svg]:mx-0",
-              props.compact ? "shrink-0" : "max-w-48 shrink sm:max-w-56 sm:px-3",
+              props.compact ? "max-w-44 shrink" : "max-w-48 shrink sm:max-w-56 sm:px-3",
               props.triggerClassName,
             )}
             disabled={props.disabled}
@@ -120,11 +131,8 @@ export const ProviderModelPicker = memo(function ProviderModelPicker(props: {
               props.activeProviderIconClassName,
             )}
           />
-          {!props.compact && <span className="min-w-0 flex-1 truncate">{selectedModelLabel}</span>}
-          <ChevronDownIcon
-            aria-hidden="true"
-            className="size-3 shrink-0 opacity-60 max-[469px]:hidden"
-          />
+          <span className="min-w-0 flex-1 truncate">{selectedModelLabel}</span>
+          <ChevronDownIcon aria-hidden="true" className="size-3 shrink-0 opacity-60" />
         </span>
       </MenuTrigger>
       <MenuPopup align="start">

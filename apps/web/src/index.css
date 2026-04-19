@@ -69,14 +69,23 @@
   line-height: var(--text-sm--line-height);
 }
 
-/* Below 470px, drop all chevrons from the composer footer dropdowns. The
-   provider model picker and traits picker handle this via `max-[469px]:hidden`
-   directly; the shared SelectTrigger chevron lives in ui/select.tsx and is
-   scoped here instead of globally. */
-@media (max-width: 469px) {
-  [data-chat-composer-footer="true"] [data-slot="select-icon"] {
-    display: none;
-  }
+/* In compact footer mode, hide all chevron icons — the buttons are clearly
+   interactive via hover state and the extra arrows eat valuable horizontal
+   space at narrow widths. */
+[data-chat-composer-footer-compact="true"] [data-slot="select-icon"],
+[data-chat-composer-footer-compact="true"]
+  [data-chat-provider-model-picker]
+  svg.lucide-chevron-down,
+[data-chat-composer-footer-compact="true"] [data-chat-traits-picker] svg.lucide-chevron-down {
+  display: none;
+}
+
+/* Ultra-compact footer: slightly smaller text + tighter padding to squeeze
+   out extra horizontal room at very narrow widths (< 460px composer). */
+[data-chat-composer-footer-ultra-compact="true"] button,
+[data-chat-composer-footer-ultra-compact="true"] [role="combobox"] {
+  line-height: var(--text-xs--line-height);
+  padding-inline: 0.375rem;
 }
 
 /* Suppress all transitions during theme changes */

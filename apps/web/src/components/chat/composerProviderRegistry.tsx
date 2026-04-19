@@ -41,6 +41,7 @@ type TraitsRenderInput = {
   modelOptions: ProviderModelOptions[ProviderKind] | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
+  ultraCompact?: boolean;
 };
 
 export type ComposerProviderControls = {
@@ -66,7 +67,8 @@ function renderTraitsControl(
   provider: ProviderKind,
   input: TraitsRenderInput,
 ): ReactNode {
-  const { threadRef, draftId, model, models, modelOptions, prompt, onPromptChange } = input;
+  const { threadRef, draftId, model, models, modelOptions, prompt, onPromptChange, ultraCompact } =
+    input;
   if (
     !hasComposerTraitsTarget({ threadRef, draftId }) ||
     !shouldRenderTraitsControls({
@@ -90,6 +92,7 @@ function renderTraitsControl(
       modelOptions={modelOptions}
       prompt={prompt}
       onPromptChange={onPromptChange}
+      {...(ultraCompact ? { ultraCompact } : {})}
     />
   );
 }
@@ -203,6 +206,7 @@ export function renderProviderTraitsPicker(input: {
   modelOptions: ProviderModelOptions[ProviderKind] | undefined;
   prompt: string;
   onPromptChange: (prompt: string) => void;
+  ultraCompact?: boolean;
 }): ReactNode {
   return composerProviderRegistry[input.provider].renderTraitsPicker({
     ...(input.threadRef ? { threadRef: input.threadRef } : {}),
@@ -212,5 +216,6 @@ export function renderProviderTraitsPicker(input: {
     modelOptions: input.modelOptions,
     prompt: input.prompt,
     onPromptChange: input.onPromptChange,
+    ...(input.ultraCompact != null ? { ultraCompact: input.ultraCompact } : {}),
   });
 }

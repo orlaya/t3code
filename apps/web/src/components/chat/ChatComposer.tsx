@@ -57,6 +57,8 @@ import {
 import {
   shouldUseCompactComposerPrimaryActions,
   shouldUseCompactComposerFooter,
+  shouldUseSemiCompactComposerFooter,
+  shouldUseUltraCompactComposerFooter,
 } from "../composerFooterLayout";
 import { type ComposerPromptEditorHandle, ComposerPromptEditor } from "../ComposerPromptEditor";
 import { AVAILABLE_PROVIDER_OPTIONS, ProviderModelPicker } from "./ProviderModelPicker";
@@ -86,13 +88,11 @@ import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
 import {
-  BotIcon,
+  CheckCheckIcon,
+  CheckIcon,
   CircleAlertIcon,
-  ListTodoIcon,
   type LucideIcon,
-  LockIcon,
-  LockOpenIcon,
-  PenLineIcon,
+  ShieldBanIcon,
   XIcon,
 } from "lucide-react";
 import { proposedPlanTitle } from "../../proposedPlan";
@@ -109,22 +109,28 @@ const IMAGE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES 
 
 const runtimeModeConfig: Record<
   RuntimeMode,
-  { label: string; description: string; icon: LucideIcon }
+  { label: string; menuLabel: string; shortLabel: string; description: string; icon: LucideIcon }
 > = {
   "approval-required": {
     label: "Supervised",
+    menuLabel: "Ask / Supervised",
+    shortLabel: "Ask",
     description: "Ask before commands and file changes.",
-    icon: LockIcon,
+    icon: ShieldBanIcon,
   },
   "auto-accept-edits": {
     label: "Accept edits",
+    menuLabel: "Accept edits",
+    shortLabel: "Edits",
     description: "Auto-approve edits, ask before other actions.",
-    icon: PenLineIcon,
+    icon: CheckIcon,
   },
   "full-access": {
     label: "Full access",
+    menuLabel: "Full access",
+    shortLabel: "Full",
     description: "Allow commands and edits without prompts.",
-    icon: LockOpenIcon,
+    icon: CheckCheckIcon,
   },
 };
 
@@ -161,6 +167,8 @@ const terminalContextIdListsEqual = (
   contexts.length === ids.length && contexts.every((context, index) => context.id === ids[index]);
 
 const ComposerFooterModeControls = memo(function ComposerFooterModeControls(props: {
+  semiCompact: boolean;
+  ultraCompact: boolean;
   showInteractionModeToggle: boolean;
   interactionMode: ProviderInteractionMode;
   runtimeMode: RuntimeMode;
@@ -182,7 +190,10 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
         <>
           <Button
             variant="ghost"
-            className="shrink-0 whitespace-nowrap px-2 text-muted-foreground/70 hover:text-foreground/80 sm:px-3"
+            className={cn(
+              "shrink-0 whitespace-nowrap px-2 text-muted-foreground/70 hover:text-foreground/80",
+              !props.semiCompact && "sm:px-3",
+            )}
             size="sm"
             type="button"
             onClick={props.onToggleInteractionMode}
@@ -192,7 +203,6 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                 : "Default mode — click to enter plan mode"
             }
           >
-            <BotIcon className="hidden sm:inline" />
             <span>{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
           </Button>
 
@@ -211,20 +221,18 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           aria-label="Runtime mode"
           title={runtimeModeOption.description}
         >
-          <RuntimeModeIcon className="hidden size-4 sm:inline" />
-          <SelectValue>{runtimeModeOption.label}</SelectValue>
+          {!props.semiCompact && <RuntimeModeIcon className="size-4" />}
+          <SelectValue>
+            {props.ultraCompact ? runtimeModeOption.shortLabel : runtimeModeOption.label}
+          </SelectValue>
         </SelectTrigger>
         <SelectPopup alignItemWithTrigger={false}>
           {runtimeModeOptions.map((mode) => {
             const option = runtimeModeConfig[mode];
-            const OptionIcon = option.icon;
             return (
               <SelectItem key={mode} value={mode} className="min-w-64 py-2">
                 <div className="grid min-w-0 gap-0.5">
-                  <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                    <OptionIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    {option.label}
-                  </span>
+                  <span className="font-medium text-foreground">{option.menuLabel}</span>
                   <span className="text-muted-foreground text-xs leading-4">
                     {option.description}
                   </span>
@@ -241,7 +249,8 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
           <Button
             variant="ghost"
             className={cn(
-              "shrink-0 whitespace-nowrap px-2 sm:px-3",
+              "shrink-0 whitespace-nowrap px-2",
+              !props.semiCompact && "sm:px-3",
               props.planSidebarOpen
                 ? "text-blue-400 hover:text-blue-300"
                 : "text-muted-foreground/70 hover:text-foreground/80",
@@ -255,7 +264,6 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                 : `Show ${props.planSidebarLabel.toLowerCase()} sidebar`
             }
           >
-            <ListTodoIcon className="hidden sm:inline" />
             <span>{props.planSidebarLabel}</span>
           </Button>
         </>
@@ -664,6 +672,8 @@ export const ChatComposer = memo(
     );
     const [isDragOverComposer, setIsDragOverComposer] = useState(false);
     const [isComposerFooterCompact, setIsComposerFooterCompact] = useState(false);
+    const [isComposerFooterSemiCompact, setIsComposerFooterSemiCompact] = useState(false);
+    const [isComposerFooterUltraCompact, setIsComposerFooterUltraCompact] = useState(false);
     const [isComposerPrimaryActionsCompact, setIsComposerPrimaryActionsCompact] = useState(false);
 
     // ------------------------------------------------------------------
@@ -923,6 +933,7 @@ export const ChatComposer = memo(
       modelOptions: composerModelOptions?.[selectedProvider],
       prompt,
       onPromptChange: setPromptFromTraits,
+      ultraCompact: isComposerFooterUltraCompact,
     });
     const pendingPrimaryAction = useMemo(
       () =>
@@ -1107,6 +1118,8 @@ export const ChatComposer = memo(
         const footerCompact = shouldUseCompactComposerFooter(composerFormWidth, {
           hasWideActions: composerFooterHasWideActions,
         });
+        const semiCompact = shouldUseSemiCompactComposerFooter(composerFormWidth);
+        const ultraCompact = shouldUseUltraCompactComposerFooter(composerFormWidth);
         const primaryActionsCompact =
           footerCompact &&
           shouldUseCompactComposerPrimaryActions(composerFormWidth, {
@@ -1115,6 +1128,8 @@ export const ChatComposer = memo(
         return {
           primaryActionsCompact,
           footerCompact,
+          semiCompact,
+          ultraCompact,
         };
       };
 
@@ -1122,6 +1137,8 @@ export const ChatComposer = memo(
       const initialCompactness = measureFooterCompactness();
       setIsComposerPrimaryActionsCompact(initialCompactness.primaryActionsCompact);
       setIsComposerFooterCompact(initialCompactness.footerCompact);
+      setIsComposerFooterSemiCompact(initialCompactness.semiCompact);
+      setIsComposerFooterUltraCompact(initialCompactness.ultraCompact);
       if (typeof ResizeObserver === "undefined") return;
 
       const observer = new ResizeObserver((entries) => {
@@ -1135,6 +1152,12 @@ export const ChatComposer = memo(
         );
         setIsComposerFooterCompact((previous) =>
           previous === nextCompactness.footerCompact ? previous : nextCompactness.footerCompact,
+        );
+        setIsComposerFooterSemiCompact((previous) =>
+          previous === nextCompactness.semiCompact ? previous : nextCompactness.semiCompact,
+        );
+        setIsComposerFooterUltraCompact((previous) =>
+          previous === nextCompactness.ultraCompact ? previous : nextCompactness.ultraCompact,
         );
         const nextHeight = entry.contentRect.height;
         const previousHeight = composerFormHeightRef.current;
@@ -1926,6 +1949,9 @@ export const ChatComposer = memo(
               <div
                 data-chat-composer-footer="true"
                 data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
+                data-chat-composer-footer-ultra-compact={
+                  isComposerFooterUltraCompact ? "true" : "false"
+                }
                 className={cn(
                   "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-2.5 pb-2.5 sm:px-3 sm:pb-3",
                   isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
@@ -1934,6 +1960,7 @@ export const ChatComposer = memo(
                 <div className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   <ProviderModelPicker
                     compact={isComposerFooterCompact}
+                    semiCompact={isComposerFooterSemiCompact}
                     provider={selectedProvider}
                     model={selectedModelForPickerWithCustomFallback}
                     lockedProvider={lockedProvider}
@@ -1966,11 +1993,13 @@ export const ChatComposer = memo(
                   */}
                   {providerTraitsPicker ? (
                     <>
-                      <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
+                      <Separator orientation="vertical" className="mx-0.5 h-4" />
                       {providerTraitsPicker}
                     </>
                   ) : null}
                   <ComposerFooterModeControls
+                    semiCompact={isComposerFooterSemiCompact}
+                    ultraCompact={isComposerFooterUltraCompact}
                     showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
                     interactionMode={interactionMode}
                     runtimeMode={runtimeMode}

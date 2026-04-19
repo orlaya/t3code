@@ -244,6 +244,7 @@ export interface TraitsMenuContentProps {
   allowPromptInjectedEffort?: boolean;
   triggerVariant?: VariantProps<typeof buttonVariants>["variant"];
   triggerClassName?: string;
+  ultraCompact?: boolean;
 }
 
 export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
@@ -465,6 +466,18 @@ export const TraitsMenuContent = memo(function TraitsMenuContentImpl({
   );
 });
 
+/** Shorten trait labels for ultra-compact display. */
+function shortenTraitLabel(label: string): string {
+  const map: Record<string, string> = {
+    Medium: "Med",
+    Ultrathink: "Ultra",
+    "Extra High": "XHigh",
+    "Thinking On": "Think",
+    "Thinking Off": "No Think",
+  };
+  return map[label] ?? label;
+}
+
 export const TraitsPicker = memo(function TraitsPicker({
   provider,
   models,
@@ -475,6 +488,7 @@ export const TraitsPicker = memo(function TraitsPicker({
   allowPromptInjectedEffort = true,
   triggerVariant,
   triggerClassName,
+  ultraCompact,
   ...persistence
 }: TraitsMenuContentProps & TraitsPersistence) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -508,16 +522,22 @@ export const TraitsPicker = memo(function TraitsPicker({
     allowPromptInjectedEffort,
   );
 
-  const effortLabel = effort
+  const rawEffortLabel = effort
     ? (effortLevels.find((l) => l.value === effort)?.label ?? effort)
     : null;
-  const primaryTraitLabel = ultrathinkPromptControlled
+  const effortLabel =
+    ultraCompact && rawEffortLabel ? shortenTraitLabel(rawEffortLabel) : rawEffortLabel;
+  const rawPrimaryTraitLabel = ultrathinkPromptControlled
     ? "Ultrathink"
     : effortLabel
       ? effortLabel
       : thinkingEnabled === null
         ? null
         : `Thinking ${thinkingEnabled ? "On" : "Off"}`;
+  const primaryTraitLabel =
+    ultraCompact && rawPrimaryTraitLabel
+      ? shortenTraitLabel(rawPrimaryTraitLabel)
+      : rawPrimaryTraitLabel;
   const contextWindowLabel =
     showContextWindow && contextWindow !== defaultContextWindow
       ? (contextWindowOptions.find((o) => o.value === contextWindow)?.label ?? null)
@@ -573,6 +593,7 @@ export const TraitsPicker = memo(function TraitsPicker({
           <Button
             size="sm"
             variant={triggerVariant ?? "ghost"}
+            data-chat-traits-picker="true"
             className={cn(
               isCodexStyle
                 ? "min-w-0 max-w-40 shrink justify-start overflow-hidden whitespace-nowrap px-2 text-muted-foreground/70 hover:text-foreground/80 sm:max-w-48 sm:px-3 [&_svg]:mx-0"
@@ -585,15 +606,12 @@ export const TraitsPicker = memo(function TraitsPicker({
         {isCodexStyle ? (
           <span className="flex min-w-0 w-full items-center gap-2 overflow-hidden">
             {triggerLabel}
-            <ChevronDownIcon
-              aria-hidden="true"
-              className="size-3 shrink-0 opacity-60 max-[469px]:hidden"
-            />
+            <ChevronDownIcon aria-hidden="true" className="size-3 shrink-0 opacity-60" />
           </span>
         ) : (
           <>
             <span>{triggerLabel}</span>
-            <ChevronDownIcon aria-hidden="true" className="size-3 opacity-60 max-[469px]:hidden" />
+            <ChevronDownIcon aria-hidden="true" className="size-3 opacity-60" />
           </>
         )}
       </MenuTrigger>
