@@ -464,13 +464,6 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                   cwd={ctx.markdownCwd}
                   isStreaming={Boolean(row.message.streaming)}
                 />
-                <AssistantChangedFilesSection
-                  turnSummary={row.assistantTurnDiffSummary}
-                  agentEditedFilesByTurnId={ctx.agentEditedFilesByTurnId}
-                  routeThreadKey={ctx.routeThreadKey}
-                  resolvedTheme={ctx.resolvedTheme}
-                  onOpenTurnDiff={ctx.onOpenTurnDiff}
-                />
                 <div className="mt-1.5 flex items-center gap-2">
                   {/* During streaming the static WorkingIndicator (outside
                       the virtualizer) already shows elapsed time. Hiding the
@@ -508,6 +501,13 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                     </div>
                   ) : null}
                 </div>
+                <AssistantChangedFilesSection
+                  turnSummary={row.assistantTurnDiffSummary}
+                  agentEditedFilesByTurnId={ctx.agentEditedFilesByTurnId}
+                  routeThreadKey={ctx.routeThreadKey}
+                  resolvedTheme={ctx.resolvedTheme}
+                  onOpenTurnDiff={ctx.onOpenTurnDiff}
+                />
               </div>
             </>
           );
@@ -557,7 +557,8 @@ const WorkGroupSection = memo(function WorkGroupSection({
   const onlyToolEntries =
     regularEntries.every((entry) => entry.tone === "tool") && pinnedSubAgents.length === 0;
   const isSingleEntry = regularEntries.length <= 1 && pinnedSubAgents.length === 0;
-  const showHeader = !isSingleEntry && (hasOverflow || !onlyToolEntries || pinnedSubAgents.length > 0);
+  const showHeader =
+    !isSingleEntry && (hasOverflow || !onlyToolEntries || pinnedSubAgents.length > 0);
   const groupLabel = onlyToolEntries ? "Tool calls" : "Work log";
 
   return (
@@ -1241,12 +1242,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
               </span>
             </p>
           ) : toolCallParsed?.url ? (
-            <p
-              className={cn(
-                "truncate text-[11px] leading-5",
-                workToneClass(workEntry.tone),
-              )}
-            >
+            <p className={cn("truncate text-[11px] leading-5", workToneClass(workEntry.tone))}>
               <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
                 {heading}
               </span>

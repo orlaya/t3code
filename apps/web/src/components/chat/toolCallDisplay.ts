@@ -47,11 +47,7 @@ export function parseToolCallDetail(
 function extractFields(obj: Record<string, unknown>): ToolCallParsed | null {
   const url = typeof obj.url === "string" ? obj.url : null;
   const prompt =
-    typeof obj.prompt === "string"
-      ? obj.prompt
-      : typeof obj.query === "string"
-        ? obj.query
-        : null;
+    typeof obj.prompt === "string" ? obj.prompt : typeof obj.query === "string" ? obj.query : null;
   if (url || prompt) return { url, prompt };
   return null;
 }

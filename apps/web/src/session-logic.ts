@@ -210,7 +210,6 @@ function requestKindFromRequestType(requestType: unknown): PendingApproval["requ
   }
 }
 
-
 export function derivePendingApprovals(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
   sessionPhase?: SessionPhase | null,
@@ -281,9 +280,7 @@ export function derivePendingApprovals(
     pending = pending.filter((a) => a.createdAt >= sessionCreatedAt);
   }
 
-  return pending.toSorted((left, right) =>
-    left.createdAt.localeCompare(right.createdAt),
-  );
+  return pending.toSorted((left, right) => left.createdAt.localeCompare(right.createdAt));
 }
 
 function parseUserInputQuestions(
@@ -357,7 +354,6 @@ export function derivePendingUserInputs(
       payload && typeof payload.requestId === "string"
         ? ApprovalRequestId.make(payload.requestId)
         : null;
-    const detail = payload && typeof payload.detail === "string" ? payload.detail : undefined;
 
     if (activity.kind === "user-input.requested" && requestId) {
       const questions = parseUserInputQuestions(payload);

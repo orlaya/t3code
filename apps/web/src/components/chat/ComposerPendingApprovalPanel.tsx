@@ -106,9 +106,7 @@ export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprova
         </div>
         {approval.detail && (
           <div className="pt-0 pb-3.5 px-2.5 ">
-            <span className="font-mono text-[11px] text-foreground/70">
-              {approval.detail}
-            </span>
+            <span className="font-mono text-[11px] text-foreground/70">{approval.detail}</span>
           </div>
         )}
       </div>
@@ -139,16 +137,12 @@ export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprova
               </a>
             )}
             {parsed.prompt && (
-              <p className="text-xs text-foreground/50 leading-snug">
-                {parsed.prompt}
-              </p>
+              <p className="text-xs text-foreground/50 leading-snug">{parsed.prompt}</p>
             )}
           </div>
         ) : approval.detail ? (
           <div className="bg-black/15 pt-0 pb-3.5 px-2.5">
-            <span className="font-mono text-[11px] text-foreground/70">
-              {approval.detail}
-            </span>
+            <span className="font-mono text-[11px] text-foreground/70">{approval.detail}</span>
           </div>
         ) : null}
       </div>
