@@ -389,6 +389,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
   const prStatus = prStatusIndicator(pr);
   const terminalStatus = terminalStatusFromRunningIds(runningTerminalIds);
   const isTerminal = isTerminalThread(thread.id);
+  const isRenaming = renamingThreadKey != null;
   const isConfirmingArchive = confirmingArchiveThreadKey === threadKey && !isThreadRunning;
   const threadMetaClassName = isConfirmingArchive
     ? "pointer-events-none opacity-0"
@@ -583,7 +584,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
           ) : (
             <>
               {prStatus && (
-                <Tooltip>
+                <Tooltip disabled={isRenaming}>
                   <TooltipTrigger
                     render={
                       <button
@@ -613,7 +614,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               onClick={handleRenameInputClick}
             />
           ) : (
-            <Tooltip>
+            <Tooltip disabled={isRenaming}>
               <TooltipTrigger
                 render={
                   <span
@@ -657,7 +658,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               </button>
             ) : !isThreadRunning ? (
               <div className="pointer-events-none absolute top-1/2 right-1 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/menu-sub-item:pointer-events-auto group-hover/menu-sub-item:opacity-100 group-focus-within/menu-sub-item:pointer-events-auto group-focus-within/menu-sub-item:opacity-100">
-                <Tooltip>
+                <Tooltip disabled={isRenaming}>
                   <TooltipTrigger
                     render={
                       <button
@@ -691,7 +692,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                     <ArchiveIcon className="size-3.5" />
                   </button>
                 ) : (
-                  <Tooltip>
+                  <Tooltip disabled={isRenaming}>
                     <TooltipTrigger
                       render={
                         <button
@@ -715,7 +716,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             <span className={threadMetaClassName}>
               <span className="inline-flex items-center gap-1">
                 {isRemoteThread && (
-                  <Tooltip>
+                  <Tooltip disabled={isRenaming}>
                     <TooltipTrigger
                       render={
                         <span

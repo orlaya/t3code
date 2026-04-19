@@ -403,3 +403,7 @@
 **Collapsible sections — full-area click targets:**
 
 - `apps/web/src/components/chat/MessagesTimeline.tsx` — `ThinkingSection`, `WorkGroupSection`, and `SubAgentDetailDialog` brief section all use the outer container div as the click target for expand/collapse (not just the header row). Entire card is clickable when expandable.
+
+**Sidebar tooltips suppressed during thread rename:**
+
+- `apps/web/src/components/Sidebar.tsx` — all 5 `<Tooltip>` instances inside `SidebarThreadRow` receive `disabled={isRenaming}` where `isRenaming = renamingThreadKey != null`. Covers: PR status badge, thread title, pin/unpin button, archive button, and remote environment cloud icon. When any thread is being renamed, all thread row tooltips across all rows are suppressed — prevents neighbouring row tooltips from popping up over the rename input when the cursor moves. Uses Base UI's native `disabled` prop on `Tooltip.Root`.
