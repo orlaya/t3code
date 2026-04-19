@@ -567,14 +567,13 @@ const WorkGroupSection = memo(function WorkGroupSection({
       className={cn(
         "rounded-lg border border-border/45 bg-card/25",
         showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5",
+        hasOverflow && "group/wl cursor-pointer",
       )}
+      onClick={hasOverflow ? () => setIsExpanded((v) => !v) : undefined}
     >
       {showHeader &&
         (hasOverflow ? (
-          <div
-            className="group/wl mb-1.5 flex cursor-pointer items-center justify-between gap-2 px-0.5"
-            onClick={() => setIsExpanded((v) => !v)}
-          >
+          <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
             <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
               {groupLabel} ({regularEntries.length + pinnedSubAgents.length})
             </p>
@@ -713,6 +712,9 @@ const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
       : null;
   const inProgress = workEntry.isSubAgentInProgress === true;
 
+  const [briefExpanded, setBriefExpanded] = useState(false);
+  const [workLogExpanded, setWorkLogExpanded] = useState(false);
+
   // Filter work log entries belonging to this sub-agent's task.
   const taskEntries = useMemo(() => {
     if (!workEntry.taskId) return [];
@@ -720,6 +722,12 @@ const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
       (e) => e.taskId === workEntry.taskId && e.itemType !== "collab_agent_tool_call",
     );
   }, [allEntries, workEntry.taskId]);
+
+  const workLogHasOverflow = taskEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
+  const visibleTaskEntries =
+    workLogHasOverflow && !workLogExpanded
+      ? taskEntries.slice(-MAX_VISIBLE_WORK_LOG_ENTRIES)
+      : taskEntries;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -746,26 +754,56 @@ const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
             </p>
           </div>
 
-          {/* Brief prompt text */}
-          <div className="mt-4 px-4 pb-4 rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
-            <p className="pb-1 pt-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-              Brief
-            </p>
-            <div className="text-[12.5px] italic leading-relaxed text-foreground/50 whitespace-pre-wrap">
+          {/* Brief prompt text — collapsible, closed by default */}
+          <div
+            className="group/brief mt-4 cursor-pointer rounded-lg border border-border/45 bg-card/25 px-2 py-1.5"
+            onClick={() => setBriefExpanded((v) => !v)}
+          >
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <p className="pb-1 pt-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+                Brief
+              </p>
+              <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/brief:text-foreground">
+                {briefExpanded ? (
+                  <ChevronUpIcon className="size-3.5" />
+                ) : (
+                  <ChevronDownIcon className="size-3.5" />
+                )}
+              </span>
+            </div>
+            <div
+              className={cn(
+                "relative text-[12.5px] italic leading-relaxed text-foreground/50 whitespace-pre-wrap",
+                !briefExpanded && "max-h-[12.5em] overflow-hidden",
+              )}
+            >
               {brief.prompt}
+              {!briefExpanded && (
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-card/80 to-transparent" />
+              )}
             </div>
           </div>
 
-          {/* Sub-agent work log — tools used by this agent */}
+          {/* Sub-agent work log — collapsible, closed by default */}
           {taskEntries.length > 0 && (
-            <div className="mt-4 py-2.5 px-3\ rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
-              <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+            <div className="mt-4 rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
+              <div
+                className="group/wl flex cursor-pointer items-center justify-between gap-2 px-0.5"
+                onClick={() => setWorkLogExpanded((v) => !v)}
+              >
                 <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
                   Work log ({taskEntries.length})
                 </p>
+                <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/wl:text-foreground">
+                  {workLogExpanded ? (
+                    <ChevronUpIcon className="size-3.5" />
+                  ) : (
+                    <ChevronDownIcon className="size-3.5" />
+                  )}
+                </span>
               </div>
               <div className="space-y-0 [&>*]:py-0.25">
-                {taskEntries.map((entry) => (
+                {visibleTaskEntries.map((entry) => (
                   <SimpleWorkEntryRow
                     key={`subagent-work:${entry.id}`}
                     workEntry={entry}
@@ -829,14 +867,14 @@ const ThinkingSection = memo(function ThinkingSection({
   const canExpand = message.text.length > THINKING_EXPAND_CHAR_THRESHOLD;
 
   return (
-    <div className="rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
-      <div
-        className={cn(
-          "mb-1.5 flex items-center justify-between gap-2 px-0.5",
-          canExpand && "group/think cursor-pointer",
-        )}
-        onClick={canExpand ? () => setIsExpanded((v) => !v) : undefined}
-      >
+    <div
+      className={cn(
+        "rounded-lg border border-border/45 bg-card/25 px-2 py-1.5",
+        canExpand && "group/think cursor-pointer",
+      )}
+      onClick={canExpand ? () => setIsExpanded((v) => !v) : undefined}
+    >
+      <div className="mb-0.5 flex items-center justify-between gap-2 px-0.5">
         {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
         <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">Thinking</p>
         {canExpand && (
@@ -861,7 +899,7 @@ const ThinkingSection = memo(function ThinkingSection({
             text={message.text}
             cwd={markdownCwd}
             isStreaming={Boolean(message.streaming)}
-            className="chat-markdown-thinking text-[12.5px] leading-snug text-muted-foreground/80"
+            className="pt-2 chat-markdown-thinking text-[12.5px] leading-snug text-muted-foreground/80"
           />
         </div>
         {canExpand && !isExpanded && (
@@ -1406,11 +1444,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
             </p>
           ) : (
             <Tooltip>
-              <TooltipTrigger
-                className="block min-w-0 w-full text-left"
-                title={displayText}
-                aria-label={displayText}
-              >
+              <TooltipTrigger className="block min-w-0 w-full text-left" aria-label={displayText}>
                 <p
                   className={cn(
                     "truncate text-[11px] leading-5",

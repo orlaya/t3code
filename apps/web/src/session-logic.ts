@@ -540,10 +540,21 @@ export function deriveWorkLogEntries(
   // collab_agent_tool_call events have NO toolCallId — match by collapseKey
   // (derived from [itemType, label, detail]) instead.
   const completedSubAgentKeys = new Set<string>();
+  // Map from completed entry key → the original tool.updated entry's id.
+  // When we drop the tool.updated entry, we carry its id onto the completed
+  // entry so the React key stays stable (keeps dialogs etc. alive).
+  const updatedSubAgentIdByKey = new Map<string, string>();
   for (const entry of collapsed) {
     if (entry.itemType === "collab_agent_tool_call" && entry.activityKind === "tool.completed") {
       if (entry.toolCallId) completedSubAgentKeys.add(entry.toolCallId);
       if (entry.collapseKey) completedSubAgentKeys.add(entry.collapseKey);
+    }
+    if (
+      entry.itemType === "collab_agent_tool_call" &&
+      entry.activityKind !== "tool.completed"
+    ) {
+      if (entry.toolCallId) updatedSubAgentIdByKey.set(entry.toolCallId, entry.id);
+      if (entry.collapseKey) updatedSubAgentIdByKey.set(entry.collapseKey, entry.id);
     }
   }
 
@@ -603,6 +614,14 @@ export function deriveWorkLogEntries(
     .map(({ activityKind, collapseKey, toolCallId, ...entry }) => {
       if (entry.itemType === "collab_agent_tool_call" && activityKind !== "tool.completed") {
         entry.isSubAgentInProgress = true;
+      }
+      // Carry the original tool.updated id onto the tool.completed entry so the
+      // React key is stable and any open dialog survives the transition.
+      if (entry.itemType === "collab_agent_tool_call" && activityKind === "tool.completed") {
+        const originalId =
+          (toolCallId && updatedSubAgentIdByKey.get(toolCallId)) ||
+          (collapseKey && updatedSubAgentIdByKey.get(collapseKey));
+        if (originalId) entry.id = originalId;
       }
       if (activityKind === "context-compaction" && entry.label === "Context compacting") {
         entry.isCompacting = true;

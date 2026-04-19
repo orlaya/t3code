@@ -133,8 +133,11 @@ export function deriveMessagesTimelineRows(input: {
   );
   const terminalAssistantMessageIds = deriveTerminalAssistantMessageIds(input.timelineEntries);
 
-  // Active compacting entry gets pulled out of the work group and pinned at
-  // the very bottom of the timeline so it's always the last visible thing.
+  // When the session is actively working and compaction is in progress, pull
+  // the compacting entry out of its work group and pin it at the very bottom
+  // of the timeline so it's always the last visible thing. When not working
+  // (e.g. quit mid-compaction, stale session) leave it in normal position.
+  const shouldPinCompacting = input.isWorking;
   let pinnedCompacting: { id: string; createdAt: string; entry: WorkLogEntry } | null = null;
 
   for (let index = 0; index < input.timelineEntries.length; index += 1) {
@@ -145,7 +148,7 @@ export function deriveMessagesTimelineRows(input: {
 
     if (timelineEntry.kind === "work") {
       // Save compacting entries for pinning at the bottom — skip normal grouping.
-      if (timelineEntry.entry.isCompacting) {
+      if (shouldPinCompacting && timelineEntry.entry.isCompacting) {
         pinnedCompacting = {
           id: timelineEntry.id,
           createdAt: timelineEntry.createdAt,
@@ -159,7 +162,7 @@ export function deriveMessagesTimelineRows(input: {
       while (cursor < input.timelineEntries.length) {
         const nextEntry = input.timelineEntries[cursor];
         if (!nextEntry || nextEntry.kind !== "work") break;
-        if (nextEntry.entry.isCompacting) {
+        if (shouldPinCompacting && nextEntry.entry.isCompacting) {
           pinnedCompacting = {
             id: nextEntry.id,
             createdAt: nextEntry.createdAt,
