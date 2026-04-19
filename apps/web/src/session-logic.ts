@@ -511,11 +511,16 @@ export function hasActionableProposedPlan(
 
 export function deriveWorkLogEntries(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
-  latestTurnId: TurnId | undefined,
+  visibleTurnIds: Set<TurnId> | TurnId | undefined,
 ): WorkLogEntry[] {
   const ordered = [...activities].toSorted(compareActivitiesByOrder);
   const entries = ordered
-    .filter((activity) => (latestTurnId ? activity.turnId === latestTurnId : true))
+    .filter((activity) => {
+      if (visibleTurnIds === undefined) return true;
+      if (visibleTurnIds instanceof Set)
+        return activity.turnId !== null && visibleTurnIds.has(activity.turnId);
+      return activity.turnId === visibleTurnIds;
+    })
     .filter((activity) => activity.kind !== "tool.started")
     .filter((activity) => activity.kind !== "task.started")
     .filter((activity) => activity.kind !== "context-window.updated")
@@ -1303,11 +1308,14 @@ export function deriveTimelineEntries(
   proposedPlans: ProposedPlan[],
   workEntries: WorkLogEntry[],
   editEntries: EditDiffEntry[],
-  latestTurnId?: TurnId,
+  visibleTurnIds?: Set<TurnId> | TurnId,
 ): TimelineEntry[] {
   const visibleMessages = messages.filter((message) => {
     if (message.role !== "thinking") return true;
-    return latestTurnId !== undefined && message.turnId === latestTurnId;
+    if (visibleTurnIds === undefined) return false;
+    if (visibleTurnIds instanceof Set)
+      return message.turnId != null && visibleTurnIds.has(message.turnId);
+    return message.turnId === visibleTurnIds;
   });
   const messageRows: TimelineEntry[] = visibleMessages.map((message) => ({
     id: message.id,

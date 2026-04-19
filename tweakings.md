@@ -115,6 +115,15 @@
 - **Operational gotcha:** dev server does NOT pick up adapter changes via HMR. Restart required. Spent ~30 min on what looked like a code bug (0/345 reasoning_text events without itemId) before realising the runtime was stale.
 - **Open bug:** substantial flicker on the first message of a conversation. Investigation deferred — see PLAN.thinking.md for hypotheses + diagnostic plan.
 
+**Work log history — configurable turn persistence:**
+
+- `packages/contracts/src/settings.ts` — new `workLogHistory` client setting added to `ClientSettingsSchema`. Literal union `"latest" | "2" | "3" | "4" | "5" | "all"`, defaults to `"latest"` (preserves original behaviour). Stored in localStorage alongside other client settings.
+- `apps/web/src/session-logic.ts` — `deriveWorkLogEntries` and `deriveTimelineEntries` parameter changed from `latestTurnId: TurnId | undefined` to `visibleTurnIds: Set<TurnId> | TurnId | undefined`. Single TurnId and undefined (show all) still work as before, Set enables showing the N most recent turns. Existing callers in tests pass single TurnId or undefined — no test changes needed for the signature.
+- `apps/web/src/components/ChatView.tsx` — new `visibleTurnIds` memo derives the set of turn IDs to show based on the `workLogHistory` setting. For numeric values (2–5), extracts unique turn IDs from `threadActivities` in order and takes the last N. Shared between both `deriveWorkLogEntries` and `deriveTimelineEntries` calls. The `alwaysShowToolCalls` boolean from the initial implementation was replaced by this.
+- `apps/web/src/components/settings/SettingsPanels.tsx` — new "Work log history" dropdown in the General section (after "Assistant output"). Options: Latest only, Last 2/3/4/5 turns, All turns. Uses the same `Select`/`SelectItem` pattern as existing dropdowns. Added to `useSettingsRestore` dirty tracking.
+- `apps/web/src/components/chat/MessagesTimeline.test.tsx` — removed stale assertion expecting "Work log" header text on a single-entry work group (the component intentionally hides the header for single entries via `isSingleEntry`). Pre-existing issue, not caused by this change.
+- Test files (`apps/desktop/src/clientPersistence.test.ts`, `apps/web/src/localApi.test.ts`) — updated hardcoded `ClientSettings` objects with `workLogHistory: "latest"`.
+
 **Session reconciliation (dead session + stuck permission prompt fixes):**
 
 - `apps/server/src/provider/Services/ProviderSessionReaper.ts` — added `reconcile()` method to the service interface.

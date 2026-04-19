@@ -5,6 +5,9 @@ import viteConfig from "./vite.config";
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    test: {
+      reporters: ["dot"],
+    },
     define: {
       // Neutralise the env-var baking from vite.config.ts so that tests
       // always start with empty values. Individual tests can then control

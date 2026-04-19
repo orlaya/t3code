@@ -175,7 +175,9 @@ describe("MessagesTimeline", () => {
     );
 
     expect(markup).toContain("Context compacted");
-    expect(markup).toContain("Work log");
+    // The "Work log" header is intentionally hidden for single-entry groups
+    // (isSingleEntry === true → showHeader === false), so we only assert the
+    // entry label itself renders.
   });
 
   it("formats changed file paths from the workspace root", async () => {

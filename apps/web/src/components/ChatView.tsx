@@ -1075,9 +1075,30 @@ export default function ChatView(props: ChatViewProps) {
   const selectedProvider: ProviderKind = lockedProvider ?? unlockedSelectedProvider;
   const phase = derivePhase(activeThread?.session ?? null);
   const threadActivities = activeThread?.activities ?? EMPTY_ACTIVITIES;
+  const workLogHistory = settings.workLogHistory;
+  const visibleTurnIds = useMemo((): Set<TurnId> | TurnId | undefined => {
+    const latestId = activeLatestTurn?.turnId;
+    if (workLogHistory === "latest") return latestId ?? undefined;
+    if (workLogHistory === "all") return undefined;
+    // Derive ordered unique turn IDs from activities (most recent last)
+    const seen = new Set<TurnId>();
+    const ordered: TurnId[] = [];
+    for (const a of threadActivities) {
+      if (a.turnId !== null && !seen.has(a.turnId)) {
+        seen.add(a.turnId);
+        ordered.push(a.turnId);
+      }
+    }
+    // Always include the latest turn even if it has no activities yet
+    if (latestId && !seen.has(latestId)) {
+      ordered.push(latestId);
+    }
+    const count = Number(workLogHistory);
+    return new Set(ordered.slice(-count));
+  }, [activeLatestTurn?.turnId, threadActivities, workLogHistory]);
   const workLogEntries = useMemo(
-    () => deriveWorkLogEntries(threadActivities, activeLatestTurn?.turnId ?? undefined),
-    [activeLatestTurn?.turnId, threadActivities],
+    () => deriveWorkLogEntries(threadActivities, visibleTurnIds),
+    [threadActivities, visibleTurnIds],
   );
   const editDiffEntries = useMemo(
     () => deriveEditDiffEntries(threadActivities),
@@ -1380,13 +1401,13 @@ export default function ChatView(props: ChatViewProps) {
         activeThread?.proposedPlans ?? [],
         workLogEntries,
         editDiffEntries,
-        activeLatestTurn?.turnId ?? undefined,
+        visibleTurnIds,
       ),
     [
-      activeLatestTurn?.turnId,
       activeThread?.proposedPlans,
       editDiffEntries,
       timelineMessages,
+      visibleTurnIds,
       workLogEntries,
     ],
   );

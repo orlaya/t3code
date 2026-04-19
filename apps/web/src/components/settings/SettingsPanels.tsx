@@ -466,6 +466,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.enableAssistantStreaming !== DEFAULT_UNIFIED_SETTINGS.enableAssistantStreaming
         ? ["Assistant output"]
         : []),
+      ...(settings.workLogHistory !== DEFAULT_UNIFIED_SETTINGS.workLogHistory
+        ? ["Work log history"]
+        : []),
       ...(settings.defaultThreadEnvMode !== DEFAULT_UNIFIED_SETTINGS.defaultThreadEnvMode
         ? ["New thread mode"]
         : []),
@@ -484,6 +487,7 @@ export function useSettingsRestore(onRestored?: () => void) {
     [
       areProviderSettingsDirty,
       isGitWritingModelDirty,
+      settings.workLogHistory,
       settings.confirmThreadArchive,
       settings.confirmThreadDelete,
       settings.addProjectBaseDirectory,
@@ -933,6 +937,63 @@ export function GeneralSettingsPanel() {
               }
               aria-label="Stream assistant messages"
             />
+          }
+        />
+
+        <SettingsRow
+          title="Work log history"
+          description="How many past turns keep their work logs and thinking blocks visible."
+          resetAction={
+            settings.workLogHistory !== DEFAULT_UNIFIED_SETTINGS.workLogHistory ? (
+              <SettingResetButton
+                label="work log history"
+                onClick={() =>
+                  updateSettings({
+                    workLogHistory: DEFAULT_UNIFIED_SETTINGS.workLogHistory,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.workLogHistory}
+              onValueChange={(value) => {
+                if (value !== null && ["latest", "2", "3", "4", "5", "all"].includes(value)) {
+                  updateSettings({ workLogHistory: value as typeof settings.workLogHistory });
+                }
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-44" aria-label="Work log history">
+                <SelectValue>
+                  {settings.workLogHistory === "latest"
+                    ? "Latest only"
+                    : settings.workLogHistory === "all"
+                      ? "All turns"
+                      : `Last ${settings.workLogHistory} turns`}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                <SelectItem hideIndicator value="latest">
+                  Latest only
+                </SelectItem>
+                <SelectItem hideIndicator value="2">
+                  Last 2 turns
+                </SelectItem>
+                <SelectItem hideIndicator value="3">
+                  Last 3 turns
+                </SelectItem>
+                <SelectItem hideIndicator value="4">
+                  Last 4 turns
+                </SelectItem>
+                <SelectItem hideIndicator value="5">
+                  Last 5 turns
+                </SelectItem>
+                <SelectItem hideIndicator value="all">
+                  All turns
+                </SelectItem>
+              </SelectPopup>
+            </Select>
           }
         />
 

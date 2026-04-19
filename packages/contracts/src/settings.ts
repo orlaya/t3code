@@ -53,6 +53,9 @@ export const ClientSettingsSchema = Schema.Struct({
   timestampFormat: TimestampFormat.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_TIMESTAMP_FORMAT)),
   ),
+  workLogHistory: Schema.Literals(["latest", "2", "3", "4", "5", "all"]).pipe(
+    Schema.withDecodingDefault(Effect.succeed("latest" as const)),
+  ),
 });
 export type ClientSettings = typeof ClientSettingsSchema.Type;
 

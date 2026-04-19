@@ -20,6 +20,7 @@ export default mergeConfig(
       strictPort: false,
     },
     test: {
+      reporters: ["dot"],
       include: ["src/components/**/*.browser.tsx"],
       browser: {
         enabled: true,
