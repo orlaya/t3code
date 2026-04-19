@@ -29,10 +29,16 @@ export const InlineEditDiff = memo(function InlineEditDiff({
   editEntry,
   workspaceRoot,
   resolvedTheme,
+  headerLabel,
+  variant = "card",
 }: {
   editEntry: EditDiffEntry;
   workspaceRoot: string | undefined;
   resolvedTheme: "light" | "dark";
+  /** Optional label shown before the file path in the header, e.g. "EDIT". */
+  headerLabel?: string;
+  /** "card" (default) renders with rounded corners, border, and bg. "flush" removes those to fill the parent. */
+  variant?: "card" | "flush";
 }) {
   const displayPath = formatWorkspaceRelativePath(editEntry.filePath, workspaceRoot);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -92,10 +98,19 @@ export const InlineEditDiff = memo(function InlineEditDiff({
 
   return (
     <div
-      className="cursor-pointer rounded-lg border border-border/45 bg-card/25 overflow-hidden transition-colors duration-100 hover:border-border/70"
-      onClick={handleOpenInEditor}
+      className={
+        variant === "flush"
+          ? "overflow-hidden"
+          : "cursor-pointer rounded-lg border border-border/45 bg-card/25 overflow-hidden transition-colors duration-100 hover:border-border/70"
+      }
+      onClick={variant === "flush" ? undefined : handleOpenInEditor}
     >
-      <div className="flex items-center gap-2 px-2.5 py-1.5">
+      <div className="flex items-center gap-2 bg-black/15 px-2.5 py-1.5">
+        {headerLabel && (
+          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60">
+            {headerLabel}
+          </span>
+        )}
         <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/80">
           {displayPath}
         </span>

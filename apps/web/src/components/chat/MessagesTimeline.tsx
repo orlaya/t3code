@@ -49,6 +49,7 @@ import {
   type MessagesTimelineRow,
 } from "./MessagesTimeline.logic";
 import { TerminalContextInlineChip } from "./TerminalContextInlineChip";
+import { formatToolCallPreview, parseToolCallDetail } from "./toolCallDisplay";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   deriveDisplayedUserMessageState,
@@ -343,6 +344,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
           editEntry={row.editEntry}
           workspaceRoot={ctx.workspaceRoot}
           resolvedTheme={ctx.resolvedTheme}
+          headerLabel={row.editEntry.toolName === "Write" ? "WRITE" : "EDIT"}
         />
       )}
 
@@ -554,7 +556,8 @@ const WorkGroupSection = memo(function WorkGroupSection({
       : regularEntries;
   const onlyToolEntries =
     regularEntries.every((entry) => entry.tone === "tool") && pinnedSubAgents.length === 0;
-  const showHeader = hasOverflow || !onlyToolEntries || pinnedSubAgents.length > 0;
+  const isSingleEntry = regularEntries.length <= 1 && pinnedSubAgents.length === 0;
+  const showHeader = !isSingleEntry && (hasOverflow || !onlyToolEntries || pinnedSubAgents.length > 0);
   const groupLabel = onlyToolEntries ? "Tool calls" : "Work log";
 
   return (
@@ -632,8 +635,8 @@ const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
       : null;
 
   return (
-    <div className="flex items-center gap-1.5 rounded-md border border-primary/25 bg-primary/5 px-2 py-1.5">
-      <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:3s] text-primary/70" />
+    <div className="flex items-center gap-1.5 rounded-md bg-primary/5 px-1.5 py-0.5">
+      <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[11px] leading-5 text-foreground/90">
           {heading}
@@ -1056,10 +1059,21 @@ function workEntryPrimaryFilePath(
 }
 
 function workEntryPreview(
-  workEntry: Pick<TimelineWorkEntry, "detail" | "command" | "changedFiles">,
+  workEntry: Pick<
+    TimelineWorkEntry,
+    "detail" | "command" | "changedFiles" | "itemType" | "requestKind"
+  >,
   workspaceRoot: string | undefined,
 ) {
   if (workEntry.command) return workEntry.command;
+  if (
+    (workEntry.itemType === "dynamic_tool_call" ||
+      workEntry.itemType === "web_search" ||
+      workEntry.requestKind === "tool-call") &&
+    workEntry.detail
+  ) {
+    return formatToolCallPreview(workEntry.detail) ?? workEntry.detail;
+  }
   if (workEntry.detail) return workEntry.detail;
   if ((workEntry.changedFiles?.length ?? 0) === 0) return null;
   const [firstPath] = workEntry.changedFiles ?? [];
@@ -1144,6 +1158,9 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
     ? formatWorkspaceRelativePath(workEntry.detail?.trim() ?? primaryFilePath, workspaceRoot)
     : null;
   const isCompactionEntry = workEntry.isCompacting || workEntry.label === "Context compacted";
+  const isToolCall =
+    workEntry.itemType === "dynamic_tool_call" || workEntry.requestKind === "tool-call";
+  const toolCallParsed = isToolCall ? parseToolCallDetail(workEntry.detail) : null;
 
   const handleOpenInEditor = useCallback(() => {
     if (!primaryFilePath) return;
@@ -1221,6 +1238,29 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
                 <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
                   {primaryFileDisplayPath}
                 </span>
+              </span>
+            </p>
+          ) : toolCallParsed?.url ? (
+            <p
+              className={cn(
+                "truncate text-[11px] leading-5",
+                workToneClass(workEntry.tone),
+              )}
+            >
+              <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
+                {heading}
+              </span>
+              <span className="text-muted-foreground/85">
+                {" — "}
+                <a
+                  href={toolCallParsed.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-foreground/70"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {toolCallParsed.url}
+                </a>
               </span>
             </p>
           ) : (

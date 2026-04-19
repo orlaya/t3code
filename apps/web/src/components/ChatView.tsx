@@ -3379,7 +3379,12 @@ export default function ChatView(props: ChatViewProps) {
               </div>
 
               {/* Working indicator — static element outside the virtualizer */}
-              {isWorking && <WorkingIndicator startedAt={activeWorkStartedAt} />}
+              {isWorking && (
+                <WorkingIndicator
+                  startedAt={activeWorkStartedAt}
+                  paused={pendingApprovals.length > 0}
+                />
+              )}
 
               {/* Input bar */}
               <div
@@ -3567,14 +3572,28 @@ export default function ChatView(props: ChatViewProps) {
 // Self-ticking timer so it doesn't cause any parent re-renders.
 // ---------------------------------------------------------------------------
 
-function WorkingIndicator({ startedAt }: { startedAt: string | null }) {
+function WorkingIndicator({
+  startedAt,
+  paused = false,
+}: {
+  startedAt: string | null;
+  paused?: boolean;
+}) {
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
+    if (paused) return;
     const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [startedAt]);
+  }, [startedAt, paused]);
 
-  const elapsed = startedAt ? formatElapsed(startedAt, new Date(nowMs).toISOString()) : null;
+  const elapsed =
+    !paused && startedAt ? formatElapsed(startedAt, new Date(nowMs).toISOString()) : null;
+
+  const label = paused
+    ? "Awaiting confirmation"
+    : elapsed
+      ? `Working for ${elapsed}`
+      : "Working...";
 
   return (
     <div className="mx-auto w-full max-w-3xl px-3 sm:px-5">
@@ -3585,7 +3604,7 @@ function WorkingIndicator({ startedAt }: { startedAt: string | null }) {
             <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:200ms]" />
             <span className="h-1 w-1 rounded-full bg-muted-foreground/30 animate-pulse [animation-delay:400ms]" />
           </span>
-          <span>{elapsed ? `Working for ${elapsed}` : "Working..."}</span>
+          <span>{label}</span>
         </div>
       </div>
     </div>

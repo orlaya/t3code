@@ -111,11 +111,11 @@
   --border: --alpha(var(--color-black) / 8%);
   --input: --alpha(var(--color-black) / 10%);
   --ring: #f5b162;
-  --destructive-foreground: var(--color-red-700);
+  --destructive-foreground: #d36c6c;
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-700);
   --success: var(--color-emerald-500);
-  --success-foreground: var(--color-emerald-700);
+  --success-foreground: #cae28f;
   --warning: var(--color-amber-500);
   --warning-foreground: var(--color-amber-700);
 
@@ -140,11 +140,11 @@
     --border: --alpha(var(--color-white) / 6%);
     --input: --alpha(var(--color-white) / 8%);
     --ring: #f5b162;
-    --destructive-foreground: var(--color-red-400);
+    --destructive-foreground: #d36c6c;
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);
     --success: var(--color-emerald-500);
-    --success-foreground: var(--color-emerald-400);
+    --success-foreground: #cae28f;
     --warning: var(--color-amber-500);
     --warning-foreground: var(--color-amber-400);
   }

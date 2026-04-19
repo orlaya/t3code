@@ -838,6 +838,7 @@ export const ChatComposer = memo(
     );
 
     const isComposerApprovalState = activePendingApproval !== null;
+    const approvalHasDiffPreview = isComposerApprovalState;
     const activePendingUserInput = pendingUserInputs[0] ?? null;
     const hasComposerHeader =
       isComposerApprovalState ||
@@ -1743,13 +1744,17 @@ export const ChatComposer = memo(
         >
           <div
             className={cn(
-              "rounded-[20px] border bg-card transition-colors duration-200 has-focus-visible:border-ring/45",
+              "border transition-colors duration-200 has-focus-visible:border-ring/45",
+              approvalHasDiffPreview ? "rounded-lg bg-black/20" : "rounded-[20px] bg-card",
               isDragOverComposer ? "border-primary/70 bg-accent/30" : "border-border",
               composerProviderState.composerSurfaceClassName,
             )}
           >
             {activePendingApproval ? (
-              <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+              <div className={cn(
+                "border-b border-border/65 bg-muted/20",
+                approvalHasDiffPreview ? "rounded-t-[7px]" : "rounded-t-[19px]",
+              )}>
                 <ComposerPendingApprovalPanel
                   approval={activePendingApproval}
                   pendingCount={pendingApprovals.length}
@@ -1777,7 +1782,7 @@ export const ChatComposer = memo(
               </div>
             ) : null}
 
-            <div
+            {!approvalHasDiffPreview && <div
               className={cn(
                 "relative px-3 pb-2 sm:px-4",
                 hasComposerHeader ? "pt-2.5 sm:pt-3" : "pt-3.5 sm:pt-4",
@@ -1869,44 +1874,44 @@ export const ChatComposer = memo(
                   </div>
                 )}
 
-              <ComposerPromptEditor
-                ref={composerEditorRef}
-                value={
-                  isComposerApprovalState
-                    ? ""
-                    : activePendingProgress
-                      ? activePendingProgress.customAnswer
-                      : prompt
-                }
-                cursor={composerCursor}
-                terminalContexts={
-                  !isComposerApprovalState && pendingUserInputs.length === 0
-                    ? composerTerminalContexts
-                    : []
-                }
-                skills={selectedProviderStatus?.skills ?? []}
-                onRemoveTerminalContext={removeComposerTerminalContextFromDraft}
-                onChange={onPromptChange}
-                onCommandKeyDown={onComposerCommandKey}
-                onPaste={onComposerPaste}
-                placeholder={
-                  isComposerApprovalState
-                    ? (activePendingApproval?.detail ?? "Resolve this approval request to continue")
-                    : activePendingProgress
+              {!approvalHasDiffPreview && (
+                <ComposerPromptEditor
+                  ref={composerEditorRef}
+                  value={
+                    isComposerApprovalState
+                      ? ""
+                      : activePendingProgress
+                        ? activePendingProgress.customAnswer
+                        : prompt
+                  }
+                  cursor={composerCursor}
+                  terminalContexts={
+                    !isComposerApprovalState && pendingUserInputs.length === 0
+                      ? composerTerminalContexts
+                      : []
+                  }
+                  skills={selectedProviderStatus?.skills ?? []}
+                  onRemoveTerminalContext={removeComposerTerminalContextFromDraft}
+                  onChange={onPromptChange}
+                  onCommandKeyDown={onComposerCommandKey}
+                  onPaste={onComposerPaste}
+                  placeholder={
+                    activePendingProgress
                       ? "Type your own answer, or leave this blank to use the selected option"
                       : showPlanFollowUpPrompt && activeProposedPlan
                         ? "Add feedback to refine the plan, or leave this blank to implement it"
                         : phase === "disconnected"
                           ? "Ask for follow-up changes or attach images"
                           : "Ask anything, @tag files/folders, or use / to show available commands"
-                }
-                disabled={isConnecting || isComposerApprovalState}
-              />
-            </div>
+                  }
+                  disabled={isConnecting}
+                />
+              )}
+            </div>}
 
             {/* Bottom toolbar */}
             {activePendingApproval ? (
-              <div className="flex items-center justify-end gap-2 px-2.5 pb-2.5 sm:px-3 sm:pb-3">
+              <div className="flex items-center justify-end gap-2 px-2.5 py-1.5 sm:px-3">
                 <ComposerPendingApprovalActions
                   requestId={activePendingApproval.requestId}
                   isResponding={respondingRequestIds.includes(activePendingApproval.requestId)}

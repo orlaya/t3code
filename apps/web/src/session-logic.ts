@@ -69,7 +69,7 @@ export interface PendingApprovalArgs {
 
 export interface PendingApproval {
   requestId: ApprovalRequestId;
-  requestKind: "command" | "file-read" | "file-change";
+  requestKind: "command" | "file-read" | "file-change" | "tool-call";
   createdAt: string;
   detail?: string;
   args?: PendingApprovalArgs;
@@ -203,6 +203,8 @@ function requestKindFromRequestType(requestType: unknown): PendingApproval["requ
     case "file_change_approval":
     case "apply_patch_approval":
       return "file-change";
+    case "dynamic_tool_call":
+      return "tool-call";
     default:
       return null;
   }
@@ -249,10 +251,11 @@ export function derivePendingApprovals(
       payload &&
       (payload.requestKind === "command" ||
         payload.requestKind === "file-read" ||
-        payload.requestKind === "file-change")
+        payload.requestKind === "file-change" ||
+        payload.requestKind === "tool-call")
         ? payload.requestKind
         : payload
-          ? requestKindFromRequestType(payload.requestType)
+          ? (requestKindFromRequestType(payload.requestType) ?? "tool-call")
           : null;
     const detail = payload && typeof payload.detail === "string" ? payload.detail : undefined;
     const args =
@@ -1119,7 +1122,8 @@ function extractWorkLogRequestKind(
   if (
     payload?.requestKind === "command" ||
     payload?.requestKind === "file-read" ||
-    payload?.requestKind === "file-change"
+    payload?.requestKind === "file-change" ||
+    payload?.requestKind === "tool-call"
   ) {
     return payload.requestKind;
   }

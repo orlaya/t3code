@@ -457,6 +457,10 @@ function classifyToolItemType(toolName: string): CanonicalItemType {
 
 function isReadOnlyToolName(toolName: string): boolean {
   const normalized = toolName.toLowerCase();
+  // Exclude web-oriented tools that contain "search" but aren't file-read tools
+  if (normalized.includes("websearch") || normalized.includes("web search")) {
+    return false;
+  }
   return (
     normalized === "read" ||
     normalized.includes("read file") ||
