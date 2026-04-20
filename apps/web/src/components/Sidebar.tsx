@@ -184,7 +184,7 @@ import {
   type SidebarProjectGroupMember,
   type SidebarProjectSnapshot,
 } from "../sidebarProjectGrouping";
-const THREAD_PREVIEW_LIMIT = 6;
+const THREAD_PREVIEW_LIMIT = 10;
 const SIDEBAR_SORT_LABELS: Record<SidebarProjectSortOrder, string> = {
   updated_at: "Last user message",
   created_at: "Created at",

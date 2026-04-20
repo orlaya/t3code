@@ -115,6 +115,9 @@
   --popover-foreground: var(--color-neutral-800);
   --primary: #e08f43; /* #f5b162;*/
   --primary-foreground: var(--color-white);
+  --search-highlight: oklch(0.799 0.126 77);
+  --search-highlight-active: --alpha(var(--search-highlight) / 95%);
+  --search-highlight-match: --alpha(var(--search-highlight) / 70%);
   --secondary: --alpha(var(--color-black) / 4%);
   --secondary-foreground: var(--color-neutral-800);
   --muted: --alpha(var(--color-black) / 4%);
@@ -144,6 +147,9 @@
     --popover-foreground: var(--color-neutral-100);
     --primary: #e08f43; /* #f5b162;*/
     --primary-foreground: var(--color-white);
+    --search-highlight: oklch(0.799 0.126 77);
+    --search-highlight-active: --alpha(var(--search-highlight) / 95%);
+    --search-highlight-match: --alpha(var(--search-highlight) / 70%);
     --secondary: --alpha(var(--color-white) / 4%);
     --secondary-foreground: var(--color-neutral-100);
     --muted: --alpha(var(--color-white) / 4%);
@@ -631,4 +637,16 @@ label:has(> select#reasoning-effort) select {
   background-clip: text;
   -webkit-background-clip: text;
   animation: ultrathink-rainbow 10s linear infinite;
+}
+
+/* Search highlights — CSS Custom Highlight API.
+   Uses primary-derived oklch with alpha for a softer blend. */
+::highlight(search-match) {
+  background-color: var(--search-highlight-match);
+  color: var(--color-black);
+}
+
+::highlight(search-match-active) {
+  background-color: var(--search-highlight-active);
+  color: var(--color-black);
 }

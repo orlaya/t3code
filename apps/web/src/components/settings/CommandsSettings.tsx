@@ -180,9 +180,7 @@ function CommandCard({
               Absolute path to a file whose contents are prepended to the prompt message.
             </span>
           </label>
-          {promptError ? (
-            <p className="mt-2 text-xs text-destructive">{promptError}</p>
-          ) : null}
+          {promptError ? <p className="mt-2 text-xs text-destructive">{promptError}</p> : null}
         </div>
 
         {/* Highlight toggle + delete */}
@@ -245,7 +243,9 @@ export function CommandsSettings() {
     (draft: CommandDraft, index: number | null): boolean => {
       const nameErr = validateCommandName(draft.name, existingNames, index);
       const hasPrompt = draft.promptMessage.trim() || draft.promptFile.trim();
-      const promptErr = hasPrompt ? null : "At least one of prompt message or prompt file is required.";
+      const promptErr = hasPrompt
+        ? null
+        : "At least one of prompt message or prompt file is required.";
       const descErr = draft.description.trim() ? null : "Description is required.";
 
       if (nameErr || promptErr || descErr) {
@@ -337,9 +337,7 @@ export function CommandsSettings() {
       >
         {commands.length === 0 && !isAdding ? (
           <div className="px-4 py-8 text-center sm:px-5">
-            <p className="py-3 text-sm text-muted-foreground/80">
-              Create a saved prompt shortcut.
-            </p>
+            <p className="py-3 text-sm text-muted-foreground/80">Create a saved prompt shortcut.</p>
           </div>
         ) : null}
 

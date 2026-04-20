@@ -23,7 +23,6 @@ import {
   ChevronRightIcon,
   ChevronUpIcon,
   CircleAlertIcon,
-
   EyeIcon,
   GlobeIcon,
   LoaderIcon,
@@ -63,6 +62,8 @@ import { cn } from "~/lib/utils";
 import { useUiStateStore } from "~/uiStateStore";
 import { type TimestampFormat } from "@t3tools/contracts/settings";
 import { formatTimestamp } from "../../timestampFormat";
+import { SearchOverlay } from "../SearchOverlay";
+import { useTimelineSearch } from "../../hooks/useTimelineSearch";
 
 import {
   buildInlineTerminalContextText,
@@ -102,6 +103,11 @@ interface TimelineRowSharedState {
 
 const TimelineRowCtx = createContext<TimelineRowSharedState>(null!);
 
+/** Separate context for search query — avoids invalidating the main shared
+ *  state on every keystroke. Only components that check for hidden matches
+ *  (collapsible sections) subscribe to this. */
+const SearchQueryCtx = createContext<string>("");
+
 // ---------------------------------------------------------------------------
 // Props (public API)
 // ---------------------------------------------------------------------------
@@ -130,6 +136,8 @@ interface MessagesTimelineProps {
   timestampFormat: TimestampFormat;
   workspaceRoot: string | undefined;
   onIsAtEndChange: (isAtEnd: boolean) => void;
+  searchOpen: boolean;
+  onSearchClose: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +168,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   timestampFormat,
   workspaceRoot,
   onIsAtEndChange,
+  searchOpen,
+  onSearchClose,
 }: MessagesTimelineProps) {
   const rawRows = useMemo(
     () =>
@@ -280,6 +290,25 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     [],
   );
 
+  // ---------------------------------------------------------------------------
+  // Search
+  // ---------------------------------------------------------------------------
+
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const timelineSearch = useTimelineSearch(rows, listRef, searchContainerRef);
+
+  const handleSearchQuery = useCallback(
+    (query: string) => {
+      timelineSearch.search(query);
+    },
+    [timelineSearch],
+  );
+
+  const handleSearchClose = useCallback(() => {
+    timelineSearch.clear();
+    onSearchClose();
+  }, [timelineSearch, onSearchClose]);
+
   if (rows.length === 0 && !isWorking) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -292,22 +321,35 @@ export const MessagesTimeline = memo(function MessagesTimeline({
 
   return (
     <TimelineRowCtx.Provider value={sharedState}>
-      <LegendList<MessagesTimelineRow>
-        ref={listRef}
-        data={rows}
-        keyExtractor={keyExtractor}
-        renderItem={renderItem}
-        getEstimatedItemSize={getEstimatedItemSize}
-        estimatedItemSize={90}
-        initialScrollAtEnd
-        maintainScrollAtEnd
-        maintainScrollAtEndThreshold={0.1}
-        maintainVisibleContentPosition
-        onScroll={handleScroll}
-        className="h-full overflow-x-hidden overscroll-y-contain px-3 sm:px-5"
-        ListHeaderComponent={<div className="h-3 sm:h-4" />}
-        ListFooterComponent={<div className="h-3 sm:h-4" />}
-      />
+      <SearchQueryCtx.Provider value={timelineSearch.state.query}>
+        <SearchOverlay
+          open={searchOpen}
+          onClose={handleSearchClose}
+          matchCount={timelineSearch.state.matches.length}
+          currentMatch={timelineSearch.state.currentIndex}
+          onSearch={handleSearchQuery}
+          onNext={timelineSearch.next}
+          onPrev={timelineSearch.prev}
+        />
+        <div ref={searchContainerRef} className="h-full">
+          <LegendList<MessagesTimelineRow>
+            ref={listRef}
+            data={rows}
+            keyExtractor={keyExtractor}
+            renderItem={renderItem}
+            getEstimatedItemSize={getEstimatedItemSize}
+            estimatedItemSize={90}
+            initialScrollAtEnd
+            maintainScrollAtEnd
+            maintainScrollAtEndThreshold={0.1}
+            maintainVisibleContentPosition
+            onScroll={handleScroll}
+            className="h-full overflow-x-hidden overscroll-y-contain px-3 sm:px-5"
+            ListHeaderComponent={<div className="h-3 sm:h-4" />}
+            ListFooterComponent={<div className="h-3 sm:h-4" />}
+          />
+        </div>
+      </SearchQueryCtx.Provider>
     </TimelineRowCtx.Provider>
   );
 });
@@ -359,9 +401,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
           const displayedUserMessage = deriveDisplayedUserMessageState(row.message.text);
           const terminalContexts = displayedUserMessage.contexts;
           const canRevertAgentWork = typeof row.revertTurnCount === "number";
-          const slashCommandMatch = parseSlashCommandText(
-            displayedUserMessage.visibleText,
-          );
+          const slashCommandMatch = parseSlashCommandText(displayedUserMessage.visibleText);
           return (
             <div className="group flex flex-col items-end">
               <div
@@ -1013,7 +1053,9 @@ const ThinkingSection = memo(function ThinkingSection({
   message: Extract<MessagesTimelineRow, { kind: "thinking" }>["message"];
 }) {
   const { markdownCwd } = use(TimelineRowCtx);
+  const searchQuery = use(SearchQueryCtx);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [hasHiddenMatch, setHasHiddenMatch] = useState(false);
   const collapsedScrollRef = useRef<HTMLDivElement | null>(null);
   const isSubAgent = message.agentKind === "sub";
 
@@ -1021,6 +1063,20 @@ const ThinkingSection = memo(function ThinkingSection({
     if (isExpanded || !collapsedScrollRef.current) return;
     collapsedScrollRef.current.scrollTop = collapsedScrollRef.current.scrollHeight;
   }, [message.text, isExpanded]);
+
+  const canExpand = !isSubAgent && message.text.length > THINKING_EXPAND_CHAR_THRESHOLD;
+
+  // Check for matches in the hidden overflow area using DOM positions.
+  useEffect(() => {
+    if (!canExpand || isExpanded || !searchQuery) {
+      setHasHiddenMatch(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setHasHiddenMatch(hasMatchOutsideVisibleBounds(collapsedScrollRef.current, searchQuery));
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [canExpand, isExpanded, searchQuery]);
 
   if (isSubAgent) {
     const preview =
@@ -1038,8 +1094,6 @@ const ThinkingSection = memo(function ThinkingSection({
     );
   }
 
-  const canExpand = message.text.length > THINKING_EXPAND_CHAR_THRESHOLD;
-
   return (
     <div
       className={cn(
@@ -1052,7 +1106,8 @@ const ThinkingSection = memo(function ThinkingSection({
         {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
         <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">Thinking</p>
         {canExpand && (
-          <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/think:text-foreground">
+          <span className="flex items-center gap-1 text-muted-foreground/70 transition-colors duration-150 group-hover/think:text-foreground">
+            {hasHiddenMatch && <SearchMatchDot />}
             {isExpanded ? (
               <ChevronUpIcon className="size-3.5" />
             ) : (
@@ -1238,7 +1293,10 @@ const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageConten
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
+  const [hasHiddenMatch, setHasHiddenMatch] = useState(false);
   const measureRef = useRef<HTMLDivElement>(null);
+  const clipRef = useRef<HTMLDivElement>(null);
+  const searchQuery = use(SearchQueryCtx);
 
   // Measure the inner div (which never has maxHeight) so the natural content
   // height is always reported, regardless of the outer div's collapsed state.
@@ -1253,6 +1311,19 @@ const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageConten
     return () => observer.disconnect();
   }, []);
 
+  // Check for matches in the hidden overflow area using DOM positions.
+  useEffect(() => {
+    if (!isOverflowing || isExpanded || !searchQuery) {
+      setHasHiddenMatch(false);
+      return;
+    }
+    // Small delay to let the DOM settle after renders.
+    const timer = setTimeout(() => {
+      setHasHiddenMatch(hasMatchOutsideVisibleBounds(clipRef.current, searchQuery));
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [isOverflowing, isExpanded, searchQuery]);
+
   const handleToggle = useCallback(() => {
     setIsExpanded((v) => !v);
   }, []);
@@ -1263,6 +1334,7 @@ const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageConten
   return (
     <div>
       <div
+        ref={clipRef}
         className="relative"
         style={
           showExpanded
@@ -1284,9 +1356,10 @@ const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageConten
       {isOverflowing && (
         <button
           type="button"
-          className="-mb-1 -mt-1 w-full text-center text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75"
+          className="mb-0.5 mt-0 flex w-full items-center justify-center gap-1.5 text-center text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75"
           onClick={handleToggle}
         >
+          {hasHiddenMatch && <SearchMatchDot />}
           {isExpanded ? "Show less" : "Show more"}
         </button>
       )}
@@ -1403,7 +1476,7 @@ const UserMessageBody = memo(function UserMessageBody(props: {
       <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
         <span className="mr-px text-primary">/</span>
         <span className="font-semibold">{name}</span>
-        {extraText && <span>{" "}{extraText}</span>}
+        {extraText && <span> {extraText}</span>}
       </div>
     );
   }
@@ -1414,6 +1487,57 @@ const UserMessageBody = memo(function UserMessageBody(props: {
     </div>
   );
 });
+
+// ---------------------------------------------------------------------------
+// Search match indicator — shown on collapsed sections that contain matches.
+// ---------------------------------------------------------------------------
+
+/**
+ * Check if any text matches for `query` exist outside the visible bounds of
+ * a clipped container (overflow: hidden/auto with a max-height).
+ *
+ * Returns true when at least one match is fully outside the container's
+ * visible rect — i.e. it's in the hidden/overflowed portion.
+ */
+function hasMatchOutsideVisibleBounds(container: HTMLElement | null, query: string): boolean {
+  if (!container || !query) return false;
+  const lowerQuery = query.toLowerCase();
+  const containerRect = container.getBoundingClientRect();
+
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let node: Text | null;
+  while ((node = walker.nextNode() as Text | null)) {
+    const text = node.textContent;
+    if (!text) continue;
+    const lowerText = text.toLowerCase();
+    let startPos = 0;
+    while (true) {
+      const idx = lowerText.indexOf(lowerQuery, startPos);
+      if (idx === -1) break;
+      const range = document.createRange();
+      range.setStart(node, idx);
+      range.setEnd(node, idx + lowerQuery.length);
+      const rangeRect = range.getBoundingClientRect();
+      // Match is hidden if its bottom is above container top or its top is below container bottom.
+      if (rangeRect.bottom <= containerRect.top || rangeRect.top >= containerRect.bottom) {
+        return true;
+      }
+      startPos = idx + lowerQuery.length;
+    }
+  }
+  return false;
+}
+
+/** Small coloured dot indicating hidden search matches inside a collapsed section. */
+function SearchMatchDot() {
+  return (
+    <span
+      className="inline-block size-1.5 shrink-0 rounded-full"
+      style={{ backgroundColor: "oklch(0.85 0.15 85)" }}
+      title="Search match in collapsed content"
+    />
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Structural sharing — reuse old row references when data hasn't changed

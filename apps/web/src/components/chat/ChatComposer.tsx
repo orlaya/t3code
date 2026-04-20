@@ -827,6 +827,7 @@ export const ChatComposer = memo(
       searchableModelOptions,
       selectedProvider,
       selectedProviderStatus,
+      settings.customSlashCommands,
       workspaceEntries,
     ]);
 

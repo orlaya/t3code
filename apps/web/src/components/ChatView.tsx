@@ -722,6 +722,7 @@ export default function ChatView(props: ChatViewProps) {
   );
   const legendListRef = useRef<LegendListRef | null>(null);
   const isAtEndRef = useRef(true);
+  const [searchOpen, setSearchOpen] = useState(false);
   const attachmentPreviewHandoffByMessageIdRef = useRef<Record<string, string[]>>({});
   const attachmentPreviewPromotionInFlightByMessageIdRef = useRef<Record<string, true>>({});
   const sendInFlightRef = useRef(false);
@@ -2357,6 +2358,13 @@ export default function ChatView(props: ChatViewProps) {
         return;
       }
 
+      if (command === "search.toggle") {
+        event.preventDefault();
+        event.stopPropagation();
+        setSearchOpen((prev) => !prev);
+        return;
+      }
+
       const scriptId = projectScriptIdFromCommand(command);
       if (!scriptId || !activeProject) return;
       const script = activeProject.scripts.find((entry) => entry.id === scriptId);
@@ -3413,6 +3421,8 @@ export default function ChatView(props: ChatViewProps) {
                   timestampFormat={timestampFormat}
                   workspaceRoot={activeWorkspaceRoot}
                   onIsAtEndChange={onIsAtEndChange}
+                  searchOpen={searchOpen}
+                  onSearchClose={() => setSearchOpen(false)}
                 />
 
                 {/* scroll to bottom pill — shown when user has scrolled away from the bottom */}

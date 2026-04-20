@@ -1,5 +1,11 @@
 import type { ComponentType } from "react";
-import { ArchiveIcon, ArrowLeftIcon, Link2Icon, Settings2Icon, TerminalSquareIcon } from "lucide-react";
+import {
+  ArchiveIcon,
+  ArrowLeftIcon,
+  Link2Icon,
+  Settings2Icon,
+  TerminalSquareIcon,
+} from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 import {

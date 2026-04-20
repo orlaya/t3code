@@ -114,6 +114,8 @@ function buildProps() {
     timestampFormat: "locale" as const,
     workspaceRoot: undefined,
     onIsAtEndChange: () => {},
+    searchOpen: false,
+    onSearchClose: () => {},
   };
 }
 

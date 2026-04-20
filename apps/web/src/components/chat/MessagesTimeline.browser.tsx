@@ -72,6 +72,8 @@ function buildProps() {
     timestampFormat: "24-hour" as const,
     workspaceRoot: undefined,
     onIsAtEndChange: vi.fn(),
+    searchOpen: false,
+    onSearchClose: vi.fn(),
   };
 }
 

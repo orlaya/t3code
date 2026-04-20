@@ -119,6 +119,8 @@ function deriveTerminalAssistantMessageIds(timelineEntries: ReadonlyArray<Timeli
   return new Set(lastAssistantMessageIdByResponseKey.values());
 }
 
+const isCompactionEntry = (entry: WorkLogEntry) => entry.isCompacting || entry.isCompacted;
+
 export function deriveMessagesTimelineRows(input: {
   timelineEntries: ReadonlyArray<TimelineEntry>;
   completionDividerBeforeEntryId: string | null;
@@ -139,9 +141,6 @@ export function deriveMessagesTimelineRows(input: {
   // bottom of the timeline so it's always the last visible thing.
   const shouldPinCompacting = input.isWorking;
   let pinnedCompacting: { id: string; createdAt: string; entry: WorkLogEntry } | null = null;
-
-  const isCompactionEntry = (entry: WorkLogEntry) =>
-    entry.isCompacting || entry.isCompacted;
 
   for (let index = 0; index < input.timelineEntries.length; index += 1) {
     const timelineEntry = input.timelineEntries[index];
