@@ -535,6 +535,16 @@ function summarizeToolRequest(toolName: string, input: Record<string, unknown>):
     }
   }
 
+  // Search tools (Grep, Glob) — show path + pattern together
+  const pattern = typeof input.pattern === "string" ? input.pattern.trim() : undefined;
+  if (pattern) {
+    const searchPath = typeof input.path === "string" ? input.path.trim() : undefined;
+    if (searchPath) {
+      return `${searchPath} · ${pattern}`.slice(0, 400);
+    }
+    return pattern.slice(0, 400);
+  }
+
   // File-path-based tools — show the path, with line range for Read
   const filePath =
     typeof input.file_path === "string"
@@ -552,12 +562,6 @@ function summarizeToolRequest(toolName: string, input: Record<string, unknown>):
       return `${filePath.slice(0, 390)}:${range}`;
     }
     return filePath.slice(0, 400);
-  }
-
-  // Pattern-based tools (Grep, Glob) — show the pattern
-  const pattern = typeof input.pattern === "string" ? input.pattern.trim() : undefined;
-  if (pattern) {
-    return pattern.slice(0, 400);
   }
 
   const serialized = JSON.stringify(input);
