@@ -32,6 +32,7 @@ function ChatRouteGlobalShortcuts() {
 
   useEffect(() => {
     const onWindowKeyDown = (event: KeyboardEvent) => {
+      if (!event.isTrusted) return;
       if (event.defaultPrevented) return;
       const command = resolveShortcutCommand(event, keybindings, {
         context: {

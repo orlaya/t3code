@@ -6,7 +6,7 @@ export default mergeConfig(
   viteConfig,
   defineConfig({
     test: {
-      reporters: ["dot"],
+      reporters: ["agent"],
     },
     define: {
       // Neutralise the env-var baking from vite.config.ts so that tests

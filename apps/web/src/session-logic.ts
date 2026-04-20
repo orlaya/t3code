@@ -540,6 +540,9 @@ export function deriveWorkLogEntries(
   // collab_agent_tool_call events have NO toolCallId — match by collapseKey
   // (derived from [itemType, label, detail]) instead.
   const completedSubAgentKeys = new Set<string>();
+  // Collect taskIds of completed sub-agents for stable matching (collapseKey
+  // is unreliable because `detail` changes between tool.updated → tool.completed).
+  const completedSubAgentTaskIds = new Set<string>();
   // Map from completed entry key → the original tool.updated entry's id.
   // When we drop the tool.updated entry, we carry its id onto the completed
   // entry so the React key stays stable (keeps dialogs etc. alive).
@@ -549,10 +552,7 @@ export function deriveWorkLogEntries(
       if (entry.toolCallId) completedSubAgentKeys.add(entry.toolCallId);
       if (entry.collapseKey) completedSubAgentKeys.add(entry.collapseKey);
     }
-    if (
-      entry.itemType === "collab_agent_tool_call" &&
-      entry.activityKind !== "tool.completed"
-    ) {
+    if (entry.itemType === "collab_agent_tool_call" && entry.activityKind !== "tool.completed") {
       if (entry.toolCallId) updatedSubAgentIdByKey.set(entry.toolCallId, entry.id);
       if (entry.collapseKey) updatedSubAgentIdByKey.set(entry.collapseKey, entry.id);
     }
@@ -582,6 +582,20 @@ export function deriveWorkLogEntries(
     }
   }
 
+  // Build taskId-based fallbacks for both filtering and ID transfer.
+  // The collapseKey (derived from [itemType, label, detail]) often differs
+  // between tool.updated and tool.completed because `detail` changes when the
+  // result arrives, causing the collapseKey lookup to miss. taskId is stable.
+  const updatedSubAgentIdByTaskId = new Map<string, string>();
+  for (const entry of collapsed) {
+    if (entry.itemType !== "collab_agent_tool_call" || !entry.taskId) continue;
+    if (entry.activityKind === "tool.completed") {
+      completedSubAgentTaskIds.add(entry.taskId);
+    } else {
+      updatedSubAgentIdByTaskId.set(entry.taskId, entry.id);
+    }
+  }
+
   // Context compaction: if a "compacted" activity exists, drop the earlier
   // "compacting" entry so only the finished state renders. If compaction is
   // still in progress (no "compacted" yet), mark the entry with isCompacting.
@@ -605,7 +619,8 @@ export function deriveWorkLogEntries(
         entry.itemType === "collab_agent_tool_call" &&
         entry.activityKind !== "tool.completed" &&
         ((entry.toolCallId && completedSubAgentKeys.has(entry.toolCallId)) ||
-          (entry.collapseKey && completedSubAgentKeys.has(entry.collapseKey)))
+          (entry.collapseKey && completedSubAgentKeys.has(entry.collapseKey)) ||
+          (entry.taskId && completedSubAgentTaskIds.has(entry.taskId)))
       ) {
         return false;
       }
@@ -620,7 +635,8 @@ export function deriveWorkLogEntries(
       if (entry.itemType === "collab_agent_tool_call" && activityKind === "tool.completed") {
         const originalId =
           (toolCallId && updatedSubAgentIdByKey.get(toolCallId)) ||
-          (collapseKey && updatedSubAgentIdByKey.get(collapseKey));
+          (collapseKey && updatedSubAgentIdByKey.get(collapseKey)) ||
+          (entry.taskId && updatedSubAgentIdByTaskId.get(entry.taskId));
         if (originalId) entry.id = originalId;
       }
       if (activityKind === "context-compaction" && entry.label === "Context compacting") {

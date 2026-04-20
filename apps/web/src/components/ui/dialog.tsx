@@ -77,7 +77,7 @@ function DialogPopup({
           {showCloseButton && (
             <DialogPrimitive.Close
               aria-label="Close"
-              className="absolute end-1.5 top-1.5"
+              className="absolute end-1.5 top-1.5 text-foreground/60 hover:text-foreground"
               render={<Button size="icon-sm" variant="ghost" />}
             >
               <XIcon className="size-4" />

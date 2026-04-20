@@ -5,6 +5,7 @@ import {
   use,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -18,6 +19,8 @@ import ChatMarkdown from "../ChatMarkdown";
 import {
   CheckIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ChevronUpIcon,
   CircleAlertIcon,
   CircleSmallIcon,
@@ -358,7 +361,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
           const canRevertAgentWork = typeof row.revertTurnCount === "number";
           return (
             <div className="group flex flex-col items-end">
-              <div className="relative max-w-[80%] rounded-2xl rounded-br-sm border border-border bg-secondary px-4 py-3">
+              <div className="relative max-w-[80%] rounded-2xl rounded-br-sm border border-border bg-secondary px-4 pt-3 pb-1">
                 {userImages.length > 0 && (
                   <div className="mb-2 grid max-w-[420px] grid-cols-2 gap-2">
                     {userImages.map(
@@ -394,13 +397,15 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                     )}
                   </div>
                 )}
-                {(displayedUserMessage.visibleText.trim().length > 0 ||
-                  terminalContexts.length > 0) && (
-                  <UserMessageBody
-                    text={displayedUserMessage.visibleText}
-                    terminalContexts={terminalContexts}
-                  />
-                )}
+                <CollapsibleUserMessageContent>
+                  {(displayedUserMessage.visibleText.trim().length > 0 ||
+                    terminalContexts.length > 0) && (
+                    <UserMessageBody
+                      text={displayedUserMessage.visibleText}
+                      terminalContexts={terminalContexts}
+                    />
+                  )}
+                </CollapsibleUserMessageContent>
               </div>
               <div className="mt-1.5 flex items-center gap-2 px-1">
                 <div className="flex items-center gap-1.5 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100">
@@ -550,6 +555,9 @@ const WorkGroupSection = memo(function WorkGroupSection({
   const pinnedSubAgents = groupedEntries.filter((e) => e.itemType === "collab_agent_tool_call");
   const regularEntries = groupedEntries.filter((e) => e.itemType !== "collab_agent_tool_call");
 
+  // Lifted dialog state — one dialog navigates across all pinned sub-agents in the group.
+  const [selectedSubAgentIdx, setSelectedSubAgentIdx] = useState<number | null>(null);
+
   const hasOverflow = regularEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
   const visibleEntries =
     hasOverflow && !isExpanded
@@ -594,14 +602,28 @@ const WorkGroupSection = memo(function WorkGroupSection({
         ) : null)}
       {pinnedSubAgents.length > 0 && (
         <div className={cn("space-y-0.5", visibleEntries.length > 0 && "mb-1")}>
-          {pinnedSubAgents.map((entry) => (
+          {pinnedSubAgents.map((entry, idx) => (
             <PinnedSubAgentEntry
               key={`pinned-subagent:${entry.id}`}
               workEntry={entry}
               workspaceRoot={workspaceRoot}
-              allEntries={groupedEntries}
+              onOpen={() => setSelectedSubAgentIdx(idx)}
             />
           ))}
+          {selectedSubAgentIdx != null && pinnedSubAgents[selectedSubAgentIdx]?.subAgentBrief && (
+            <SubAgentDetailDialog
+              open
+              onOpenChange={(v) => {
+                if (!v) setSelectedSubAgentIdx(null);
+              }}
+              workEntry={pinnedSubAgents[selectedSubAgentIdx]!}
+              allEntries={groupedEntries}
+              workspaceRoot={workspaceRoot}
+              siblingSubAgents={pinnedSubAgents}
+              siblingIndex={selectedSubAgentIdx}
+              onNavigate={setSelectedSubAgentIdx}
+            />
+          )}
         </div>
       )}
       {visibleEntries.length > 0 && (
@@ -623,13 +645,12 @@ const WorkGroupSection = memo(function WorkGroupSection({
 const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
   workEntry,
   workspaceRoot,
-  allEntries,
+  onOpen,
 }: {
   workEntry: TimelineWorkEntry;
   workspaceRoot: string | undefined;
-  allEntries: ReadonlyArray<TimelineWorkEntry>;
+  onOpen: () => void;
 }) {
-  const [dialogOpen, setDialogOpen] = useState(false);
   const heading = toolWorkEntryHeading(workEntry);
   const preview = workEntryPreview(workEntry, workspaceRoot);
   const displayText =
@@ -642,46 +663,34 @@ const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
   const hasBrief = workEntry.subAgentBrief != null;
 
   return (
-    <>
-      <button
-        type="button"
-        className={cn(
-          "flex w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left",
-          inProgress ? "bg-primary/5" : "bg-muted/40",
-          hasBrief && "cursor-pointer hover:bg-muted/60",
-        )}
-        onClick={() => {
-          if (hasBrief) setDialogOpen(true);
-        }}
-      >
-        {inProgress ? (
-          <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
-        ) : (
-          <CheckIcon className="size-3 shrink-0 text-primary/70" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p
-            className={cn(
-              "truncate text-[11px] leading-5",
-              inProgress ? "text-foreground/90" : "font-medium text-foreground/80",
-            )}
-          >
-            {heading}
-            {displayText && <span className="text-muted-foreground/70"> — {displayText}</span>}
-          </p>
-        </div>
-      </button>
-
-      {hasBrief && (
-        <SubAgentDetailDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          workEntry={workEntry}
-          allEntries={allEntries}
-          workspaceRoot={workspaceRoot}
-        />
+    <button
+      type="button"
+      className={cn(
+        "flex w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left",
+        inProgress ? "bg-primary/5" : "bg-muted/40",
+        hasBrief && "cursor-pointer hover:bg-muted/60",
       )}
-    </>
+      onClick={() => {
+        if (hasBrief) onOpen();
+      }}
+    >
+      {inProgress ? (
+        <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
+      ) : (
+        <CheckIcon className="size-3 shrink-0 text-primary/70" />
+      )}
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            "truncate text-[11px] leading-5",
+            inProgress ? "text-foreground/90" : "font-medium text-foreground/80",
+          )}
+        >
+          {heading}
+          {displayText && <span className="text-muted-foreground/70"> — {displayText}</span>}
+        </p>
+      </div>
+    </button>
   );
 });
 
@@ -692,12 +701,21 @@ const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
   workEntry,
   allEntries,
   workspaceRoot,
+  siblingSubAgents,
+  siblingIndex,
+  onNavigate,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workEntry: TimelineWorkEntry;
   allEntries: ReadonlyArray<TimelineWorkEntry>;
   workspaceRoot: string | undefined;
+  /** All sub-agent entries in this work group (for left/right navigation). */
+  siblingSubAgents: ReadonlyArray<TimelineWorkEntry>;
+  /** Index of the currently displayed sub-agent within siblingSubAgents. */
+  siblingIndex: number;
+  /** Callback to navigate to a different sub-agent by index. */
+  onNavigate: (index: number) => void;
 }) {
   const brief = workEntry.subAgentBrief;
   if (!brief) return null;
@@ -714,6 +732,54 @@ const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
 
   const [briefExpanded, setBriefExpanded] = useState(false);
   const [workLogExpanded, setWorkLogExpanded] = useState(false);
+
+  // Detect when the combined heading + displayText overflows a single line.
+  const headingMeasureRef = useRef<HTMLSpanElement>(null);
+  const headingContainerRef = useRef<HTMLDivElement>(null);
+  const [headingOverflows, setHeadingOverflows] = useState(false);
+
+  useLayoutEffect(() => {
+    const measure = headingMeasureRef.current;
+    const container = headingContainerRef.current;
+    if (!measure || !container) return;
+    // Compare the natural (nowrap) width of the text against the container's
+    // available content width (minus icon + gap).
+    setHeadingOverflows(measure.scrollWidth > container.clientWidth);
+  }, [heading, displayText, open]);
+
+  // Left/right navigation across sibling sub-agents (loops around).
+  const hasSiblings = siblingSubAgents.length > 1;
+
+  const navigateSubAgent = useCallback(
+    (direction: -1 | 1) => {
+      if (!hasSiblings) return;
+      const next = (siblingIndex + direction + siblingSubAgents.length) % siblingSubAgents.length;
+      // Reset collapsible sections when navigating.
+      setBriefExpanded(false);
+      setWorkLogExpanded(false);
+      onNavigate(next);
+    },
+    [siblingIndex, siblingSubAgents.length, onNavigate, hasSiblings],
+  );
+
+  // Capture-phase listener so arrow keys navigate sub-agents before the
+  // dialog's internal focus management can intercept them.
+  useEffect(() => {
+    if (!open || !hasSiblings) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        e.stopPropagation();
+        navigateSubAgent(-1);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        e.stopPropagation();
+        navigateSubAgent(1);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [open, hasSiblings, navigateSubAgent]);
 
   // Filter work log entries belonging to this sub-agent's task.
   const taskEntries = useMemo(() => {
@@ -732,26 +798,71 @@ const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup
-        className="max-w-lg max-h-[75vh] [&_[data-slot=scroll-area-scrollbar]]:me-0"
+        className="max-w-lg max-h-[75vh] focus:outline-none [&_[data-slot=scroll-area-scrollbar]]:me-0"
         showCloseButton
       >
+        {/* Left/right navigation chevrons — only when multiple sub-agents in group */}
+        {hasSiblings && (
+          <button
+            type="button"
+            tabIndex={-1}
+            className="absolute -left-11 top-1/2 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-popover/80 text-foreground/60 shadow-md backdrop-blur-sm transition-colors hover:bg-popover hover:text-foreground focus:outline-none"
+            aria-label="Previous sub-agent"
+            onClick={() => navigateSubAgent(-1)}
+          >
+            <ChevronLeftIcon className="size-4" />
+          </button>
+        )}
+        {hasSiblings && (
+          <button
+            type="button"
+            tabIndex={-1}
+            className="absolute -right-11 top-1/2 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-popover/80 text-foreground/60 shadow-md backdrop-blur-sm transition-colors hover:bg-popover hover:text-foreground focus:outline-none"
+            aria-label="Next sub-agent"
+            onClick={() => navigateSubAgent(1)}
+          >
+            <ChevronRightIcon className="size-4" />
+          </button>
+        )}
         <DialogPanel className="pt-8 pr-8 pb-8">
           {/* Sub-agent heading — mirrors the pinned entry row */}
           <div
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3.5 py-2",
+              "flex items-start gap-2 rounded-lg px-3.5 py-2",
               inProgress ? "border border-border/45 bg-primary/5" : "bg-muted/40",
             )}
           >
             {inProgress ? (
-              <LoaderIcon className="size-3.5 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
+              <LoaderIcon className="size-3.5 mt-[3px] shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
             ) : (
-              <CheckIcon className="size-3.5 shrink-0 text-primary/70" />
+              <CheckIcon className="size-3.5 mt-[3px] shrink-0 text-primary/70" />
             )}
-            <p className="text-[13px] leading-5 text-foreground/85">
-              <span className="font-semibold">{heading}</span>
-              {displayText && <span className="text-foreground/55"> — {displayText}</span>}
-            </p>
+            <div
+              ref={headingContainerRef}
+              className="min-w-0 text-[13px] leading-5 text-foreground/85"
+            >
+              {/* Hidden measurement span — single-line, no wrapping */}
+              {displayText && (
+                <span
+                  ref={headingMeasureRef}
+                  className="pointer-events-none invisible absolute whitespace-nowrap text-[13px]"
+                  aria-hidden="true"
+                >
+                  {heading} — {displayText}
+                </span>
+              )}
+              {displayText && headingOverflows ? (
+                <>
+                  <p className="font-semibold">{heading}</p>
+                  <p className="text-foreground/55">{displayText}</p>
+                </>
+              ) : (
+                <p>
+                  <span className="font-semibold">{heading}</span>
+                  {displayText && <span className="text-foreground/55"> — {displayText}</span>}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Brief prompt text — collapsible, closed by default */}
@@ -826,6 +937,12 @@ const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
             </>
           )}
         </DialogPanel>
+        {/* Navigation counter — positioned outside the dialog card */}
+        {hasSiblings && (
+          <p className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-full bg-popover/80 px-3 py-1 text-[11px] text-foreground/60 shadow-md backdrop-blur-sm">
+            {siblingIndex + 1} / {siblingSubAgents.length}
+          </p>
+        )}
       </DialogPopup>
     </Dialog>
   );
@@ -899,7 +1016,7 @@ const ThinkingSection = memo(function ThinkingSection({
             text={message.text}
             cwd={markdownCwd}
             isStreaming={Boolean(message.streaming)}
-            className="pt-2 chat-markdown-thinking text-[12.5px] leading-snug text-muted-foreground/80"
+            className="pt-0.5 chat-markdown-thinking text-[12.5px] leading-snug text-muted-foreground/80"
           />
         </div>
         {canExpand && !isExpanded && (
@@ -1050,6 +1167,89 @@ const UserMessageTerminalContextInlineLabel = memo(
   },
 );
 
+// ---------------------------------------------------------------------------
+// Collapsible wrapper for long user messages
+// ---------------------------------------------------------------------------
+
+/** Collapsed height in px — roughly 10 lines of body text at 14px/relaxed. */
+const USER_MSG_COLLAPSED_MAX_HEIGHT = 300;
+
+const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageContent({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      setIsOverflowing(el.scrollHeight > USER_MSG_COLLAPSED_MAX_HEIGHT);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleToggle = useCallback(() => {
+    setIsExpanded((v) => !v);
+  }, []);
+
+  // Always constrain until explicitly expanded (prevents render-then-collapse bounce).
+  const showExpanded = isOverflowing && isExpanded;
+
+  return (
+    <div>
+      {isOverflowing && (
+        <div className="mb-0.5 flex justify-end">
+          <button
+            type="button"
+            className="flex items-center text-muted-foreground/50 transition-colors duration-150 hover:text-foreground/70"
+            onClick={handleToggle}
+          >
+            {isExpanded ? (
+              <ChevronUpIcon className="size-3" />
+            ) : (
+              <ChevronDownIcon className="size-3" />
+            )}
+          </button>
+        </div>
+      )}
+      <div
+        ref={contentRef}
+        className="relative"
+        style={
+          showExpanded
+            ? undefined
+            : {
+                maxHeight: USER_MSG_COLLAPSED_MAX_HEIGHT,
+                overflow: "hidden",
+                maskImage: isOverflowing
+                  ? "linear-gradient(to bottom, black 88%, rgba(0,0,0,0.4) 94%, transparent 100%)"
+                  : undefined,
+                WebkitMaskImage: isOverflowing
+                  ? "linear-gradient(to bottom, black 88%, rgba(0,0,0,0.4) 94%, transparent 100%)"
+                  : undefined,
+              }
+        }
+      >
+        {children}
+      </div>
+      {isOverflowing && (
+        <button
+          type="button"
+          className="-mb-1 -mt-1 w-full text-center text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75"
+          onClick={handleToggle}
+        >
+          {isExpanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+});
+
 const UserMessageBody = memo(function UserMessageBody(props: {
   text: string;
   terminalContexts: ParsedTerminalContextEntry[];
@@ -1098,7 +1298,7 @@ const UserMessageBody = memo(function UserMessageBody(props: {
         }
 
         return (
-          <div className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
+          <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
             {inlineNodes}
           </div>
         );
@@ -1126,7 +1326,7 @@ const UserMessageBody = memo(function UserMessageBody(props: {
     }
 
     return (
-      <div className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
+      <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
         {inlineNodes}
       </div>
     );
@@ -1137,7 +1337,7 @@ const UserMessageBody = memo(function UserMessageBody(props: {
   }
 
   return (
-    <div className="whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
+    <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
       {props.text}
     </div>
   );

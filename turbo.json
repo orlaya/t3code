@@ -26,7 +26,8 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "dist-electron/**"]
+      "outputs": ["dist/**", "dist-electron/**"],
+      "outputLogs": "errors-only"
     },
     "dev": {
       "dependsOn": ["@t3tools/contracts#build"],
@@ -41,7 +42,8 @@
     "test": {
       "dependsOn": ["^build"],
       "cache": false,
-      "outputs": []
+      "outputs": [],
+      "outputLogs": "errors-only"
     }
   }
 }

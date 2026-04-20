@@ -665,7 +665,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         type="button"
                         data-thread-selection-safe
                         aria-label={isPinned ? `Unpin ${thread.title}` : `Pin ${thread.title}`}
-                        className={`inline-flex size-5 cursor-pointer items-center justify-center transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring ${isPinned ? "text-foreground" : "text-muted-foreground"}`}
+                        className={`inline-flex size-5 cursor-pointer items-center justify-center transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring text-muted-foreground`}
                         onPointerDown={stopPropagationOnPointerDown}
                         onClick={handleTogglePin}
                       >
@@ -1274,12 +1274,17 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       if (selectedThreadCount > 0) {
         clearSelection();
       }
+      if (projectExpanded) {
+        collapseThreadListForProject(project.projectKey);
+      }
       toggleProject(project.projectKey);
     },
     [
       clearSelection,
+      collapseThreadListForProject,
       dragInProgressRef,
       project.projectKey,
+      projectExpanded,
       selectedThreadCount,
       suppressProjectClickAfterDragRef,
       suppressProjectClickForContextMenuRef,
@@ -1294,9 +1299,18 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       if (dragInProgressRef.current) {
         return;
       }
+      if (projectExpanded) {
+        collapseThreadListForProject(project.projectKey);
+      }
       toggleProject(project.projectKey);
     },
-    [dragInProgressRef, project.projectKey, toggleProject],
+    [
+      collapseThreadListForProject,
+      dragInProgressRef,
+      project.projectKey,
+      projectExpanded,
+      toggleProject,
+    ],
   );
 
   const handleProjectButtonPointerDownCapture = useCallback(
@@ -3237,6 +3251,7 @@ export default function Sidebar() {
       threadJumpLabelsRef.current === EMPTY_THREAD_JUMP_LABELS;
 
     const onWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (!event.isTrusted) return;
       if (shouldIgnoreThreadJumpHintUpdate(event)) {
         return;
       }
@@ -3314,6 +3329,7 @@ export default function Sidebar() {
     };
 
     const onWindowKeyUp = (event: globalThis.KeyboardEvent) => {
+      if (!event.isTrusted) return;
       if (shouldIgnoreThreadJumpHintUpdate(event)) {
         return;
       }

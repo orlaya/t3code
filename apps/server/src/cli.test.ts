@@ -51,7 +51,9 @@ const captureStdout = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 
 const makeCliTestServerConfig = (baseDir: string) =>
   Effect.gen(function* () {
-    const derivedPaths = yield* deriveServerPaths(baseDir, undefined);
+    const rawDevUrl = process.env.VITE_DEV_SERVER_URL;
+    const devUrl = rawDevUrl ? new URL(rawDevUrl) : undefined;
+    const derivedPaths = yield* deriveServerPaths(baseDir, devUrl);
     return {
       logLevel: "Info",
       traceMinLevel: "Info",
@@ -70,7 +72,7 @@ const makeCliTestServerConfig = (baseDir: string) =>
       baseDir,
       ...derivedPaths,
       staticDir: undefined,
-      devUrl: undefined,
+      devUrl,
       noBrowser: true,
       startupPresentation: "browser",
       desktopBootstrapToken: undefined,
