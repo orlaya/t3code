@@ -618,7 +618,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
               <TooltipTrigger
                 render={
                   <span
-                    className={`min-w-0 flex-1 truncate text-xs${isPinned ? " font-semibold text-zinc-400" : ""}`}
+                    className={`min-w-0 flex-1 truncate text-xs${isPinned ? " font-semibold text-primary-foreground/65" : ""}`}
                     data-testid={`thread-title-${thread.id}`}
                   >
                     {thread.title}
