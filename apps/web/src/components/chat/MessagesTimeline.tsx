@@ -1181,10 +1181,13 @@ const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageConten
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
 
+  // Measure the inner div (which never has maxHeight) so the natural content
+  // height is always reported, regardless of the outer div's collapsed state.
+  // This prevents layout thrashing when content is right at the threshold.
   useEffect(() => {
-    const el = contentRef.current;
+    const el = measureRef.current;
     if (!el) return;
     const observer = new ResizeObserver(() => {
       setIsOverflowing(el.scrollHeight > USER_MSG_COLLAPSED_MAX_HEIGHT);
@@ -1202,23 +1205,7 @@ const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageConten
 
   return (
     <div>
-      {isOverflowing && (
-        <div className="mb-0.5 flex justify-end">
-          <button
-            type="button"
-            className="flex items-center text-muted-foreground/50 transition-colors duration-150 hover:text-foreground/70"
-            onClick={handleToggle}
-          >
-            {isExpanded ? (
-              <ChevronUpIcon className="size-3" />
-            ) : (
-              <ChevronDownIcon className="size-3" />
-            )}
-          </button>
-        </div>
-      )}
       <div
-        ref={contentRef}
         className="relative"
         style={
           showExpanded
@@ -1235,7 +1222,7 @@ const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageConten
               }
         }
       >
-        {children}
+        <div ref={measureRef}>{children}</div>
       </div>
       {isOverflowing && (
         <button

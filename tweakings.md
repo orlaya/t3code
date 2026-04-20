@@ -64,7 +64,7 @@
 
 - Copy/revert buttons and timestamp moved outside the bordered box, onto their own right-aligned row below it — matches how the assistant's meta row sits below its content. `group` class moved to the outer wrapper so hover on box OR meta row reveals the buttons.
 - Timestamp restyled to match the assistant: `text-[11px] text-muted-foreground/70` (was `text-xs text-muted-foreground/50`).
-- Long user messages collapse to 300px (`USER_MSG_COLLAPSED_MAX_HEIGHT`) with a CSS mask fade-out at the bottom. `CollapsibleUserMessageContent` component uses ResizeObserver to detect overflow, shows a chevron toggle at top-right and a "Show more"/"Show less" button at the bottom. Images/attachments sit outside the collapsible wrapper so only text counts toward the height budget.
+- Long user messages collapse to 300px (`USER_MSG_COLLAPSED_MAX_HEIGHT`) with a CSS mask fade-out at the bottom. `CollapsibleUserMessageContent` component uses a two-div structure: outer div carries the `maxHeight`/`overflow: hidden`/mask constraint, inner div (`measureRef`) is observed by a `ResizeObserver` to detect overflow. Because the inner div never has `maxHeight` applied, its `scrollHeight` always reports the natural content height — prevents layout thrashing (flickering between "Show more"/"Show less") when content is right at the 300px threshold. "Show more"/"Show less" button at the bottom. Images/attachments sit outside the collapsible wrapper so only text counts toward the height budget.
 
 **Timestamp format unification (`timestampFormat.ts`):**
 
