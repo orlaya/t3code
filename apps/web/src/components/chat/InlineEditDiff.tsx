@@ -106,8 +106,8 @@ export const InlineEditDiff = memo(function InlineEditDiff({
       onClick={variant === "flush" ? undefined : handleOpenInEditor}
     >
       <div className="flex items-center gap-2 bg-black/15 px-2.5 py-1.5">
-        {headerLabel && (
-          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/60">
+           {headerLabel && (
+          <span className="shrink-0 text-[10.2px] uppercase tracking-[0.16em] text-muted-foreground/70">
             {headerLabel}
           </span>
         )}

@@ -61,13 +61,13 @@ export function SettingsRow({
   return (
     <div
       className={cn(
-        "border-t border-border/60 px-4 first:border-t-0 sm:px-5",
-        children ? "pt-4 pb-0" : "py-4",
+        "border-t border-border/60 px-4 first:border-t-0 sm:px-4",
+        children ? "pt-4 pb-0" : "py-3",
       )}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex min-h-5 items-center gap-1.5">
+          <div className="flex min-h-5 items-center gap-1.25">
             <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-foreground">
               {title}
             </h3>

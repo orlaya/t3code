@@ -1,6 +1,7 @@
 import {
   type ChatAttachment,
   CommandId,
+  type CustomSlashCommand,
   EventId,
   type ModelSelection,
   type OrchestrationEvent,
@@ -13,6 +14,7 @@ import {
 } from "@t3tools/contracts";
 import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/git";
 import { Cache, Cause, Duration, Effect, Equal, Layer, Option, Schema, Stream } from "effect";
+import { readFileSync } from "node:fs";
 import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
@@ -637,9 +639,67 @@ const make = Effect.gen(function* () {
         ),
       );
 
+    // Resolve custom slash command prompt (file + message + extra text) if present.
+    let messageText = message.text;
+    if (event.payload.customSlashCommand) {
+      const cmdRef = event.payload.customSlashCommand;
+      const settings = yield* serverSettingsService.getSettings;
+      const cmdEntry = settings.customSlashCommands.find(
+        (cmd: CustomSlashCommand) => cmd.name === cmdRef.name,
+      );
+      if (!cmdEntry) {
+        yield* appendProviderFailureActivity({
+          threadId: event.payload.threadId,
+          kind: "provider.turn.start.failed",
+          summary: "Custom slash command failed",
+          detail: `Custom slash command '${cmdRef.name}' not found in settings.`,
+          turnId: null,
+          createdAt: event.payload.createdAt,
+        });
+        return;
+      }
+
+      const parts: string[] = [];
+      if (cmdEntry.promptFile) {
+        try {
+          parts.push(readFileSync(cmdEntry.promptFile, "utf-8").trim());
+        } catch {
+          yield* appendProviderFailureActivity({
+            threadId: event.payload.threadId,
+            kind: "provider.turn.start.failed",
+            summary: "Custom slash command failed",
+            detail: `Failed to read prompt file for '/${cmdRef.name}': ${cmdEntry.promptFile}`,
+            turnId: null,
+            createdAt: event.payload.createdAt,
+          });
+          return;
+        }
+      }
+      if (cmdEntry.promptMessage) {
+        parts.push(cmdEntry.promptMessage.trim());
+      }
+      if (cmdRef.extraText?.trim()) {
+        parts.push(cmdRef.extraText.trim());
+      }
+
+      const resolved = parts.join("\n\n");
+      if (resolved.length === 0) {
+        yield* appendProviderFailureActivity({
+          threadId: event.payload.threadId,
+          kind: "provider.turn.start.failed",
+          summary: "Custom slash command failed",
+          detail: `Custom slash command '/${cmdRef.name}' resolved to empty prompt. Configure promptFile or promptMessage in settings.`,
+          turnId: null,
+          createdAt: event.payload.createdAt,
+        });
+        return;
+      }
+      messageText = resolved;
+    }
+
     const sendTurnRequest = yield* buildSendTurnRequestForThread({
       threadId: event.payload.threadId,
-      messageText: message.text,
+      messageText,
       ...(message.attachments !== undefined ? { attachments: message.attachments } : {}),
       ...(event.payload.modelSelection !== undefined
         ? { modelSelection: event.payload.modelSelection }

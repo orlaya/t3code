@@ -443,6 +443,9 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           runtimeMode: targetThread.runtimeMode,
           interactionMode: targetThread.interactionMode,
           ...(sourceProposedPlan !== undefined ? { sourceProposedPlan } : {}),
+          ...(command.customSlashCommand !== undefined
+            ? { customSlashCommand: command.customSlashCommand }
+            : {}),
           createdAt: command.createdAt,
         },
       };

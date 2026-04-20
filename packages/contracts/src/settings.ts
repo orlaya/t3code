@@ -116,6 +116,26 @@ export const ObservabilitySettings = Schema.Struct({
 });
 export type ObservabilitySettings = typeof ObservabilitySettings.Type;
 
+// ── Custom Slash Commands ────────────────────────────────────
+
+export const CustomSlashCommandScope = Schema.Union([
+  Schema.Literal("global"),
+  Schema.Array(TrimmedNonEmptyString),
+]);
+export type CustomSlashCommandScope = typeof CustomSlashCommandScope.Type;
+
+export const CustomSlashCommand = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  description: TrimmedNonEmptyString,
+  promptMessage: Schema.optional(Schema.String),
+  promptFile: Schema.optional(TrimmedNonEmptyString),
+  highlightResponse: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  scope: CustomSlashCommandScope.pipe(
+    Schema.withDecodingDefault(Effect.succeed("global" as const)),
+  ),
+});
+export type CustomSlashCommand = typeof CustomSlashCommand.Type;
+
 export const ServerSettings = Schema.Struct({
   enableAssistantStreaming: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   defaultThreadEnvMode: ThreadEnvMode.pipe(
@@ -139,6 +159,11 @@ export const ServerSettings = Schema.Struct({
     opencode: OpenCodeSettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   }).pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   observability: ObservabilitySettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
+
+  // Custom slash commands (saved prompt shortcuts)
+  customSlashCommands: Schema.Array(CustomSlashCommand).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
 });
 export type ServerSettings = typeof ServerSettings.Type;
 
@@ -262,5 +287,6 @@ export const ServerSettingsPatch = Schema.Struct({
       opencode: Schema.optionalKey(OpenCodeSettingsPatch),
     }),
   ),
+  customSlashCommands: Schema.optionalKey(Schema.Array(CustomSlashCommand)),
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;

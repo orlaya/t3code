@@ -23,7 +23,7 @@ import {
   ChevronRightIcon,
   ChevronUpIcon,
   CircleAlertIcon,
-  CircleSmallIcon,
+
   EyeIcon,
   GlobeIcon,
   LoaderIcon,
@@ -359,9 +359,19 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
           const displayedUserMessage = deriveDisplayedUserMessageState(row.message.text);
           const terminalContexts = displayedUserMessage.contexts;
           const canRevertAgentWork = typeof row.revertTurnCount === "number";
+          const slashCommandMatch = parseSlashCommandText(
+            displayedUserMessage.visibleText,
+          );
           return (
             <div className="group flex flex-col items-end">
-              <div className="relative max-w-[80%] rounded-2xl rounded-br-sm border border-border bg-secondary px-4 pt-3 pb-1">
+              <div
+                className={cn(
+                  "relative max-w-[80%] rounded-2xl rounded-br-sm border px-4 pt-3 pb-1",
+                  slashCommandMatch
+                    ? "border-primary/20 bg-primary/5"
+                    : "border-border bg-secondary",
+                )}
+              >
                 {userImages.length > 0 && (
                   <div className="mb-2 grid max-w-[420px] grid-cols-2 gap-2">
                     {userImages.map(
@@ -403,6 +413,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                     <UserMessageBody
                       text={displayedUserMessage.visibleText}
                       terminalContexts={terminalContexts}
+                      slashCommandMatch={slashCommandMatch}
                     />
                   )}
                 </CollapsibleUserMessageContent>
@@ -558,6 +569,11 @@ const WorkGroupSection = memo(function WorkGroupSection({
   // Lifted dialog state — one dialog navigates across all pinned sub-agents in the group.
   const [selectedSubAgentIdx, setSelectedSubAgentIdx] = useState<number | null>(null);
 
+  const isCompactionOnly =
+    regularEntries.length === 1 &&
+    pinnedSubAgents.length === 0 &&
+    (regularEntries[0]?.isCompacting || regularEntries[0]?.isCompacted);
+
   const hasOverflow = regularEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
   const visibleEntries =
     hasOverflow && !isExpanded
@@ -573,8 +589,12 @@ const WorkGroupSection = memo(function WorkGroupSection({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border/45 bg-card/25",
-        showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5",
+        isCompactionOnly
+          ? "rounded-md"
+          : cn(
+              "rounded-lg border border-border/45 bg-card/25",
+              showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5",
+            ),
         hasOverflow && "group/wl cursor-pointer",
       )}
       onClick={hasOverflow ? () => setIsExpanded((v) => !v) : undefined}
@@ -628,15 +648,52 @@ const WorkGroupSection = memo(function WorkGroupSection({
       )}
       {visibleEntries.length > 0 && (
         <div className="space-y-0 [&>*]:py-0.25">
-          {visibleEntries.map((workEntry) => (
-            <SimpleWorkEntryRow
-              key={`work-row:${workEntry.id}`}
-              workEntry={workEntry}
-              workspaceRoot={workspaceRoot}
-            />
-          ))}
+          {visibleEntries.map((workEntry) =>
+            workEntry.isCompacting || workEntry.isCompacted ? (
+              <CompactionEntry key={`work-row:${workEntry.id}`} workEntry={workEntry} />
+            ) : (
+              <SimpleWorkEntryRow
+                key={`work-row:${workEntry.id}`}
+                workEntry={workEntry}
+                workspaceRoot={workspaceRoot}
+              />
+            ),
+          )}
         </div>
       )}
+    </div>
+  );
+});
+
+/** Compaction entry — styled like a sub-agent task with colored background. */
+const CompactionEntry = memo(function CompactionEntry({
+  workEntry,
+}: {
+  workEntry: TimelineWorkEntry;
+}) {
+  const inProgress = workEntry.isCompacting === true;
+  const label = workEntry.label ?? "Context compacted";
+
+  return (
+    <div
+      className={cn(
+        "flex w-full items-center gap-1.5 rounded-md px-3 py-0.5",
+        inProgress ? "bg-primary/5" : "bg-muted/40",
+      )}
+    >
+      {inProgress ? (
+        <LoaderIcon className="size-4 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
+      ) : (
+        <CheckIcon className="size-4 shrink-0 text-primary/70" />
+      )}
+      <p
+        className={cn(
+          "truncate text-[13px] leading-5 py-2",
+          inProgress ? "text-foreground/90" : "font-medium text-foreground/80",
+        )}
+      >
+        {label}
+      </p>
     </div>
   );
 });
@@ -1237,9 +1294,26 @@ const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageConten
   );
 });
 
+// ---------------------------------------------------------------------------
+// Slash command detection for user message styling
+// ---------------------------------------------------------------------------
+
+interface SlashCommandMatch {
+  name: string;
+  extraText: string;
+}
+
+function parseSlashCommandText(text: string): SlashCommandMatch | null {
+  if (!text.startsWith("/")) return null;
+  const match = /^\/([a-z0-9][a-z0-9_-]*)(?:\s([\s\S]*))?$/.exec(text);
+  if (!match) return null;
+  return { name: match[1]!, extraText: match[2]?.trim() ?? "" };
+}
+
 const UserMessageBody = memo(function UserMessageBody(props: {
   text: string;
   terminalContexts: ParsedTerminalContextEntry[];
+  slashCommandMatch: SlashCommandMatch | null;
 }) {
   if (props.terminalContexts.length > 0) {
     const hasEmbeddedInlineLabels = textContainsInlineTerminalContextLabels(
@@ -1321,6 +1395,17 @@ const UserMessageBody = memo(function UserMessageBody(props: {
 
   if (props.text.length === 0) {
     return null;
+  }
+
+  if (props.slashCommandMatch) {
+    const { name, extraText } = props.slashCommandMatch;
+    return (
+      <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
+        <span className="mr-px text-primary">/</span>
+        <span className="font-semibold">{name}</span>
+        {extraText && <span>{" "}{extraText}</span>}
+      </div>
+    );
   }
 
   return (
@@ -1528,7 +1613,6 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
   const primaryFileDisplayPath = primaryFilePath
     ? formatWorkspaceRelativePath(workEntry.detail?.trim() ?? primaryFilePath, workspaceRoot)
     : null;
-  const isCompactionEntry = workEntry.isCompacting || workEntry.label === "Context compacted";
   const isToolCall =
     workEntry.itemType === "dynamic_tool_call" || workEntry.requestKind === "tool-call";
   const toolCallParsed = isToolCall ? parseToolCallDetail(workEntry.detail) : null;
@@ -1549,15 +1633,7 @@ const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
         <span
           className={cn("flex size-5 shrink-0 items-center justify-center", iconConfig.className)}
         >
-          {isCompactionEntry ? (
-            workEntry.isCompacting ? (
-              <LoaderIcon className="size-3 animate-spin [animation-duration:3s]" />
-            ) : (
-              <CircleSmallIcon className="size-3" />
-            )
-          ) : (
-            <EntryIcon className="size-3" />
-          )}
+          <EntryIcon className="size-3" />
         </span>
         <div className="min-w-0 flex-1 overflow-hidden">
           {rawCommand ? (

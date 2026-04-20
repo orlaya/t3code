@@ -333,14 +333,15 @@
 - `apps/web/src/environments/runtime/catalog.test.ts` — suppressed `consistent-function-scoping` false positive on `resolveRegistryRead` (a `let` that gets reassigned later in the test body).
 - `apps/web/src/components/CommandPalette.logic.ts` — suppressed `no-map-spread` warning on the thread command items builder (conditional optional properties, negligible on command palette list sizes).
 
-**Context compaction — "compacting" in-progress indicator:**
+**Context compaction — styled standalone entry:**
 
 - `packages/contracts/src/providerRuntime.ts` — added `"compacting"` to `RuntimeThreadState` union.
 - `apps/server/src/provider/Layers/ClaudeAdapter.ts` — `case "status"` handler now also yields a `thread.state.changed` event with `state: "compacting"` when the SDK reports `status: "compacting"`. Previously this only emitted a `session.state.changed` (waiting), so the compaction-started signal was swallowed.
 - `apps/server/src/provider/Layers/CodexAdapter.ts` — `toThreadState` updated with `"compacting"` case.
 - `apps/server/src/orchestration/Layers/ProviderRuntimeIngestion.ts` — `thread.state.changed` handler now accepts both `"compacting"` and `"compacted"`, emitting a `context-compaction` activity for each (summary `"Context compacting"` / `"Context compacted"`).
-- `apps/web/src/session-logic.ts` — `WorkLogEntry` gains `isCompacting?: boolean`. In `deriveWorkLogEntries`, if a `"compacted"` entry exists the earlier `"compacting"` entry is filtered out (superseded). If only `"compacting"` exists, it's marked `isCompacting = true`.
-- `apps/web/src/components/chat/MessagesTimeline.tsx` — `CircleSmallIcon` added. `SimpleWorkEntryRow` checks `isCompacting` → `LoaderIcon` with slow spin (`[animation-duration:3s]`); compacted → `CircleSmallIcon` as a neutral done indicator.
+- `apps/web/src/session-logic.ts` — `WorkLogEntry` gains `isCompacting?: boolean` and `isCompacted?: boolean`. In `deriveWorkLogEntries`, completed "compacting" entries are filtered out but the active in-progress one is preserved using `findLast` (the old global `hasCompacted` boolean killed all "compacting" entries once any prior compaction had completed in the session). Finished entries marked `isCompacted = true`.
+- `apps/web/src/components/chat/MessagesTimeline.logic.ts` — compaction entries (both `isCompacting` and `isCompacted`) are always pulled out of normal work group grouping so they render as standalone rows. Active compacting is pinned at the bottom while working; compacted emits in-place as its own row.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — dedicated `CompactionEntry` component styled like `PinnedSubAgentEntry`: `bg-primary/5` background while compacting, `bg-muted/40` when done, `LoaderIcon` spinner with `text-primary/70` while in progress, `CheckIcon` when complete, bold brighter text when finished. Parent work group wrapper drops its border/background/padding when the sole entry is a compaction entry. `CircleSmallIcon` import removed.
 
 **Approval dialog redesign (complete overhaul of pending approval UX):**
 
@@ -416,6 +417,22 @@
 **Sidebar tooltips suppressed during thread rename:**
 
 - `apps/web/src/components/Sidebar.tsx` — all 5 `<Tooltip>` instances inside `SidebarThreadRow` receive `disabled={isRenaming}` where `isRenaming = renamingThreadKey != null`. Covers: PR status badge, thread title, pin/unpin button, archive button, and remote environment cloud icon. When any thread is being renamed, all thread row tooltips across all rows are suppressed — prevents neighbouring row tooltips from popping up over the rename input when the cursor moves. Uses Base UI's native `disabled` prop on `Tooltip.Root`.
+
+**Custom slash commands (NEW feature — see `__notes/PLAN.custom-slash-commands.md` for the full plan):**
+
+- `packages/contracts/src/settings.ts` — `CustomSlashCommandScope`, `CustomSlashCommand` schemas, `customSlashCommands` array on `ServerSettings` (defaults `[]`) and `ServerSettingsPatch`.
+- `packages/contracts/src/orchestration.ts` — `CustomSlashCommandRef` schema (name + optional extraText), added optional `customSlashCommand` to `ThreadTurnStartCommand`, `ClientThreadTurnStartCommand`, and `ThreadTurnStartRequestedPayload`.
+- `apps/server/src/orchestration/decider.ts` — transfers `customSlashCommand` from command → event payload in the `thread.turn.start` case.
+- `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — resolves custom slash command prompt in `processTurnStartRequested`: looks up command from settings, reads prompt file with `readFileSync` if set, concatenates file → promptMessage → extraText, replaces `messageText`. Error cases emit failure activities.
+- `apps/web/src/routes/settings.commands.tsx` — new settings route.
+- `apps/web/src/components/settings/CommandsSettings.tsx` — **new file**. Full CRUD settings panel for custom slash commands (add/edit/delete, validation, border-separated row layout matching provider detail pattern).
+- `apps/web/src/components/settings/SettingsSidebarNav.tsx` — added "Commands" nav entry with `TerminalSquareIcon`.
+- `apps/web/src/components/chat/ComposerCommandMenu.tsx` — `custom-slash-command` variant on `ComposerCommandItem` union, grouping reordered to Custom → Provider → Built-in, `TerminalSquareIcon` for menu items.
+- `apps/web/src/components/chat/composerSlashCommandSearch.ts` — search extended to include `custom-slash-command` type.
+- `apps/web/src/components/chat/ChatComposer.tsx` — builds custom command items from settings, inserts `/{name} ` on selection (consistent with provider commands).
+- `apps/web/src/components/ChatView.tsx` — `onSend` detects custom commands from composer text, tags `thread.turn.start` dispatch with `customSlashCommand`.
+- `apps/web/src/components/chat/MessagesTimeline.tsx` — user messages starting with `/{command}` get styled: primary-coloured `/`, bold command name, tinted bubble (`bg-primary/5`, `border-primary/20`). Applies to all slash commands (custom, built-in, provider).
+- `apps/web/src/components/ui/textarea.tsx` — added `placeholder:text-muted-foreground/72` to match Input placeholder opacity.
 
 **Vitest reporter + Turbo output noise reduction:**
 

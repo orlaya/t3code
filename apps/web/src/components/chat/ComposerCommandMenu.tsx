@@ -1,10 +1,11 @@
 import {
+  type CustomSlashCommand,
   type ProjectEntry,
   type ProviderKind,
   type ServerProviderSkill,
   type ServerProviderSlashCommand,
 } from "@t3tools/contracts";
-import { BotIcon } from "lucide-react";
+import { BotIcon, TerminalSquareIcon } from "lucide-react";
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 
 import { type ComposerSlashCommand, type ComposerTriggerKind } from "../../composer-logic";
@@ -42,6 +43,13 @@ export type ComposerCommandItem =
       type: "provider-slash-command";
       provider: ProviderKind;
       command: ServerProviderSlashCommand;
+      label: string;
+      description: string;
+    }
+  | {
+      id: string;
+      type: "custom-slash-command";
+      command: CustomSlashCommand;
       label: string;
       description: string;
     }
@@ -99,15 +107,19 @@ function groupCommandItems(
     return [{ id: "default", label: null, items }];
   }
 
-  const builtInItems = items.filter((item) => item.type === "slash-command");
+  const customItems = items.filter((item) => item.type === "custom-slash-command");
   const providerItems = items.filter((item) => item.type === "provider-slash-command");
+  const builtInItems = items.filter((item) => item.type === "slash-command");
 
   const groups: ComposerCommandGroup[] = [];
-  if (builtInItems.length > 0) {
-    groups.push({ id: "built-in", label: "Built-in", items: builtInItems });
+  if (customItems.length > 0) {
+    groups.push({ id: "custom", label: "Custom", items: customItems });
   }
   if (providerItems.length > 0) {
     groups.push({ id: "provider", label: "Provider", items: providerItems });
+  }
+  if (builtInItems.length > 0) {
+    groups.push({ id: "built-in", label: "Built-in", items: builtInItems });
   }
   return groups;
 }
@@ -241,6 +253,9 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
           kind={props.item.pathKind}
           theme={props.resolvedTheme}
         />
+      ) : null}
+      {props.item.type === "custom-slash-command" ? (
+        <TerminalSquareIcon className="size-4 shrink-0 text-muted-foreground/80" />
       ) : null}
       {props.item.type === "slash-command" ? (
         <BotIcon className="size-4 shrink-0 text-muted-foreground/80" />

@@ -539,6 +539,11 @@ const ThreadTurnStartBootstrap = Schema.Struct({
 
 export type ThreadTurnStartBootstrap = typeof ThreadTurnStartBootstrap.Type;
 
+const CustomSlashCommandRef = Schema.Struct({
+  name: TrimmedNonEmptyString,
+  extraText: Schema.optional(Schema.String),
+});
+
 export const ThreadTurnStartCommand = Schema.Struct({
   type: Schema.Literal("thread.turn.start"),
   commandId: CommandId,
@@ -557,6 +562,7 @@ export const ThreadTurnStartCommand = Schema.Struct({
   ),
   bootstrap: Schema.optional(ThreadTurnStartBootstrap),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+  customSlashCommand: Schema.optional(CustomSlashCommandRef),
   createdAt: IsoDateTime,
 });
 
@@ -576,6 +582,7 @@ const ClientThreadTurnStartCommand = Schema.Struct({
   interactionMode: ProviderInteractionMode,
   bootstrap: Schema.optional(ThreadTurnStartBootstrap),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+  customSlashCommand: Schema.optional(CustomSlashCommandRef),
   createdAt: IsoDateTime,
 });
 
@@ -880,6 +887,7 @@ export const ThreadTurnStartRequestedPayload = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_PROVIDER_INTERACTION_MODE)),
   ),
   sourceProposedPlan: Schema.optional(SourceProposedPlanReference),
+  customSlashCommand: Schema.optional(CustomSlashCommandRef),
   createdAt: IsoDateTime,
 });
 

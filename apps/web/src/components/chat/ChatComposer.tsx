@@ -760,6 +760,13 @@ export const ChatComposer = memo(
             description: "Switch this thread back to normal build mode",
           },
         ] satisfies ReadonlyArray<Extract<ComposerCommandItem, { type: "slash-command" }>>;
+        const customSlashCommandItems = (settings.customSlashCommands ?? []).map((command) => ({
+          id: `custom-slash-command:${command.name}`,
+          type: "custom-slash-command" as const,
+          command,
+          label: `/${command.name}`,
+          description: command.description,
+        }));
         const providerSlashCommandItems = (selectedProviderStatus?.slashCommands ?? []).map(
           (command) => ({
             id: `provider-slash-command:${selectedProvider}:${command.name}`,
@@ -771,7 +778,11 @@ export const ChatComposer = memo(
           }),
         );
         const query = composerTrigger.query.trim().toLowerCase();
-        const slashCommandItems = [...builtInSlashCommandItems, ...providerSlashCommandItems];
+        const slashCommandItems = [
+          ...customSlashCommandItems,
+          ...providerSlashCommandItems,
+          ...builtInSlashCommandItems,
+        ];
         if (!query) {
           return slashCommandItems;
         }
@@ -1424,6 +1435,24 @@ export const ChatComposer = memo(
           const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
             expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
           });
+          if (applied) {
+            setComposerHighlightedItemId(null);
+          }
+          return;
+        }
+        if (item.type === "custom-slash-command") {
+          const replacement = `/${item.command.name} `;
+          const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
+            snapshot.value,
+            trigger.rangeEnd,
+            replacement,
+          );
+          const applied = applyPromptReplacement(
+            trigger.rangeStart,
+            replacementRangeEnd,
+            replacement,
+            { expectedText: snapshot.value.slice(trigger.rangeStart, replacementRangeEnd) },
+          );
           if (applied) {
             setComposerHighlightedItemId(null);
           }

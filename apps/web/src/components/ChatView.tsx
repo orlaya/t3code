@@ -2487,7 +2487,29 @@ export default function ChatView(props: ChatViewProps) {
       composerRef.current?.resetCursorState();
       return;
     }
-    if (!hasSendableContent) {
+
+    // Detect custom slash command from the composer text (e.g. "/handoff some extra text").
+    // The user either selected from the menu (which inserts "/{name} ") or typed it directly.
+    let customSlashCommandForSend: { name: string; extraText?: string } | null = null;
+    if (
+      trimmed.startsWith("/") &&
+      composerImages.length === 0 &&
+      sendableComposerTerminalContexts.length === 0
+    ) {
+      const match = /^\/([a-z0-9][a-z0-9_-]*)\s*([\s\S]*)$/.exec(trimmed);
+      if (match) {
+        const cmdName = match[1]!;
+        const cmdEntry = settings.customSlashCommands.find((cmd) => cmd.name === cmdName);
+        if (cmdEntry) {
+          const extra = match[2]?.trim();
+          customSlashCommandForSend = extra
+            ? { name: cmdName, extraText: extra }
+            : { name: cmdName };
+        }
+      }
+    }
+
+    if (!hasSendableContent && !customSlashCommandForSend) {
       if (expiredTerminalContextCount > 0) {
         const toastCopy = buildExpiredTerminalContextToastCopy(
           expiredTerminalContextCount,
@@ -2523,10 +2545,17 @@ export default function ChatView(props: ChatViewProps) {
 
     const composerImagesSnapshot = [...composerImages];
     const composerTerminalContextsSnapshot = [...sendableComposerTerminalContexts];
-    const messageTextForSend = appendTerminalContextsToPrompt(
+    let messageTextForSend = appendTerminalContextsToPrompt(
       promptForSend,
       composerTerminalContextsSnapshot,
     );
+    // For custom slash commands selected from the menu (empty prompt), show the
+    // command invocation as the user message text so the bubble isn't blank.
+    if (!messageTextForSend.trim() && customSlashCommandForSend) {
+      messageTextForSend = customSlashCommandForSend.extraText
+        ? `/${customSlashCommandForSend.name} ${customSlashCommandForSend.extraText}`
+        : `/${customSlashCommandForSend.name}`;
+    }
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
     const outgoingMessageText = formatOutgoingPrompt({
@@ -2683,6 +2712,7 @@ export default function ChatView(props: ChatViewProps) {
         runtimeMode,
         interactionMode,
         ...(bootstrap ? { bootstrap } : {}),
+        ...(customSlashCommandForSend ? { customSlashCommand: customSlashCommandForSend } : {}),
         createdAt: messageCreatedAt,
       });
       turnStartSucceeded = true;

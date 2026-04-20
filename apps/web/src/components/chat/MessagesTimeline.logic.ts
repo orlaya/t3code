@@ -133,12 +133,15 @@ export function deriveMessagesTimelineRows(input: {
   );
   const terminalAssistantMessageIds = deriveTerminalAssistantMessageIds(input.timelineEntries);
 
-  // When the session is actively working and compaction is in progress, pull
-  // the compacting entry out of its work group and pin it at the very bottom
-  // of the timeline so it's always the last visible thing. When not working
-  // (e.g. quit mid-compaction, stale session) leave it in normal position.
+  // Compaction entries (both in-progress and finished) are always standalone —
+  // they never group with regular work entries. When the session is actively
+  // working, an in-progress compacting entry is additionally pinned at the very
+  // bottom of the timeline so it's always the last visible thing.
   const shouldPinCompacting = input.isWorking;
   let pinnedCompacting: { id: string; createdAt: string; entry: WorkLogEntry } | null = null;
+
+  const isCompactionEntry = (entry: WorkLogEntry) =>
+    entry.isCompacting || entry.isCompacted;
 
   for (let index = 0; index < input.timelineEntries.length; index += 1) {
     const timelineEntry = input.timelineEntries[index];
@@ -147,13 +150,24 @@ export function deriveMessagesTimelineRows(input: {
     }
 
     if (timelineEntry.kind === "work") {
-      // Save compacting entries for pinning at the bottom — skip normal grouping.
-      if (shouldPinCompacting && timelineEntry.entry.isCompacting) {
-        pinnedCompacting = {
-          id: timelineEntry.id,
-          createdAt: timelineEntry.createdAt,
-          entry: timelineEntry.entry,
-        };
+      // Compaction entries are always pulled out of normal grouping.
+      if (isCompactionEntry(timelineEntry.entry)) {
+        if (shouldPinCompacting && timelineEntry.entry.isCompacting) {
+          // Pin active compacting at the bottom — handled after the loop.
+          pinnedCompacting = {
+            id: timelineEntry.id,
+            createdAt: timelineEntry.createdAt,
+            entry: timelineEntry.entry,
+          };
+        } else {
+          // Compacted (finished) — emit as its own standalone row in-place.
+          nextRows.push({
+            kind: "work",
+            id: timelineEntry.id,
+            createdAt: timelineEntry.createdAt,
+            groupedEntries: [timelineEntry.entry],
+          });
+        }
         continue;
       }
 
@@ -162,15 +176,7 @@ export function deriveMessagesTimelineRows(input: {
       while (cursor < input.timelineEntries.length) {
         const nextEntry = input.timelineEntries[cursor];
         if (!nextEntry || nextEntry.kind !== "work") break;
-        if (shouldPinCompacting && nextEntry.entry.isCompacting) {
-          pinnedCompacting = {
-            id: nextEntry.id,
-            createdAt: nextEntry.createdAt,
-            entry: nextEntry.entry,
-          };
-          cursor += 1;
-          continue;
-        }
+        if (isCompactionEntry(nextEntry.entry)) break;
         groupedEntries.push(nextEntry.entry);
         cursor += 1;
       }

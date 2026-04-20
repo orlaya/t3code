@@ -51,6 +51,8 @@ export interface WorkLogEntry {
   isSubAgentInProgress?: boolean;
   /** True when context compaction is in progress (spinner). */
   isCompacting?: boolean;
+  /** True when context compaction has finished. */
+  isCompacted?: boolean;
   /** Only present on collab_agent_tool_call entries. */
   subAgentBrief?: {
     prompt: string;
@@ -596,20 +598,20 @@ export function deriveWorkLogEntries(
     }
   }
 
-  // Context compaction: if a "compacted" activity exists, drop the earlier
-  // "compacting" entry so only the finished state renders. If compaction is
-  // still in progress (no "compacted" yet), mark the entry with isCompacting.
-  const hasCompacted = collapsed.some(
-    (e) => e.activityKind === "context-compaction" && e.label === "Context compacted",
-  );
+  // Context compaction: drop "compacting" entries that have a corresponding
+  // "compacted" after them (the pair is complete). Keep the last "compacting"
+  // if it has no subsequent "compacted" — that's the active in-progress one.
+  const lastCompaction = collapsed.findLast((e) => e.activityKind === "context-compaction");
+  const activeCompactingId =
+    lastCompaction?.label === "Context compacting" ? lastCompaction.id : null;
 
   return collapsed
     .filter((entry) => {
-      // Drop the "compacting" entry when "compacted" exists — it's superseded.
+      // Drop completed "compacting" entries — but keep the active one.
       if (
-        hasCompacted &&
         entry.activityKind === "context-compaction" &&
-        entry.label === "Context compacting"
+        entry.label === "Context compacting" &&
+        entry.id !== activeCompactingId
       ) {
         return false;
       }
@@ -641,6 +643,9 @@ export function deriveWorkLogEntries(
       }
       if (activityKind === "context-compaction" && entry.label === "Context compacting") {
         entry.isCompacting = true;
+      }
+      if (activityKind === "context-compaction" && entry.label === "Context compacted") {
+        entry.isCompacted = true;
       }
       return entry;
     });
