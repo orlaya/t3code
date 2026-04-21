@@ -138,7 +138,7 @@ const PlanSidebar = memo(function PlanSidebar({
         <div className="flex items-center gap-2">
           <Badge
             variant="secondary"
-            className="rounded-md bg-blue-500/10 px-1.5 py-0 text-[10px] font-semibold tracking-wide text-blue-400 uppercase"
+            className="rounded-md px-1.5 py-0 text-[10px] font-semibold tracking-wide text-white/50 uppercase"
           >
             {label}
           </Badge>

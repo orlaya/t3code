@@ -325,6 +325,7 @@ export function TerminalViewport({
   const keybindingsRef = useRef(keybindings);
   const lastAppliedTerminalEventIdRef = useRef(0);
   const terminalHydratedRef = useRef(false);
+  const liveCwdRef = useRef<string | null>(null);
   const [searchMatchCount, setSearchMatchCount] = useState(0);
   const [searchCurrentMatch, setSearchCurrentMatch] = useState(-1);
   const searchQueryRef = useRef("");
@@ -367,6 +368,22 @@ export function TerminalViewport({
 
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
+
+    const osc7Disposable = terminal.parser.registerOscHandler(7, (data) => {
+      // OSC 7 format: file://<host>/<path> or file:///<path>
+      try {
+        const url = new URL(data);
+        if (url.protocol === "file:") {
+          liveCwdRef.current = decodeURIComponent(url.pathname);
+        }
+      } catch {
+        // Some shells emit just a bare path without the file:// prefix
+        if (data.startsWith("/")) {
+          liveCwdRef.current = data;
+        }
+      }
+      return true;
+    });
     searchAddonRef.current = searchAddon;
 
     const searchResultsDisposable = searchAddon.onDidChangeResults((e) => {
@@ -545,7 +562,7 @@ export function TerminalViewport({
                 return;
               }
 
-              const target = resolvePathLinkTarget(match.text, cwd);
+              const target = resolvePathLinkTarget(match.text, liveCwdRef.current ?? cwd);
               void openInPreferredEditor(localApi, target).catch((error) => {
                 writeSystemMessage(
                   latestTerminal,
@@ -785,6 +802,7 @@ export function TerminalViewport({
       selectionDisposable.dispose();
       searchResultsDisposable.dispose();
       terminalLinksDisposable.dispose();
+      osc7Disposable.dispose();
       if (selectionActionTimerRef.current !== null) {
         window.clearTimeout(selectionActionTimerRef.current);
       }
@@ -794,6 +812,7 @@ export function TerminalViewport({
       terminalRef.current = null;
       fitAddonRef.current = null;
       searchAddonRef.current = null;
+      liveCwdRef.current = null;
       terminal.dispose();
     };
     // autoFocus is intentionally omitted;

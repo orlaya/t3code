@@ -154,7 +154,7 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
               className={cn(
                 "group flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-all duration-150",
                 isSelected
-                  ? "border-blue-500/40 bg-blue-500/8 text-foreground"
+                  ? "bg-primary/5 bg-primary/5 text-foreground"
                   : "border-transparent bg-muted/20 text-foreground/80 hover:bg-muted/40 hover:border-border/40",
                 isResponding && "opacity-50 cursor-not-allowed",
               )}
@@ -164,8 +164,8 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
                   className={cn(
                     "flex size-5 shrink-0 items-center justify-center rounded text-[11px] font-medium tabular-nums transition-colors duration-150",
                     isSelected
-                      ? "bg-blue-500/20 text-blue-400"
-                      : "bg-muted/40 text-muted-foreground/50 group-hover:bg-muted/60 group-hover:text-muted-foreground/70",
+                      ? "bg-primary/80 text-black"
+                      : "bg-muted/40 text-muted-foreground/80 group-hover:bg-muted/60 group-hover:text-muted-foreground/70",
                   )}
                 >
                   {shortcutKey}
@@ -174,12 +174,12 @@ const ComposerPendingUserInputCard = memo(function ComposerPendingUserInputCard(
               <div className="min-w-0 flex-1">
                 <span className="text-sm font-medium">{option.label}</span>
                 {option.description && option.description !== option.label ? (
-                  <span className="ml-2 text-xs text-muted-foreground/50">
+                  <span className="ml-3 text-sm text-muted-foreground/95">
                     {option.description}
                   </span>
                 ) : null}
               </div>
-              {isSelected ? <CheckIcon className="size-3.5 shrink-0 text-blue-400" /> : null}
+              {isSelected ? <CheckIcon className="size-5 shrink-0 text-primary" /> : null}
             </button>
           );
         })}

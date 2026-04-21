@@ -87,7 +87,7 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
       );
       assert.deepEqual(zedLaunch, {
         command: "zed",
-        args: ["/tmp/workspace"],
+        args: ["--add", "/tmp/workspace"],
       });
 
       const ideaLaunch = yield* resolveEditorLaunch(
@@ -177,7 +177,7 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
       );
       assert.deepEqual(zedLineAndColumn, {
         command: "zed",
-        args: ["/tmp/workspace/src/open.ts:71:5"],
+        args: ["--add", "/tmp/workspace/src/open.ts:71:5"],
       });
 
       const zedLineOnly = yield* resolveEditorLaunch(
@@ -224,7 +224,7 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
 
       assert.deepEqual(result, {
         command: "zeditor",
-        args: ["/tmp/workspace"],
+        args: ["--add", "/tmp/workspace"],
       });
     }),
   );
@@ -236,7 +236,7 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
       });
       assert.deepEqual(result, {
         command: "zed",
-        args: ["/tmp/workspace"],
+        args: ["--add", "/tmp/workspace"],
       });
     }),
   );

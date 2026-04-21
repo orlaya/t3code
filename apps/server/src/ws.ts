@@ -65,6 +65,12 @@ import {
 } from "./auth/Services/SessionCredentialService.ts";
 import { respondToAuthError } from "./auth/http.ts";
 
+/** Minimum interval (ms) between terminal-touch dispatches per thread. */
+const TERMINAL_TOUCH_THROTTLE_MS = 60_000;
+
+/** Tracks the last terminal-touch dispatch timestamp per thread. */
+const lastTerminalTouchByThread = new Map<string, number>();
+
 function isThreadDetailEvent(event: OrchestrationEvent): event is Extract<
   OrchestrationEvent,
   {
@@ -936,9 +942,28 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             "rpc.aggregate": "terminal",
           }),
         [WS_METHODS.terminalWrite]: (input) =>
-          observeRpcEffect(WS_METHODS.terminalWrite, terminalManager.write(input), {
-            "rpc.aggregate": "terminal",
-          }),
+          observeRpcEffect(
+            WS_METHODS.terminalWrite,
+            Effect.gen(function* () {
+              yield* terminalManager.write(input);
+              if (input.data.includes("\r")) {
+                const now = Date.now();
+                const last = lastTerminalTouchByThread.get(input.threadId) ?? 0;
+                if (now - last >= TERMINAL_TOUCH_THROTTLE_MS) {
+                  lastTerminalTouchByThread.set(input.threadId, now);
+                  yield* orchestrationEngine
+                    .dispatch({
+                      type: "thread.touch",
+                      commandId: CommandId.make(`server:terminal-touch:${crypto.randomUUID()}`),
+                      threadId: ThreadId.make(input.threadId),
+                      createdAt: new Date().toISOString(),
+                    })
+                    .pipe(Effect.ignoreCause({ log: true }));
+                }
+              }
+            }),
+            { "rpc.aggregate": "terminal" },
+          ),
         [WS_METHODS.terminalResize]: (input) =>
           observeRpcEffect(WS_METHODS.terminalResize, terminalManager.resize(input), {
             "rpc.aggregate": "terminal",

@@ -94,9 +94,9 @@ import { useTheme } from "../hooks/useTheme";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
 import { useCommandPaletteStore } from "../commandPaletteStore";
 import { buildTemporaryWorktreeBranchName } from "@t3tools/shared/git";
-import { useMediaQuery } from "../hooks/useMediaQuery";
-import { RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY } from "../rightPanelLayout";
+import { CHAT_MIN_WIDTH, RIGHT_PANEL_WIDTH } from "../rightPanelLayout";
 import { BranchToolbar } from "./BranchToolbar";
+import type { ActivityIndicator } from "./BranchToolbarActivityIndicators";
 import { resolveShortcutCommand, shortcutLabelForCommand } from "../keybindings";
 import PlanSidebar from "./PlanSidebar";
 import ThreadTerminalDrawer from "./ThreadTerminalDrawer";
@@ -610,7 +610,11 @@ export default function ChatView(props: ChatViewProps) {
     onDiffPanelOpen,
     reserveTitleBarControlInset = true,
   } = props;
-  const { state: sidebarState, isMobile: isSidebarMobile } = useSidebar();
+  const {
+    state: sidebarState,
+    isMobile: isSidebarMobile,
+    setOpen: setLeftSidebarOpen,
+  } = useSidebar();
   const reserveTrafficLightInset = sidebarState === "collapsed" || isSidebarMobile;
   const draftId = routeKind === "draft" ? props.draftId : null;
   const routeThreadRef = useMemo(
@@ -703,7 +707,6 @@ export default function ChatView(props: ChatViewProps) {
   const [pendingUserInputQuestionIndexByRequestId, setPendingUserInputQuestionIndexByRequestId] =
     useState<Record<string, number>>({});
   const [planSidebarOpen, setPlanSidebarOpen] = useState(false);
-  const shouldUsePlanSidebarSheet = useMediaQuery(RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY);
   // Tracks whether the user explicitly dismissed the sidebar for the active turn.
   const planSidebarDismissedForTurnRef = useRef<string | null>(null);
   // When set, the thread-change reset effect will open the sidebar instead of closing it.
@@ -1988,22 +1991,151 @@ export default function ChatView(props: ChatViewProps) {
   const toggleInteractionMode = useCallback(() => {
     handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
   }, [handleInteractionModeChange, interactionMode]);
-  const togglePlanSidebar = useCallback(() => {
-    setPlanSidebarOpen((open) => {
-      if (open) {
-        planSidebarDismissedForTurnRef.current =
-          activePlan?.turnId ?? sidebarProposedPlan?.turnId ?? "__dismissed__";
-      } else {
-        planSidebarDismissedForTurnRef.current = null;
-      }
-      return !open;
-    });
-  }, [activePlan?.turnId, sidebarProposedPlan?.turnId]);
+  // ---------------------------------------------------------------------------
+  // Sidebar constraint system
+  //
+  // Rule: the chat column must always be >= CHAT_MIN_WIDTH (440px).
+  //
+  // Approach: every action that opens a sidebar checks-then-acts synchronously.
+  // A window resize listener acts as a safety net. No background enforcement
+  // that can get out of sync with React state.
+  //
+  // `canFitRightPanel` is the single source of truth for "is there room?"
+  // ---------------------------------------------------------------------------
+
+  /** Read the left sidebar's intended width from the --sidebar-width CSS var. */
+  const getLeftSidebarWidth = useCallback(() => {
+    const wrapper = document.querySelector<HTMLElement>('[data-slot="sidebar-wrapper"]');
+    if (!wrapper) return 256;
+    const raw = getComputedStyle(wrapper).getPropertyValue("--sidebar-width").trim();
+    if (!raw) return 256;
+    if (raw.endsWith("px")) return parseFloat(raw);
+    if (raw.endsWith("rem")) return parseFloat(raw) * 16;
+    return parseFloat(raw) || 256;
+  }, []);
+
+  /** Can the right panel fit given the current left sidebar state? */
+  const canFitRightPanel = useCallback(
+    (assumeLeftOpen: boolean) => {
+      const leftWidth = assumeLeftOpen ? getLeftSidebarWidth() : 0;
+      return window.innerWidth - leftWidth - RIGHT_PANEL_WIDTH >= CHAT_MIN_WIDTH;
+    },
+    [getLeftSidebarWidth],
+  );
+
+  const canFitPlanSidebarInline = canFitRightPanel(sidebarState === "expanded");
+
   const closePlanSidebar = useCallback(() => {
     setPlanSidebarOpen(false);
     planSidebarDismissedForTurnRef.current =
       activePlan?.turnId ?? sidebarProposedPlan?.turnId ?? "__dismissed__";
   }, [activePlan?.turnId, sidebarProposedPlan?.turnId]);
+
+  const togglePlanSidebar = useCallback(() => {
+    setPlanSidebarOpen((wasOpen) => {
+      if (wasOpen) {
+        // Closing — always allowed
+        planSidebarDismissedForTurnRef.current =
+          activePlan?.turnId ?? sidebarProposedPlan?.turnId ?? "__dismissed__";
+        return false;
+      }
+
+      // Opening — always succeeds. Try to make room inline first.
+      planSidebarDismissedForTurnRef.current = null;
+      const leftIsOpen = sidebarState === "expanded";
+
+      if (!canFitRightPanel(leftIsOpen) && leftIsOpen && canFitRightPanel(false)) {
+        // Room if we close the left sidebar
+        void setLeftSidebarOpen(false);
+      }
+      // If it still can't fit inline, the render layer will use sheet mode.
+      return true;
+    });
+  }, [
+    activePlan?.turnId,
+    sidebarProposedPlan?.turnId,
+    sidebarState,
+    canFitRightPanel,
+    setLeftSidebarOpen,
+  ]);
+
+  // When the left sidebar opens, check if the right panel still fits.
+  const prevSidebarStateRef = useRef(sidebarState);
+  useEffect(() => {
+    const prev = prevSidebarStateRef.current;
+    prevSidebarStateRef.current = sidebarState;
+    if (prev !== "expanded" && sidebarState === "expanded" && planSidebarOpen) {
+      if (!canFitRightPanel(true)) {
+        closePlanSidebar();
+      }
+    }
+  }, [sidebarState, planSidebarOpen, canFitRightPanel, closePlanSidebar]);
+
+  // Safety net: close the right panel if the chat would be crushed.
+  // Fires on window resize AND left sidebar drag-resize (via ResizeObserver).
+  // Only enforces when the panel is rendering inline — sheet mode is an overlay
+  // and doesn't affect chat width.
+  const panelIsInlineRef = useRef(false);
+  panelIsInlineRef.current = planSidebarOpen && canFitPlanSidebarInline;
+
+  const safetyCheckRef = useRef<(() => void) | undefined>(undefined);
+  safetyCheckRef.current = () => {
+    if (!planSidebarOpen) return;
+    if (!panelIsInlineRef.current) return; // in sheet mode — nothing to enforce
+    const leftIsOpen = sidebarState === "expanded";
+    const leftWidth = leftIsOpen ? getLeftSidebarWidth() : 0;
+    const chatWidth = window.innerWidth - leftWidth - RIGHT_PANEL_WIDTH;
+    if (chatWidth < CHAT_MIN_WIDTH) {
+      closePlanSidebar();
+    }
+  };
+
+  useEffect(() => {
+    const handler = () => safetyCheckRef.current?.();
+
+    // Window resize
+    window.addEventListener("resize", handler);
+
+    // Left sidebar drag-resize (wrapper changes size without window resizing)
+    const wrapper = document.querySelector<HTMLElement>('[data-slot="sidebar-wrapper"]');
+    let observer: ResizeObserver | undefined;
+    if (wrapper) {
+      observer = new ResizeObserver(handler);
+      observer.observe(wrapper);
+    }
+
+    return () => {
+      window.removeEventListener("resize", handler);
+      observer?.disconnect();
+    };
+  }, [planSidebarOpen, sidebarState, getLeftSidebarWidth, closePlanSidebar]);
+
+  const activityIndicators = useMemo((): ActivityIndicator[] => {
+    const indicators: ActivityIndicator[] = [];
+    // Tasks: show when there's an active plan with steps
+    if (activePlan && activePlan.steps.length > 0) {
+      const inProgressCount = activePlan.steps.filter((s) => s.status === "inProgress").length;
+      indicators.push({
+        key: "tasks",
+        label: "Tasks",
+        shortLabel: "Tasks",
+        status: inProgressCount > 0 ? "active" : "idle",
+        count: activePlan.steps.length,
+        onToggle: togglePlanSidebar,
+      });
+    }
+    // Plans: show when there's a proposed plan
+    if (sidebarProposedPlan) {
+      indicators.push({
+        key: "plans",
+        label: "Plans",
+        shortLabel: "Plans",
+        status: "idle",
+        onToggle: togglePlanSidebar,
+      });
+    }
+    return indicators;
+  }, [activePlan, sidebarProposedPlan, togglePlanSidebar]);
 
   const persistThreadSettingsForNextTurn = useCallback(
     async (input: {
@@ -3359,7 +3491,7 @@ export default function ChatView(props: ChatViewProps) {
             "border-b border-border pr-3 sm:pr-5",
             isElectron
               ? cn(
-                  "drag-region flex h-[52px] items-center wco:h-[env(titlebar-area-height)]",
+                  "drag-region flex h-[52px] items-center transition-[padding] duration-200 ease-linear wco:h-[env(titlebar-area-height)]",
                   reserveTrafficLightInset
                     ? "pl-[82px] wco:pl-[calc(env(titlebar-area-x)+1em)]"
                     : "pl-3 sm:pl-5",
@@ -3493,10 +3625,6 @@ export default function ChatView(props: ChatViewProps) {
                   respondingRequestIds={respondingRequestIds}
                   showPlanFollowUpPrompt={showPlanFollowUpPrompt}
                   activeProposedPlan={activeProposedPlan}
-                  activePlan={activePlan as { turnId?: TurnId } | null}
-                  sidebarProposedPlan={sidebarProposedPlan as { turnId?: TurnId } | null}
-                  planSidebarLabel={planSidebarLabel}
-                  planSidebarOpen={planSidebarOpen}
                   runtimeMode={runtimeMode}
                   interactionMode={interactionMode}
                   lockedProvider={lockedProvider}
@@ -3529,7 +3657,6 @@ export default function ChatView(props: ChatViewProps) {
                   toggleInteractionMode={toggleInteractionMode}
                   handleRuntimeModeChange={handleRuntimeModeChange}
                   handleInteractionModeChange={handleInteractionModeChange}
-                  togglePlanSidebar={togglePlanSidebar}
                   focusComposer={focusComposer}
                   scheduleComposerFocus={scheduleComposerFocus}
                   setThreadError={setThreadError}
@@ -3561,6 +3688,7 @@ export default function ChatView(props: ChatViewProps) {
                         onEnvironmentChange,
                       }
                     : {})}
+                  activityIndicators={activityIndicators}
                 />
               )}
               {pullRequestDialogState ? (
@@ -3582,8 +3710,13 @@ export default function ChatView(props: ChatViewProps) {
             </div>
             {/* end chat column */}
 
-            {/* Plan sidebar */}
-            {planSidebarOpen && !shouldUsePlanSidebarSheet ? (
+            {/* Plan sidebar — wrapper animates width; content stays mounted during close transition */}
+            <div
+              className={cn(
+                "shrink-0 overflow-hidden transition-[width] duration-200 ease-linear",
+                planSidebarOpen && canFitPlanSidebarInline ? "w-[340px]" : "w-0",
+              )}
+            >
               <PlanSidebar
                 activePlan={activePlan}
                 activeProposedPlan={sidebarProposedPlan}
@@ -3595,7 +3728,7 @@ export default function ChatView(props: ChatViewProps) {
                 mode="sidebar"
                 onClose={closePlanSidebar}
               />
-            ) : null}
+            </div>
           </div>
           {/* end horizontal flex container */}
         </>
@@ -3622,7 +3755,7 @@ export default function ChatView(props: ChatViewProps) {
           onSearchClose={() => setTerminalSearchOpen(false)}
         />
       ))}
-      {shouldUsePlanSidebarSheet ? (
+      {planSidebarOpen && !canFitPlanSidebarInline ? (
         <RightPanelSheet open={planSidebarOpen} onClose={closePlanSidebar}>
           <PlanSidebar
             activePlan={activePlan}

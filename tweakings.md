@@ -54,7 +54,7 @@
   - `≤ 460px` ultra-compact (`COMPOSER_FOOTER_ULTRA_COMPACT_BREAKPOINT_PX`): runtime mode and trait labels shortened, slightly smaller text + tighter padding-inline.
 - `ProviderModelPicker.tsx` — `semiCompact` prop strips provider prefix from model names (`shortenModelLabel()` removes "Claude ", "OpenAI ", "GPT-"). Model name is **always visible** at every width — compact no longer hides it entirely. `data-chat-provider-model-picker` attribute used for CSS chevron targeting.
 - `TraitsPicker.tsx` — `ultraCompact` prop shortens trigger labels: "Medium" → "Med", "Ultrathink" → "Ultra", "Extra High" → "XHigh", "Thinking On" → "Think". `data-chat-traits-picker` attribute added for CSS chevron targeting.
-- `ComposerFooterModeControls` — `BotIcon` (Plan/Build toggle) and `ListTodoIcon` (Plan sidebar toggle) removed entirely at all sizes — text labels only. `RuntimeModeIcon` hidden when `semiCompact`. Runtime mode short labels ("Ask", "Edits", "Full") used when `ultraCompact`.
+- `ComposerFooterModeControls` — `BotIcon` (Plan/Build toggle) icon removed (text-only). Plan sidebar toggle removed entirely from the composer footer — `showPlanToggle`, `planSidebarLabel`, `planSidebarOpen`, `onTogglePlanSidebar` props all deleted from `ComposerFooterModeControls` and the main `ChatComposer` component interface. Plan/Tasks sidebar is now toggled exclusively via the `BranchToolbarActivityIndicators` below the composer (see "Branch toolbar activity indicators" section). `RuntimeModeIcon` hidden when `semiCompact`. Runtime mode short labels ("Ask", "Edits", "Full") used when `ultraCompact`.
 - Separators in `ComposerFooterModeControls` always visible (`mx-0.5 h-4`). The traits/model picker separator previously had `hidden sm:block` (viewport-based) — now always visible too.
 - `index.css` — `[data-chat-composer-footer="true"] button/[role="combobox"]` forces `font-size: var(--text-sm)` at all widths (Button defaults to `text-base` on mobile which was counterintuitively larger than desktop). Chevrons hidden via `[data-chat-composer-footer-compact="true"]` data attribute targeting `[data-slot="select-icon"]`, `[data-chat-provider-model-picker] svg.lucide-chevron-down`, and `[data-chat-traits-picker] svg.lucide-chevron-down`. Ultra-compact rule tightens `padding-inline` on all footer buttons.
 - Runtime mode "Auto-accept edits" → **"Accept edits"**. Updated `runtimeModeConfig` in `ChatComposer.tsx`, the menu item in `CompactComposerControlsMenu.tsx` (dead code but kept consistent), and the test `ChatView.browser.tsx`.
@@ -453,3 +453,42 @@
 - `apps/web/src/components/chat/MessagesTimeline.test.tsx`, `MessagesTimeline.browser.tsx` — `buildProps()` updated with `searchOpen: false`, `onSearchClose`.
 - `apps/web/src/components/ThreadTerminalDrawer.browser.tsx` — `TerminalViewport` test renders updated with `searchOpen: false`, `onSearchClose`.
 - `apps/web/package.json` — added `@xterm/addon-search` dependency.
+
+**Branch toolbar activity indicators (NEW):**
+
+- `apps/web/src/components/BranchToolbarActivityIndicators.tsx` — **new file**. Renders Tasks | Plans indicators in the BranchToolbar middle area (between env mode selector and branch selector). Shows pulsing `bg-primary` dot when active, count badge (`bg-primary/15 text-primary`), responsive labels (label vs shortLabel). Only renders indicators with `status !== "hidden"`. Button styling matches ghost xs pattern (`h-7 sm:h-6`, `text-sm sm:text-xs`, `font-medium`, `rounded-md`) for uniformity with env mode and branch selectors. Pipe separators between indicators.
+- `apps/web/src/components/BranchToolbar.tsx` — accepts optional `activityIndicators` prop, renders `BranchToolbarActivityIndicators` between left section (env mode) and right section (branch selector). Layout is `justify-between` flex row.
+- `apps/web/src/components/ChatView.tsx` — `activityIndicators` useMemo builds array from `activePlan`/`sidebarProposedPlan` state. "Tasks" indicator shows when `activePlan` has steps (count = total steps, status = "active" if any in-progress). "Plans" indicator shows when `sidebarProposedPlan` exists. Both wire `onToggle` to `togglePlanSidebar`.
+
+**Right panel sidebar constraint system + sheet fallback:**
+
+- `apps/web/src/rightPanelLayout.ts` — `CHAT_MIN_WIDTH = 440` and `RIGHT_PANEL_WIDTH = 340` constants. `RIGHT_PANEL_INLINE_LAYOUT_MEDIA_QUERY` still exported (used by diff panel) but no longer used by the plan sidebar.
+- `apps/web/src/components/ChatView.tsx` — full sidebar constraint system:
+  - `getLeftSidebarWidth()` reads `--sidebar-width` CSS variable from the sidebar-wrapper element (the intended width, not animated DOM width).
+  - `canFitRightPanel(assumeLeftOpen)` — single source of truth: `window.innerWidth - leftWidth - RIGHT_PANEL_WIDTH >= CHAT_MIN_WIDTH`.
+  - `canFitPlanSidebarInline` — derived from `canFitRightPanel(sidebarState === "expanded")`, recomputed each render.
+  - `togglePlanSidebar()` — opening always succeeds (`return true`). Tries to close left sidebar to make room inline; if still can't fit, the render layer shows the sheet overlay instead.
+  - Effect watching `sidebarState` — if left sidebar opens and right panel is inline but both can't fit, right panel closes.
+  - Safety net via `panelIsInlineRef` + ResizeObserver on sidebar-wrapper + window resize listener — only closes the panel when it was rendering inline and space shrinks below minimum. Skips enforcement when panel is in sheet mode (overlay doesn't affect chat width).
+  - Rendering: inline when `planSidebarOpen && canFitPlanSidebarInline`, sheet when `planSidebarOpen && !canFitPlanSidebarInline`. Inline sidebar wrapped in a `div` with `transition-[width] duration-200 ease-linear` and `overflow-hidden` for smooth open/close animation matching the left sidebar.
+  - `useMediaQuery` import removed from ChatView — no longer needed for the plan sidebar.
+- `apps/web/src/components/AppSidebarLayout.tsx` — `THREAD_SIDEBAR_MAX_WIDTH = 380` constant. Left sidebar capped at 380px max via `maxWidth` on the resizable config.
+
+**Sidebar animation polish:**
+
+- `apps/web/src/components/ChatView.tsx` — header `<header>` element gets `transition-[padding] duration-200 ease-linear` (Electron only). Syncs the traffic-light padding change (`pl-[82px]` ↔ `pl-3`) with the sidebar's 200ms slide animation, preventing the header content from jumping before the sidebar finishes moving. Also prevents the `@container/header-actions` query from briefly hitting the `@3xl` threshold during animation (which caused right-side icons to momentarily shrink to icon-only mode).
+- `apps/web/src/components/ui/sidebar.tsx` — `data-slot="sidebar-inner"` div gets `transition-opacity duration-75 ease-linear group-data-[state=collapsed]:opacity-0`. Sidebar content fades out quickly (75ms) when closing so it doesn't visibly slide under the macOS traffic lights during the 200ms slide animation.
+
+**Sidebar terminal icon deduplication + color:**
+
+- `apps/web/src/components/Sidebar.tsx` — terminal-only threads' leading icon (left of "Terminal" label) now adopts the pulsing animation + color class from `terminalStatus` when a process is running, instead of always being static `text-muted-foreground`. The trailing status icon (right side) is suppressed for terminal threads via `&& !isTerminal` guard, eliminating the duplicate.
+- `apps/web/src/components/ThreadStatusIndicators.tsx` — terminal pulsing icon `colorClass` changed from `"text-teal-600 dark:text-teal-300/90"` to `"text-primary"`.
+
+**Thread timestamp bump on terminal Enter:**
+
+- `packages/contracts/src/orchestration.ts` — added `ThreadTouchCommand` (internal, not client-dispatchable), `ThreadTouchedPayload` schema, `"thread.touched"` event type, and corresponding event struct in the `OrchestrationEvent` union.
+- `apps/server/src/orchestration/Schemas.ts` — re-exports `ThreadTouchedPayload`.
+- `apps/server/src/orchestration/decider.ts` — `thread.touch` case: validates thread exists, emits `thread.touched` with `updatedAt`.
+- `apps/server/src/orchestration/projector.ts` — `thread.touched` case: updates in-memory read model thread's `updatedAt`.
+- `apps/server/src/orchestration/Layers/ProjectionPipeline.ts` — `thread.touched` added to the existing case block that bumps `updatedAt` and calls `refreshThreadShellSummary`.
+- `apps/server/src/ws.ts` — `terminalWrite` handler checks `input.data.includes("\r")` (Enter key). Throttled at 60s per thread via module-level `lastTerminalTouchByThread` map. On trigger, dispatches `thread.touch` through the orchestration engine. Errors swallowed with `Effect.ignoreCause({ log: true })`.

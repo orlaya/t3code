@@ -10,6 +10,10 @@ import {
   type EnvironmentOption,
   resolveEffectiveEnvMode,
 } from "./BranchToolbar.logic";
+import {
+  BranchToolbarActivityIndicators,
+  type ActivityIndicator,
+} from "./BranchToolbarActivityIndicators";
 import { BranchToolbarBranchSelector } from "./BranchToolbarBranchSelector";
 import { BranchToolbarEnvironmentSelector } from "./BranchToolbarEnvironmentSelector";
 import { BranchToolbarEnvModeSelector } from "./BranchToolbarEnvModeSelector";
@@ -28,6 +32,7 @@ interface BranchToolbarProps {
   onComposerFocusRequest?: () => void;
   availableEnvironments?: readonly EnvironmentOption[];
   onEnvironmentChange?: (environmentId: EnvironmentId) => void;
+  activityIndicators?: ActivityIndicator[];
 }
 
 export const BranchToolbar = memo(function BranchToolbar({
@@ -43,6 +48,7 @@ export const BranchToolbar = memo(function BranchToolbar({
   onComposerFocusRequest,
   availableEnvironments,
   onEnvironmentChange,
+  activityIndicators,
 }: BranchToolbarProps) {
   const threadRef = useMemo(
     () => scopeThreadRef(environmentId, threadId),
@@ -100,6 +106,10 @@ export const BranchToolbar = memo(function BranchToolbar({
           onEnvModeChange={onEnvModeChange}
         />
       </div>
+
+      {activityIndicators && activityIndicators.length > 0 && (
+        <BranchToolbarActivityIndicators indicators={activityIndicators} />
+      )}
 
       <BranchToolbarBranchSelector
         environmentId={environmentId}
