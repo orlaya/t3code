@@ -129,12 +129,12 @@
   --input: --alpha(var(--color-black) / 10%);
   --ring: #e08f43; /* #f5b162;*/
   --destructive-foreground: #e06c6c;
-  --info: var(--color-blue-500);
-  --info-foreground: var(--color-blue-700);
-  --success: var(--color-emerald-500);
+  --info: oklch(0.758 0.084 214);
+  --info-foreground: oklch(0.811 0.066 213);
+  --success:  #cae28f;
   --success-foreground: #cae28f;
-  --warning: var(--color-amber-500);
-  --warning-foreground: var(--color-amber-700);
+  --warning: oklch(0.752 0.15 53);
+  --warning-foreground: oklch(0.787 0.125 49);
 
   @variant dark {
     color-scheme: dark;
@@ -161,12 +161,12 @@
     --input: --alpha(var(--color-white) / 8%);
     --ring: #e08f43; /* #f5b162;*/
     --destructive-foreground: #e06c6c;
-    --info: var(--color-blue-500);
-    --info-foreground: var(--color-blue-400);
-    --success: var(--color-emerald-500);
+    --info: oklch(0.758 0.084 214);
+    --info-foreground: oklch(0.811 0.066 213);
+    --success:  #cae28f;
     --success-foreground: #cae28f;
-    --warning: var(--color-amber-500);
-    --warning-foreground: var(--color-amber-400);
+    --warning:  oklch(0.752 0.15 53);
+    --warning-foreground: oklch(0.787 0.125 49);
   }
 }
 

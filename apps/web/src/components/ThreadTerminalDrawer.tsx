@@ -589,32 +589,22 @@ export function TerminalViewport({
                     query: rawPath,
                     limit: 10,
                   });
-                  const suffix = rawPath.endsWith("/")
-                    ? rawPath.slice(0, -1)
-                    : rawPath;
+                  const suffix = rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
                   const matches = result.entries
                     .filter((e) => e.path.endsWith(suffix) && e.kind === "file")
                     .sort((a, b) => a.path.length - b.path.length);
                   const exactMatch = matches[0];
                   if (exactMatch) {
-                    const position = line
-                      ? `:${line}${column ? `:${column}` : ""}`
-                      : "";
+                    const position = line ? `:${line}${column ? `:${column}` : ""}` : "";
                     const absolutePath = exactMatch.path.startsWith("/")
                       ? exactMatch.path
                       : `${effectiveCwd}/${exactMatch.path}`;
                     void openTarget(`${absolutePath}${position}`);
                   } else {
-                    writeSystemMessage(
-                      latestTerminal,
-                      `File not found: ${rawPath}`,
-                    );
+                    writeSystemMessage(latestTerminal, `File not found: ${rawPath}`);
                   }
                 } catch {
-                  writeSystemMessage(
-                    latestTerminal,
-                    `File not found: ${rawPath}`,
-                  );
+                  writeSystemMessage(latestTerminal, `File not found: ${rawPath}`);
                 }
               })();
             },

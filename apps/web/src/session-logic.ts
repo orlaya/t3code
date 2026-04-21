@@ -63,6 +63,10 @@ export interface WorkLogEntry {
   subAgentResult?: string;
   /** Task ID — present on task.progress entries and matched subagent entries. */
   taskId?: string;
+  /** Full tool result output — present on completed command_execution / dynamic_tool_call entries. */
+  resultContent?: string;
+  /** True when a tool call hasn't completed yet (spinner indicator). */
+  isToolInProgress?: boolean;
 }
 
 interface DerivedWorkLogEntry extends WorkLogEntry {
@@ -598,6 +602,32 @@ export function deriveWorkLogEntries(
     }
   }
 
+  // Non-sub-agent tools: when task events break the collapse chain, we can end
+  // up with both a tool.updated and a tool.completed for the same tool call.
+  // Strategy: keep the tool.updated (it renders first with a spinner) and graft
+  // the tool.completed's result data onto it, then drop the tool.completed.
+  const completedToolByKey = new Map<string, DerivedWorkLogEntry>();
+  const updatedToolEntries = new Map<string, DerivedWorkLogEntry>();
+  for (const entry of collapsed) {
+    if (entry.itemType === "collab_agent_tool_call") continue;
+    if (!entry.collapseKey) continue;
+    if (entry.activityKind === "tool.completed") {
+      completedToolByKey.set(entry.collapseKey, entry);
+    }
+    if (entry.activityKind === "tool.updated") {
+      updatedToolEntries.set(entry.collapseKey, entry);
+    }
+  }
+  // Graft result data from tool.completed onto the matching tool.updated entry.
+  const graftedToolKeys = new Set<string>();
+  for (const [key, updatedEntry] of updatedToolEntries) {
+    const completedEntry = completedToolByKey.get(key);
+    if (completedEntry) {
+      if (completedEntry.resultContent) updatedEntry.resultContent = completedEntry.resultContent;
+      graftedToolKeys.add(key);
+    }
+  }
+
   // Context compaction: drop "compacting" entries that have a corresponding
   // "compacted" after them (the pair is complete). Keep the last "compacting"
   // if it has no subsequent "compacted" — that's the active in-progress one.
@@ -626,6 +656,17 @@ export function deriveWorkLogEntries(
       ) {
         return false;
       }
+      // Drop tool.completed for non-sub-agent tools when a tool.updated already
+      // exists — the tool.updated renders first (with spinner) and has the
+      // completed result data grafted onto it above.
+      if (
+        entry.itemType !== "collab_agent_tool_call" &&
+        entry.activityKind === "tool.completed" &&
+        entry.collapseKey &&
+        updatedToolEntries.has(entry.collapseKey)
+      ) {
+        return false;
+      }
       return true;
     })
     .map(({ activityKind, collapseKey, toolCallId, ...entry }) => {
@@ -640,6 +681,13 @@ export function deriveWorkLogEntries(
           (collapseKey && updatedSubAgentIdByKey.get(collapseKey)) ||
           (entry.taskId && updatedSubAgentIdByTaskId.get(entry.taskId));
         if (originalId) entry.id = originalId;
+      }
+      if (
+        entry.itemType !== "collab_agent_tool_call" &&
+        activityKind === "tool.updated" &&
+        !(collapseKey && graftedToolKeys.has(collapseKey))
+      ) {
+        entry.isToolInProgress = true;
       }
       if (activityKind === "context-compaction" && entry.label === "Context compacting") {
         entry.isCompacting = true;
@@ -757,6 +805,27 @@ function toDerivedWorkLogEntry(activity: OrchestrationThreadActivity): DerivedWo
       );
       if (textBlock) {
         entry.subAgentResult = textBlock.text as string;
+      }
+    }
+  }
+  // Extract full result content for tool calls (bash output, grep results, etc.).
+  // Check both tool.completed AND tool.updated — task events can insert between
+  // them and break the collapse chain, so the tool.updated with result might be
+  // the one that survives after collapsing.
+  if (
+    (activity.kind === "tool.completed" || activity.kind === "tool.updated") &&
+    !entry.subAgentResult
+  ) {
+    const data =
+      payload && typeof (payload as Record<string, unknown>).data === "object"
+        ? ((payload as Record<string, unknown>).data as Record<string, unknown>)
+        : null;
+    const result =
+      data && typeof data.result === "object" ? (data.result as Record<string, unknown>) : null;
+    if (result) {
+      const content = typeof result.content === "string" ? result.content.trim() : null;
+      if (content && content.length > 0) {
+        entry.resultContent = content;
       }
     }
   }
