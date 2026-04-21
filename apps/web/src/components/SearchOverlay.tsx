@@ -29,6 +29,8 @@ interface SearchOverlayProps {
   onSearch: (query: string) => void;
   onNext: () => void;
   onPrev: () => void;
+  /** Extra classes to override default positioning (top-2 right-3). */
+  className?: string;
 }
 
 export const SearchOverlay = memo(function SearchOverlay({
@@ -39,6 +41,7 @@ export const SearchOverlay = memo(function SearchOverlay({
   onSearch,
   onNext,
   onPrev,
+  className: positionClassName,
 }: SearchOverlayProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const queryRef = useRef("");
@@ -94,6 +97,7 @@ export const SearchOverlay = memo(function SearchOverlay({
     <div
       className={cn(
         "absolute top-2 right-3 z-40 flex w-72 items-center gap-0 rounded-lg border border-border bg-popover px-2 py-1 shadow-lg/5 animate-in fade-in slide-in-from-top-1 duration-150",
+        positionClassName,
       )}
       data-slot="search-overlay"
     >

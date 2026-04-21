@@ -39,6 +39,7 @@ const STATIC_KEYBINDING_COMMANDS = [
   "chat.newLocal",
   "editor.openFavorite",
   "search.toggle",
+  "terminalSearch.toggle",
   ...THREAD_KEYBINDING_COMMANDS,
 ] as const;
 

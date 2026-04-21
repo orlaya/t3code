@@ -578,8 +578,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       >
         <div className="flex min-w-0 flex-1 items-center gap-1.5 text-left">
           {isTerminal ? (
-            <span className="inline-flex items-center justify-center text-muted-foreground">
-              <TerminalIcon className="size-3" />
+            <span
+              className={`inline-flex items-center justify-center ${terminalStatus ? terminalStatus.colorClass : "text-muted-foreground"}`}
+              {...(terminalStatus
+                ? { role: "img", "aria-label": terminalStatus.label, title: terminalStatus.label }
+                : {})}
+            >
+              <TerminalIcon className={`size-3 ${terminalStatus?.pulse ? "animate-pulse" : ""}`} />
             </span>
           ) : (
             <>
@@ -632,7 +637,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
           )}
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          {terminalStatus && (
+          {terminalStatus && !isTerminal && (
             <span
               role="img"
               aria-label={terminalStatus.label}

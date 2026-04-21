@@ -421,6 +421,8 @@ interface PersistentThreadTerminalDrawerProps {
   closeShortcutLabel: string | undefined;
   keybindings: ResolvedKeybindingsConfig;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
+  searchOpen: boolean;
+  onSearchClose: () => void;
 }
 
 const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDrawer({
@@ -434,6 +436,8 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
   closeShortcutLabel,
   keybindings,
   onAddTerminalContext,
+  searchOpen,
+  onSearchClose,
 }: PersistentThreadTerminalDrawerProps) {
   const serverThread = useStore(useMemo(() => createThreadSelectorByRef(threadRef), [threadRef]));
   const draftThread = useComposerDraftStore((store) => store.getDraftThreadByRef(threadRef));
@@ -591,6 +595,8 @@ const PersistentThreadTerminalDrawer = memo(function PersistentThreadTerminalDra
         onCloseTerminal={closeTerminal}
         onHeightChange={setTerminalHeight}
         onAddTerminalContext={handleAddTerminalContext}
+        searchOpen={searchOpen}
+        onSearchClose={onSearchClose}
       />
     </div>
   );
@@ -723,6 +729,7 @@ export default function ChatView(props: ChatViewProps) {
   const legendListRef = useRef<LegendListRef | null>(null);
   const isAtEndRef = useRef(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [terminalSearchOpen, setTerminalSearchOpen] = useState(false);
   const attachmentPreviewHandoffByMessageIdRef = useRef<Record<string, string[]>>({});
   const attachmentPreviewPromotionInFlightByMessageIdRef = useRef<Record<string, true>>({});
   const sendInFlightRef = useRef(false);
@@ -2365,6 +2372,13 @@ export default function ChatView(props: ChatViewProps) {
         return;
       }
 
+      if (command === "terminalSearch.toggle") {
+        event.preventDefault();
+        event.stopPropagation();
+        setTerminalSearchOpen((prev) => !prev);
+        return;
+      }
+
       const scriptId = projectScriptIdFromCommand(command);
       if (!scriptId || !activeProject) return;
       const script = activeProject.scripts.find((entry) => entry.id === scriptId);
@@ -3604,6 +3618,8 @@ export default function ChatView(props: ChatViewProps) {
           closeShortcutLabel={closeTerminalShortcutLabel ?? undefined}
           keybindings={keybindings}
           onAddTerminalContext={addTerminalContextToDraft}
+          searchOpen={mountedThreadKey === activeThreadKey && terminalSearchOpen}
+          onSearchClose={() => setTerminalSearchOpen(false)}
         />
       ))}
       {shouldUsePlanSidebarSheet ? (

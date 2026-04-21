@@ -178,6 +178,8 @@ async function mountTerminalViewport(props: {
       resizeEpoch={0}
       drawerHeight={320}
       keybindings={[]}
+      searchOpen={false}
+      onSearchClose={() => undefined}
     />,
     { container: host },
   );
@@ -198,6 +200,8 @@ async function mountTerminalViewport(props: {
           resizeEpoch={0}
           drawerHeight={320}
           keybindings={[]}
+          searchOpen={false}
+          onSearchClose={() => undefined}
         />,
       );
     },

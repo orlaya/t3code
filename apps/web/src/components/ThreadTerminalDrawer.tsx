@@ -1,4 +1,9 @@
 import { FitAddon } from "@xterm/addon-fit";
+import {
+  SearchAddon,
+  type ISearchDecorationOptions,
+  type ISearchOptions,
+} from "@xterm/addon-search";
 import { Plus, SquareSplitHorizontal, TerminalSquare, Trash2, XIcon } from "lucide-react";
 import {
   type ResolvedKeybindingsConfig,
@@ -34,6 +39,7 @@ import {
   isTerminalClearShortcut,
   isTerminalCloseShortcut,
   isTerminalNewShortcut,
+  isTerminalSearchToggleShortcut,
   isTerminalSplitShortcut,
   isTerminalToggleShortcut,
   terminalDeleteShortcutData,
@@ -48,6 +54,7 @@ import {
 import { readEnvironmentApi } from "~/environmentApi";
 import { readLocalApi } from "~/localApi";
 import { selectTerminalEventEntries, useTerminalStateStore } from "../terminalStateStore";
+import { SearchOverlay } from "./SearchOverlay";
 
 const MIN_DRAWER_HEIGHT = 180;
 const MAX_DRAWER_HEIGHT_RATIO = 0.75;
@@ -100,6 +107,26 @@ function normalizeComputedColor(value: string | null | undefined, fallback: stri
     return fallback;
   }
   return value ?? fallback;
+}
+
+function searchDecorationColors(): ISearchDecorationOptions {
+  const isDark = document.documentElement.classList.contains("dark");
+  if (isDark) {
+    return {
+      matchBackground: "#393126",
+      matchOverviewRuler: "#e08f43",
+      activeMatchBackground: "#e08f43",
+      activeMatchBorder: "#e08f43",
+      activeMatchColorOverviewRuler: "#e08f43",
+    };
+  }
+  return {
+    matchBackground: "#c9cdd4",
+    matchOverviewRuler: "#e08f43",
+    activeMatchBackground: "#e08f43",
+    activeMatchBorder: "#e08f43",
+    activeMatchColorOverviewRuler: "#e08f43",
+  };
 }
 
 function terminalThemeFromApp(mountElement?: HTMLElement | null): ITheme {
@@ -262,6 +289,8 @@ interface TerminalViewportProps {
   resizeEpoch: number;
   drawerHeight: number;
   keybindings: ResolvedKeybindingsConfig;
+  searchOpen: boolean;
+  onSearchClose: () => void;
 }
 
 export function TerminalViewport({
@@ -279,9 +308,12 @@ export function TerminalViewport({
   resizeEpoch,
   drawerHeight,
   keybindings,
+  searchOpen,
+  onSearchClose,
 }: TerminalViewportProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
+  const searchAddonRef = useRef<SearchAddon | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const environmentId = threadRef.environmentId;
   const hasHandledExitRef = useRef(false);
@@ -293,6 +325,9 @@ export function TerminalViewport({
   const keybindingsRef = useRef(keybindings);
   const lastAppliedTerminalEventIdRef = useRef(0);
   const terminalHydratedRef = useRef(false);
+  const [searchMatchCount, setSearchMatchCount] = useState(0);
+  const [searchCurrentMatch, setSearchCurrentMatch] = useState(-1);
+  const searchQueryRef = useRef("");
   const handleSessionExited = useEffectEvent(() => {
     onSessionExited();
   });
@@ -322,13 +357,22 @@ export function TerminalViewport({
       scrollback: 5_000,
       fontFamily: '"SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
       theme: terminalThemeFromApp(mount),
+      allowProposedApi: true,
     });
+    const searchAddon = new SearchAddon();
     terminal.loadAddon(fitAddon);
+    terminal.loadAddon(searchAddon);
     terminal.open(mount);
     fitAddon.fit();
 
     terminalRef.current = terminal;
     fitAddonRef.current = fitAddon;
+    searchAddonRef.current = searchAddon;
+
+    const searchResultsDisposable = searchAddon.onDidChangeResults((e) => {
+      setSearchMatchCount(e.resultCount);
+      setSearchCurrentMatch(e.resultIndex);
+    });
 
     const clearSelectionAction = () => {
       selectionActionRequestIdRef.current += 1;
@@ -423,7 +467,8 @@ export function TerminalViewport({
         isTerminalSplitShortcut(event, currentKeybindings, options) ||
         isTerminalNewShortcut(event, currentKeybindings, options) ||
         isTerminalCloseShortcut(event, currentKeybindings, options) ||
-        isDiffToggleShortcut(event, currentKeybindings, options)
+        isDiffToggleShortcut(event, currentKeybindings, options) ||
+        isTerminalSearchToggleShortcut(event, currentKeybindings, options)
       ) {
         return false;
       }
@@ -738,6 +783,7 @@ export function TerminalViewport({
       window.clearTimeout(fitTimer);
       inputDisposable.dispose();
       selectionDisposable.dispose();
+      searchResultsDisposable.dispose();
       terminalLinksDisposable.dispose();
       if (selectionActionTimerRef.current !== null) {
         window.clearTimeout(selectionActionTimerRef.current);
@@ -747,6 +793,7 @@ export function TerminalViewport({
       themeObserver.disconnect();
       terminalRef.current = null;
       fitAddonRef.current = null;
+      searchAddonRef.current = null;
       terminal.dispose();
     };
     // autoFocus is intentionally omitted;
@@ -790,11 +837,70 @@ export function TerminalViewport({
       window.cancelAnimationFrame(frame);
     };
   }, [drawerHeight, environmentId, resizeEpoch, terminalId, threadId]);
+
+  const getSearchOptions = useCallback(
+    (incremental: boolean): ISearchOptions => ({
+      incremental,
+      decorations: searchDecorationColors(),
+    }),
+    [],
+  );
+
+  const handleSearch = useCallback(
+    (query: string) => {
+      searchQueryRef.current = query;
+      const addon = searchAddonRef.current;
+      if (!addon) return;
+      if (query.length === 0) {
+        addon.clearDecorations();
+        setSearchMatchCount(0);
+        setSearchCurrentMatch(-1);
+        return;
+      }
+      addon.findNext(query, getSearchOptions(true));
+    },
+    [getSearchOptions],
+  );
+
+  const handleSearchNext = useCallback(() => {
+    const addon = searchAddonRef.current;
+    const query = searchQueryRef.current;
+    if (!addon || !query) return;
+    addon.findNext(query, getSearchOptions(false));
+  }, [getSearchOptions]);
+
+  const handleSearchPrev = useCallback(() => {
+    const addon = searchAddonRef.current;
+    const query = searchQueryRef.current;
+    if (!addon || !query) return;
+    addon.findPrevious(query, getSearchOptions(false));
+  }, [getSearchOptions]);
+
+  const handleSearchClose = useCallback(() => {
+    searchAddonRef.current?.clearDecorations();
+    setSearchMatchCount(0);
+    setSearchCurrentMatch(-1);
+    searchQueryRef.current = "";
+    onSearchClose();
+  }, [onSearchClose]);
+
   return (
-    <div
-      ref={containerRef}
-      className="relative h-full w-full overflow-hidden rounded-[4px] bg-background"
-    />
+    <div className="relative h-full w-full">
+      <div
+        ref={containerRef}
+        className="h-full w-full overflow-hidden rounded-[4px] bg-background"
+      />
+      <SearchOverlay
+        open={searchOpen}
+        onClose={handleSearchClose}
+        matchCount={searchMatchCount}
+        currentMatch={searchCurrentMatch}
+        onSearch={handleSearch}
+        onNext={handleSearchNext}
+        onPrev={handleSearchPrev}
+        className="-top-0.5 right-1.5"
+      />
+    </div>
   );
 }
 
@@ -821,6 +927,8 @@ interface ThreadTerminalDrawerProps {
   onHeightChange: (height: number) => void;
   onAddTerminalContext: (selection: TerminalContextSelection) => void;
   keybindings: ResolvedKeybindingsConfig;
+  searchOpen: boolean;
+  onSearchClose: () => void;
 }
 
 interface TerminalActionButtonProps {
@@ -875,6 +983,8 @@ export default function ThreadTerminalDrawer({
   onHeightChange,
   onAddTerminalContext,
   keybindings,
+  searchOpen,
+  onSearchClose,
 }: ThreadTerminalDrawerProps) {
   const [drawerHeight, setDrawerHeight] = useState(() => clampDrawerHeight(height));
   const [resizeEpoch, setResizeEpoch] = useState(0);
@@ -1194,6 +1304,8 @@ export default function ThreadTerminalDrawer({
                         resizeEpoch={resizeEpoch}
                         drawerHeight={drawerHeight}
                         keybindings={keybindings}
+                        searchOpen={searchOpen}
+                        onSearchClose={onSearchClose}
                       />
                     </div>
                   </div>
@@ -1217,6 +1329,8 @@ export default function ThreadTerminalDrawer({
                   resizeEpoch={resizeEpoch}
                   drawerHeight={drawerHeight}
                   keybindings={keybindings}
+                  searchOpen={searchOpen}
+                  onSearchClose={onSearchClose}
                 />
               </div>
             )}

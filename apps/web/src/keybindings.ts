@@ -355,6 +355,14 @@ export function isSearchToggleShortcut(
   return matchesCommandShortcut(event, keybindings, "search.toggle", options);
 }
 
+export function isTerminalSearchToggleShortcut(
+  event: ShortcutEventLike,
+  keybindings: ResolvedKeybindingsConfig,
+  options?: ShortcutMatchOptions,
+): boolean {
+  return matchesCommandShortcut(event, keybindings, "terminalSearch.toggle", options);
+}
+
 export function isTerminalClearShortcut(
   event: ShortcutEventLike,
   platform = navigator.platform,
