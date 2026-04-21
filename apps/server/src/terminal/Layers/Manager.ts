@@ -677,6 +677,14 @@ function createTerminalSpawnEnv(
       spawnEnv[key] = value;
     }
   }
+  // Enable OSC 7 cwd reporting on macOS. The system /etc/zshrc sources
+  // /etc/zshrc_Apple_Terminal when TERM_PROGRAM is set, which installs a
+  // precmd hook that emits the current working directory via OSC 7.
+  // Session history (the other feature in that file) is gated behind
+  // TERM_SESSION_ID which we intentionally do not set.
+  if (process.platform === "darwin" && !spawnEnv.TERM_PROGRAM) {
+    spawnEnv.TERM_PROGRAM = "Apple_Terminal";
+  }
   return spawnEnv;
 }
 

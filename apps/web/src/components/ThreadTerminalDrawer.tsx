@@ -32,6 +32,7 @@ import {
   isTerminalLinkActivation,
   resolvePathLinkTarget,
   resolveWrappedTerminalLinkRange,
+  splitPathAndPosition,
   wrappedTerminalLinkRangeIntersectsBufferLine,
 } from "../terminal-links";
 import {
@@ -562,13 +563,60 @@ export function TerminalViewport({
                 return;
               }
 
-              const target = resolvePathLinkTarget(match.text, liveCwdRef.current ?? cwd);
-              void openInPreferredEditor(localApi, target).catch((error) => {
-                writeSystemMessage(
-                  latestTerminal,
-                  error instanceof Error ? error.message : "Unable to open path",
-                );
-              });
+              const effectiveCwd = liveCwdRef.current ?? cwd;
+              const naiveTarget = resolvePathLinkTarget(match.text, effectiveCwd);
+              const { path: rawPath, line, column } = splitPathAndPosition(match.text);
+
+              const openTarget = (target: string) =>
+                openInPreferredEditor(localApi, target).catch((error) => {
+                  writeSystemMessage(
+                    latestTerminal,
+                    error instanceof Error ? error.message : "Unable to open path",
+                  );
+                });
+
+              // For absolute paths or home-relative paths, open directly
+              if (rawPath.startsWith("/") || rawPath.startsWith("~/")) {
+                void openTarget(naiveTarget);
+                return;
+              }
+
+              // For relative paths, search the workspace to find the real location
+              void (async () => {
+                try {
+                  const result = await api.projects.searchEntries({
+                    cwd: effectiveCwd,
+                    query: rawPath,
+                    limit: 10,
+                  });
+                  const suffix = rawPath.endsWith("/")
+                    ? rawPath.slice(0, -1)
+                    : rawPath;
+                  const matches = result.entries
+                    .filter((e) => e.path.endsWith(suffix) && e.kind === "file")
+                    .sort((a, b) => a.path.length - b.path.length);
+                  const exactMatch = matches[0];
+                  if (exactMatch) {
+                    const position = line
+                      ? `:${line}${column ? `:${column}` : ""}`
+                      : "";
+                    const absolutePath = exactMatch.path.startsWith("/")
+                      ? exactMatch.path
+                      : `${effectiveCwd}/${exactMatch.path}`;
+                    void openTarget(`${absolutePath}${position}`);
+                  } else {
+                    writeSystemMessage(
+                      latestTerminal,
+                      `File not found: ${rawPath}`,
+                    );
+                  }
+                } catch {
+                  writeSystemMessage(
+                    latestTerminal,
+                    `File not found: ${rawPath}`,
+                  );
+                }
+              })();
             },
           })),
         );

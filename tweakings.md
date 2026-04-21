@@ -492,3 +492,10 @@
 - `apps/server/src/orchestration/projector.ts` — `thread.touched` case: updates in-memory read model thread's `updatedAt`.
 - `apps/server/src/orchestration/Layers/ProjectionPipeline.ts` — `thread.touched` added to the existing case block that bumps `updatedAt` and calls `refreshThreadShellSummary`.
 - `apps/server/src/ws.ts` — `terminalWrite` handler checks `input.data.includes("\r")` (Enter key). Throttled at 60s per thread via module-level `lastTerminalTouchByThread` map. On trigger, dispatches `thread.touch` through the orchestration engine. Errors swallowed with `Effect.ignoreCause({ log: true })`.
+
+**Terminal link resolution — OSC 7 cwd tracking + workspace search + Zed `--add`:**
+
+- `apps/server/src/terminal/Layers/Manager.ts` — `createTerminalSpawnEnv()` sets `TERM_PROGRAM=Apple_Terminal` on macOS when not already set. This makes the system `/etc/zshrc` source `/etc/zshrc_Apple_Terminal` which installs a `precmd` hook emitting OSC 7 (`\e]7;file://host/path\a`) after every command. Session history (also in that file) is gated behind `TERM_SESSION_ID` which we don't set.
+- `apps/web/src/components/ThreadTerminalDrawer.tsx` �� `liveCwdRef` tracks the terminal's real working directory via an OSC 7 parser handler (`terminal.parser.registerOscHandler(7, ...)`). Parses `file://` URIs and bare paths. Disposed on cleanup alongside other disposables.
+- `apps/web/src/components/ThreadTerminalDrawer.tsx` — link activation for relative paths now searches the workspace via `api.projects.searchEntries({ cwd: effectiveCwd, query, limit: 10 })` instead of blindly joining `cwd + relativePath`. Filters results by suffix match, picks shortest path when multiple match. Prepends `effectiveCwd` to make relative search results absolute. Shows "File not found" in the terminal if no match — never opens non-existent files. Absolute and home-relative paths still open directly without search.
+- `packages/contracts/src/editor.ts` — Zed editor definition gains `baseArgs: ["--add"]` so files open in the existing Zed window instead of spawning a new one.
