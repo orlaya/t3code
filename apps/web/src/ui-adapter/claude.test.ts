@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractClaudeApprovalInlineDiffs,
   extractClaudeToolData,
   extractClaudeApprovalData,
   extractClaudeApprovalDecision,
+  extractClaudeInlineDiffs,
 } from "./claude.ts";
 
 import bashFixture from "./fixtures/claude-bash.json";
@@ -120,6 +122,20 @@ describe("claude extraction — edit", () => {
     });
 
     expect(result?.toolCallId).toBe("toolu_example_123");
+  });
+
+  it("extracts inline diffs for Edit payloads", () => {
+    expect(extractClaudeInlineDiffs(editFixture.completed)).toEqual([
+      {
+        filePath: "/Users/sh/t3code/apps/web/src/components/chat/MessagesTimeline.tsx",
+        toolCallId: "toolu_01ABC123",
+        toolName: "Edit",
+        changeKind: "update",
+        source: "before_after",
+        oldString: "const foo = 1;",
+        newString: "const foo = 2;",
+      },
+    ]);
   });
 });
 
@@ -256,6 +272,19 @@ describe("claude extraction — write", () => {
     expect(result?.input?.old_string).toBeUndefined();
     expect(result?.input?.new_string).toBeUndefined();
   });
+
+  it("extracts inline diffs for Write payloads", () => {
+    const [inlineDiff] = extractClaudeInlineDiffs(writeFixture.completed);
+    expect(inlineDiff).toMatchObject({
+      filePath: "/tmp/ui-adapter-fixture-bait.ts",
+      toolName: "Write",
+      changeKind: "add",
+      source: "before_after",
+      oldString: "",
+      anchorLine: 1,
+    });
+    expect(inlineDiff?.newString).toEqual(expect.stringContaining("REPLACE_ME"));
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -374,6 +403,20 @@ describe("claude extraction — approvals", () => {
     });
     // No decision yet — it's a request, not a resolution
     expect(result?.decision).toBeUndefined();
+  });
+
+  it("extracts inline diffs from approval args", () => {
+    expect(extractClaudeApprovalInlineDiffs(approvalFixture.requested)).toEqual([
+      {
+        filePath: "/tmp/ui-adapter-fixture-bait.ts",
+        toolCallId: "toolu_01HWJ3nMqdiubw4v3StAbeWq",
+        toolName: "Edit",
+        changeKind: "update",
+        source: "before_after",
+        oldString: 'const placeholder = "REPLACED";',
+        newString: 'const placeholder = "APPROVAL_TEST";',
+      },
+    ]);
   });
 
   it("extracts decline decision from resolved payload", () => {

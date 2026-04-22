@@ -3,7 +3,7 @@ import { createPatch } from "diff";
 import { parsePatchFiles } from "@pierre/diffs";
 import { FileDiff } from "@pierre/diffs/react";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
-import { type EditDiffEntry } from "../../session-logic";
+import { type EditDiffEntry } from "../../session-logic/index";
 import { resolveDiffThemeName, buildPatchCacheKey } from "../../lib/diffRendering";
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";
 import { readLocalApi } from "~/localApi";
@@ -43,7 +43,11 @@ export const InlineEditDiff = memo(function InlineEditDiff({
   /** When true, the header row (label + file path) is hidden — useful when the parent already shows the file path. */
   hideHeader?: boolean;
 }) {
-  const displayPath = formatWorkspaceRelativePath(editEntry.filePath, workspaceRoot);
+  const editorTargetPath =
+    editEntry.anchorLine !== undefined
+      ? `${editEntry.filePath}:${editEntry.anchorLine}`
+      : editEntry.filePath;
+  const displayPath = formatWorkspaceRelativePath(editorTargetPath, workspaceRoot);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const diffContainerRef = useRef<HTMLDivElement>(null);
@@ -51,8 +55,8 @@ export const InlineEditDiff = memo(function InlineEditDiff({
   const handleOpenInEditor = useCallback(() => {
     const api = readLocalApi();
     if (!api) return;
-    void openInPreferredEditor(api, editEntry.filePath);
-  }, [editEntry.filePath]);
+    void openInPreferredEditor(api, editorTargetPath);
+  }, [editorTargetPath]);
 
   const handleToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,22 +64,39 @@ export const InlineEditDiff = memo(function InlineEditDiff({
   }, []);
 
   const fileDiff = useMemo(() => {
+    if (editEntry.source === "patch") {
+      if (!editEntry.unifiedPatch) {
+        return null;
+      }
+      const parsed = parsePatchFiles(
+        editEntry.unifiedPatch,
+        buildPatchCacheKey(editEntry.unifiedPatch, "inline-edit"),
+      );
+      return parsed.flatMap((p) => p.files)[0] ?? null;
+    }
+
     // Ensure non-empty strings end with \n so createPatch doesn't emit
     // the "No newline at end of file" marker in every snippet diff.
     // Empty strings must stay empty — appending \n to "" makes createPatch
     // think the old file had one blank line, rendering a spurious deletion band.
     const oldStr =
-      editEntry.oldString === "" || editEntry.oldString.endsWith("\n")
-        ? editEntry.oldString
+      !editEntry.oldString || editEntry.oldString.endsWith("\n")
+        ? (editEntry.oldString ?? "")
         : editEntry.oldString + "\n";
     const newStr =
-      editEntry.newString === "" || editEntry.newString.endsWith("\n")
-        ? editEntry.newString
+      !editEntry.newString || editEntry.newString.endsWith("\n")
+        ? (editEntry.newString ?? "")
         : editEntry.newString + "\n";
     const patch = createPatch(editEntry.filePath, oldStr, newStr);
     const parsed = parsePatchFiles(patch, buildPatchCacheKey(patch, "inline-edit"));
     return parsed.flatMap((p) => p.files)[0] ?? null;
-  }, [editEntry.filePath, editEntry.oldString, editEntry.newString]);
+  }, [
+    editEntry.filePath,
+    editEntry.newString,
+    editEntry.oldString,
+    editEntry.source,
+    editEntry.unifiedPatch,
+  ]);
 
   // Detect whether the rendered diff overflows the collapsed max-height.
   // ResizeObserver catches the async shadow DOM render (Shiki via worker pool).

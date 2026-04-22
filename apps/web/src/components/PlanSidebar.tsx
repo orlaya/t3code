@@ -14,8 +14,8 @@ import {
   PanelRightCloseIcon,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
-import type { ActivePlanState } from "../session-logic";
-import type { LatestProposedPlanState } from "../session-logic";
+import type { ActivePlanState } from "../session-logic/index";
+import type { LatestProposedPlanState } from "../session-logic/index";
 import { formatTimestamp } from "../timestampFormat";
 import {
   proposedPlanTitle,

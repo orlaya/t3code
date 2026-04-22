@@ -1,4 +1,9 @@
-import { type EditDiffEntry, type TimelineEntry, type WorkLogEntry } from "../../session-logic";
+import {
+  type EditDiffEntry,
+  type TimelineEntry,
+  type WorkLogEntry,
+} from "../../session-logic/index";
+import type { AssembledToolInvocation } from "@t3tools/contracts";
 import { type ChatMessage, type ProposedPlan, type TurnDiffSummary } from "../../types";
 import { type MessageId } from "@t3tools/contracts";
 
@@ -47,7 +52,20 @@ export type MessagesTimelineRow =
       createdAt: string;
       editEntry: EditDiffEntry;
     }
-  | { kind: "working"; id: string; createdAt: string | null };
+  | { kind: "working"; id: string; createdAt: string | null }
+  | {
+      kind: "assembled-tool";
+      id: string;
+      createdAt: string;
+      tool: AssembledToolInvocation;
+    }
+  | {
+      kind: "assembled-tool-group";
+      id: string;
+      createdAt: string;
+      tools: AssembledToolInvocation[];
+      workEntries: WorkLogEntry[];
+    };
 
 export interface StableMessagesTimelineRowsState {
   byId: Map<string, MessagesTimelineRow>;
@@ -122,6 +140,11 @@ function deriveTerminalAssistantMessageIds(timelineEntries: ReadonlyArray<Timeli
 const isCompactionEntry = (entry: WorkLogEntry) => entry.isCompacting || entry.isCompacted;
 const isFileChangeEntry = (entry: WorkLogEntry) => entry.itemType === "file_change";
 
+/** Assembled tool kinds that always render standalone (never grouped). */
+const STANDALONE_ASSEMBLED_KINDS = new Set(["edit", "write"]);
+const isStandaloneAssembledTool = (tool: AssembledToolInvocation) =>
+  STANDALONE_ASSEMBLED_KINDS.has(tool.kind);
+
 export function deriveMessagesTimelineRows(input: {
   timelineEntries: ReadonlyArray<TimelineEntry>;
   completionDividerBeforeEntryId: string | null;
@@ -183,22 +206,45 @@ export function deriveMessagesTimelineRows(input: {
         continue;
       }
 
-      const groupedEntries = [timelineEntry.entry];
+      // Groupable work entry — start a unified group that can absorb both
+      // work entries and assembled tools, so task.progress entries merge
+      // into the same card as assembled tool rows.
+      const groupedTools: AssembledToolInvocation[] = [];
+      const groupedWorkEntries: WorkLogEntry[] = [timelineEntry.entry];
       let cursor = index + 1;
       while (cursor < input.timelineEntries.length) {
         const nextEntry = input.timelineEntries[cursor];
-        if (!nextEntry || nextEntry.kind !== "work") break;
-        if (isCompactionEntry(nextEntry.entry)) break;
-        if (isFileChangeEntry(nextEntry.entry)) break;
-        groupedEntries.push(nextEntry.entry);
+        if (!nextEntry) break;
+        if (nextEntry.kind === "work") {
+          if (isCompactionEntry(nextEntry.entry)) break;
+          if (isFileChangeEntry(nextEntry.entry)) break;
+          groupedWorkEntries.push(nextEntry.entry);
+        } else if (nextEntry.kind === "assembled-tool") {
+          if (isStandaloneAssembledTool(nextEntry.tool)) break;
+          groupedTools.push(nextEntry.tool);
+        } else {
+          break;
+        }
         cursor += 1;
       }
-      nextRows.push({
-        kind: "work",
-        id: timelineEntry.id,
-        createdAt: timelineEntry.createdAt,
-        groupedEntries,
-      });
+      if (groupedTools.length > 0) {
+        // Mixed group — emit as assembled-tool-group so both render together.
+        nextRows.push({
+          kind: "assembled-tool-group",
+          id: timelineEntry.id,
+          createdAt: timelineEntry.createdAt,
+          tools: groupedTools,
+          workEntries: groupedWorkEntries,
+        });
+      } else {
+        // Pure work entries — emit as a work row (old path, non-claudeAgent).
+        nextRows.push({
+          kind: "work",
+          id: timelineEntry.id,
+          createdAt: timelineEntry.createdAt,
+          groupedEntries: groupedWorkEntries,
+        });
+      }
       index = cursor - 1;
       continue;
     }
@@ -210,6 +256,49 @@ export function deriveMessagesTimelineRows(input: {
         createdAt: timelineEntry.createdAt,
         proposedPlan: timelineEntry.proposedPlan,
       });
+      continue;
+    }
+
+    if (timelineEntry.kind === "assembled-tool") {
+      // Edit/Write always render standalone (same as old file_change behavior).
+      // Everything else groups into a shared card (same as old WorkGroup behavior).
+      if (isStandaloneAssembledTool(timelineEntry.tool)) {
+        nextRows.push({
+          kind: "assembled-tool",
+          id: timelineEntry.id,
+          createdAt: timelineEntry.createdAt,
+          tool: timelineEntry.tool,
+        });
+      } else {
+        // Start a unified group that can absorb both assembled tools and
+        // work entries (e.g. task.progress for sub-agents).
+        const groupedTools = [timelineEntry.tool];
+        const groupedWorkEntries: WorkLogEntry[] = [];
+        let cursor = index + 1;
+        while (cursor < input.timelineEntries.length) {
+          const nextEntry = input.timelineEntries[cursor];
+          if (!nextEntry) break;
+          if (nextEntry.kind === "assembled-tool") {
+            if (isStandaloneAssembledTool(nextEntry.tool)) break;
+            groupedTools.push(nextEntry.tool);
+          } else if (nextEntry.kind === "work") {
+            if (isCompactionEntry(nextEntry.entry)) break;
+            if (isFileChangeEntry(nextEntry.entry)) break;
+            groupedWorkEntries.push(nextEntry.entry);
+          } else {
+            break;
+          }
+          cursor += 1;
+        }
+        nextRows.push({
+          kind: "assembled-tool-group",
+          id: timelineEntry.id,
+          createdAt: timelineEntry.createdAt,
+          tools: groupedTools,
+          workEntries: groupedWorkEntries,
+        });
+        index = cursor - 1;
+      }
       continue;
     }
 
@@ -326,5 +415,11 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
 
     case "edit":
       return a.editEntry === (b as typeof a).editEntry;
+
+    case "assembled-tool":
+      return a.tool === (b as typeof a).tool;
+
+    case "assembled-tool-group":
+      return a.tools === (b as typeof a).tools && a.workEntries === (b as typeof a).workEntries;
   }
 }

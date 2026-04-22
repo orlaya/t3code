@@ -11,6 +11,7 @@
 
 import type {
   CanonicalToolData,
+  CanonicalInlineDiff,
   CanonicalToolResult,
   CanonicalToolInput,
   CanonicalContentBlock,
@@ -18,17 +19,7 @@ import type {
 } from "@t3tools/contracts";
 import { isToolLifecycleItemType } from "@t3tools/contracts";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function asString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
-}
+import { asString, isRecord } from "./helpers";
 
 function extractToolCallId(data: Record<string, unknown>): string | undefined {
   const direct = asString(data.toolCallId);
@@ -142,6 +133,73 @@ export function extractClaudeToolData(payload: unknown): CanonicalToolData | nul
   }
 
   return canonical;
+}
+
+// ---------------------------------------------------------------------------
+// Inline diff extraction
+// ---------------------------------------------------------------------------
+
+function extractInlineDiffsFromClaudeInput(
+  input: CanonicalToolInput | undefined,
+  toolName: string,
+  toolCallId?: string,
+): CanonicalInlineDiff[] {
+  if (!input?.file_path) {
+    return [];
+  }
+
+  if (toolName === "Write" && typeof input.content === "string") {
+    return [
+      {
+        filePath: input.file_path,
+        ...(toolCallId ? { toolCallId } : {}),
+        toolName,
+        changeKind: "add",
+        source: "before_after",
+        oldString: "",
+        newString: input.content,
+        anchorLine: 1,
+      },
+    ];
+  }
+
+  if (typeof input.old_string === "string" && typeof input.new_string === "string") {
+    return [
+      {
+        filePath: input.file_path,
+        ...(toolCallId ? { toolCallId } : {}),
+        toolName,
+        changeKind: "update",
+        source: "before_after",
+        oldString: input.old_string,
+        newString: input.new_string,
+      },
+    ];
+  }
+
+  return [];
+}
+
+export function extractClaudeInlineDiffs(payload: unknown): CanonicalInlineDiff[] {
+  const tool = extractClaudeToolData(payload);
+  if (!tool || tool.itemType !== "file_change") {
+    return [];
+  }
+
+  return extractInlineDiffsFromClaudeInput(tool.input, tool.toolName, tool.toolCallId);
+}
+
+export function extractClaudeApprovalInlineDiffs(payload: unknown): CanonicalInlineDiff[] {
+  const approval = extractClaudeApprovalData(payload);
+  if (!approval || approval.requestKind !== "file-change") {
+    return [];
+  }
+
+  return extractInlineDiffsFromClaudeInput(
+    approval.input,
+    approval.toolName ?? "Edit",
+    approval.toolUseId,
+  );
 }
 
 // ---------------------------------------------------------------------------

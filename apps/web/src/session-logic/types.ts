@@ -8,6 +8,11 @@
 
 import type {
   ApprovalRequestId,
+  AssembledToolInvocation,
+  CanonicalDisplayCapabilities,
+  CanonicalDisplayKind,
+  CanonicalInlineDiff,
+  CanonicalLifecycleShape,
   OrchestrationProposedPlanId,
   ProviderKind,
   ToolLifecycleItemType,
@@ -49,6 +54,10 @@ export interface WorkLogEntry {
   changedFiles?: ReadonlyArray<string>;
   tone: "thinking" | "tool" | "info" | "error";
   toolTitle?: string;
+  displayKind?: CanonicalDisplayKind;
+  displayHeading?: string;
+  lifecycleShape?: CanonicalLifecycleShape;
+  displayCapabilities?: CanonicalDisplayCapabilities;
   itemType?: ToolLifecycleItemType;
   requestKind?: PendingApproval["requestKind"];
   /** True when this is a sub-agent tool call that hasn't completed yet. */
@@ -133,11 +142,16 @@ export interface EditDiffEntry {
   id: string;
   createdAt: string;
   turnId: string | null;
+  source: CanonicalInlineDiff["source"];
   toolCallId?: string;
   filePath: string;
-  oldString: string;
-  newString: string;
-  replaceAll: boolean;
+  oldString?: string;
+  newString?: string;
+  unifiedPatch?: string;
+  changeKind: CanonicalInlineDiff["changeKind"];
+  movePath?: string;
+  anchorLine?: number;
+  replaceAll?: boolean;
   toolName: string;
 }
 
@@ -169,4 +183,10 @@ export type TimelineEntry =
       kind: "edit";
       createdAt: string;
       editEntry: EditDiffEntry;
+    }
+  | {
+      id: string;
+      kind: "assembled-tool";
+      createdAt: string;
+      tool: AssembledToolInvocation;
     };

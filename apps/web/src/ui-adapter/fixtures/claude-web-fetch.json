@@ -1,8 +1,4 @@
 {
-  "started": {
-    "itemType": "dynamic_tool_call",
-    "detail": "{}"
-  },
   "updated": {
     "itemType": "dynamic_tool_call",
     "status": "inProgress",
@@ -25,20 +21,20 @@
         "prompt": "What is the version number?"
       },
       "result": {
-        "tool_use_id": "toolu_01ABC456",
+        "tool_use_id": "toolu_01PV4F7BBK67AtDcMCH7Mcjo",
         "type": "tool_result",
-        "content": "The latest version is 0.565.0"
+        "content": "The package version is **1.8.0**, as indicated by the `\"version\":\"1.8.0\"` field in the package metadata."
       }
     }
   },
   "failed": {
     "itemType": "dynamic_tool_call",
     "status": "failed",
-    "detail": "{\"url\":\"https://www.npmjs.com/package/lucide-react\",\"prompt\":\"What is the latest version?\"}",
+    "detail": "{\"url\":\"https://www.npmjs.com/package/lucide-react?activeTab=versions\",\"prompt\":\"What is the latest version?\"}",
     "data": {
       "toolName": "WebFetch",
       "input": {
-        "url": "https://www.npmjs.com/package/lucide-react",
+        "url": "https://www.npmjs.com/package/lucide-react?activeTab=versions",
         "prompt": "What is the latest version?"
       },
       "result": {

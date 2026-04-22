@@ -25,7 +25,7 @@
       "result": {
         "tool_use_id": "toolu_01U2P6WhHtjJX7FUgCwbArT1",
         "type": "tool_result",
-        "content": "## Search results for: Claude AI 2026\n\n1. Anthropic releases Claude 4..."
+        "content": "Web search results for query: \"Claude AI 2026\"\n\nLinks: [{\"title\":\"Claude\",\"url\":\"https://claude.ai/login\"}]\n\nSearch results summary here."
       }
     }
   }

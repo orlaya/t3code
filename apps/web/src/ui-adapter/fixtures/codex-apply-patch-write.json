@@ -1,0 +1,243 @@
+{
+  "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+  "messages": [
+    {
+      "id": "thinking:rs_07cc1a657112d5f90169e85fd577988191b93250cc2bead081",
+      "role": "thinking",
+      "text": "",
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:46.606Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:42:46.606Z"
+    },
+    {
+      "id": "assistant:msg_07cc1a657112d5f90169e85fd6ba408191b5c74f5aa9f4dc3f",
+      "role": "assistant",
+      "text": "You want an isolated file-creation example for the patch tool, so I’m going to add a small Markdown file under `/Users/sh/t3code/__notes` and keep the contents simple so the JSON stays easy to inspect. After that we can do a separate edit pass against the same file for the “modify existing file” case.",
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:46.607Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:42:48.077Z"
+    },
+    {
+      "id": "thinking:rs_07cc1a657112d5f90169e85fdd132881919402aa46255424d1",
+      "role": "thinking",
+      "text": "",
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:53.551Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:42:53.551Z"
+    },
+    {
+      "id": "assistant:msg_07cc1a657112d5f90169e85fddb06881919903723d7648c8a1",
+      "role": "assistant",
+      "text": "I’ve confirmed that `__notes` is present as a symlinked notes folder, and I’m creating a brand-new Markdown file there now so this stays a pure “file create” example.",
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:53.551Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:42:54.384Z"
+    },
+    {
+      "id": "assistant:msg_07cc1a657112d5f90169e85fe2f6fc8191b0c70c5862b0d9d8",
+      "role": "assistant",
+      "text": "I created [tool-patch-create-example.md](/Users/sh/t3code/__notes/tool-patch-create-example.md:1) in `__notes` using `apply_patch`.\n\nIt’s a clean “new file” example with a short Markdown body, so this should give you a nice isolated patch/create JSON sample. Next we can do the paired “edit existing file” test against this same file.",
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:58.853Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:43:00.446Z"
+    }
+  ],
+  "activities": [
+    {
+      "id": "97cbda6f-5aa4-4900-9208-88ccae623f0a",
+      "tone": "info",
+      "kind": "context-window.updated",
+      "summary": "Context window updated",
+      "payload": {
+        "usedTokens": 22284,
+        "totalProcessedTokens": 65748,
+        "maxTokens": 258400,
+        "inputTokens": 22169,
+        "cachedInputTokens": 21632,
+        "outputTokens": 115,
+        "reasoningOutputTokens": 0,
+        "lastUsedTokens": 22284,
+        "lastInputTokens": 22169,
+        "lastCachedInputTokens": 21632,
+        "lastOutputTokens": 115,
+        "lastReasoningOutputTokens": 0,
+        "compactsAutomatically": true
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:43.505Z"
+    },
+    {
+      "id": "89327fcc-96e7-4a8f-95d5-c056853c55d0",
+      "tone": "info",
+      "kind": "context-window.updated",
+      "summary": "Context window updated",
+      "payload": {
+        "usedTokens": 22777,
+        "totalProcessedTokens": 88525,
+        "maxTokens": 258400,
+        "inputTokens": 22582,
+        "cachedInputTokens": 3456,
+        "outputTokens": 195,
+        "reasoningOutputTokens": 66,
+        "lastUsedTokens": 22777,
+        "lastInputTokens": 22582,
+        "lastCachedInputTokens": 3456,
+        "lastOutputTokens": 195,
+        "lastReasoningOutputTokens": 66,
+        "compactsAutomatically": true
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:48.996Z"
+    },
+    {
+      "id": "e91598c6-fbf0-49f6-89fb-2f566e41df6e",
+      "tone": "tool",
+      "kind": "tool.started",
+      "summary": "Ran command started",
+      "payload": {
+        "itemType": "command_execution",
+        "detail": "/bin/zsh -lc 'ls -la /Users/sh/t3code/__notes'"
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:49.001Z"
+    },
+    {
+      "id": "1281fda1-3591-42f6-8c6a-46ac61b1bb57",
+      "tone": "tool",
+      "kind": "tool.completed",
+      "summary": "Ran command",
+      "payload": {
+        "itemType": "command_execution",
+        "detail": "/bin/zsh -lc 'ls -la /Users/sh/t3code/__notes'",
+        "data": {
+          "item": {
+            "type": "commandExecution",
+            "id": "call_zeLaEkGMW4IxncIMbF8FvcaA",
+            "command": "/bin/zsh -lc 'ls -la /Users/sh/t3code/__notes'",
+            "cwd": "/users/sh/t3code",
+            "processId": "61854",
+            "source": "unifiedExecStartup",
+            "status": "completed",
+            "commandActions": [
+              {
+                "type": "listFiles",
+                "command": "ls -la /Users/sh/t3code/__notes",
+                "path": "__notes"
+              }
+            ],
+            "aggregatedOutput": "lrwxr-xr-x@ 1 sarahhawkless  admin  32 Apr 17 17:54 /Users/sh/t3code/__notes -> /Users/sh/~~NOTES/t3code/__notes\n",
+            "exitCode": 0,
+            "durationMs": 0
+          },
+          "threadId": "019db3b3-b5bb-7433-ac5c-79f3d52244bd",
+          "turnId": "019db3b6-512c-75b0-ae3e-41739746b058"
+        }
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:49.002Z"
+    },
+    {
+      "id": "9ef7777e-8474-44a1-874c-f33c04078ffe",
+      "tone": "tool",
+      "kind": "tool.started",
+      "summary": "File change started",
+      "payload": {
+        "itemType": "file_change"
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:55.821Z"
+    },
+    {
+      "id": "740ddd5b-5ca8-498e-8b95-e46a314d7162",
+      "tone": "info",
+      "kind": "checkpoint.captured",
+      "summary": "Checkpoint captured",
+      "payload": {
+        "turnCount": 3,
+        "status": "ready"
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:55.842Z"
+    },
+    {
+      "id": "abcfac9a-73b7-4448-95f5-6f7c04587b12",
+      "tone": "tool",
+      "kind": "tool.completed",
+      "summary": "File change",
+      "payload": {
+        "itemType": "file_change",
+        "data": {
+          "item": {
+            "type": "fileChange",
+            "id": "call_gd67shqpLHs9jsvWZb3SY3Qs",
+            "changes": [
+              {
+                "path": "/Users/sh/t3code/__notes/tool-patch-create-example.md",
+                "kind": {
+                  "type": "add"
+                },
+                "diff": "# Tool Patch Create Example\n\nThis file was created as a simple `apply_patch` test.\n\n- Purpose: isolated file creation\n- Location: `__notes`\n- Format: Markdown\n"
+              }
+            ],
+            "status": "completed"
+          },
+          "threadId": "019db3b3-b5bb-7433-ac5c-79f3d52244bd",
+          "turnId": "019db3b6-512c-75b0-ae3e-41739746b058"
+        }
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:55.842Z"
+    },
+    {
+      "id": "c29b65e7-c9e8-4841-9349-d82377ca2c29",
+      "tone": "info",
+      "kind": "context-window.updated",
+      "summary": "Context window updated",
+      "payload": {
+        "usedTokens": 23022,
+        "totalProcessedTokens": 111547,
+        "maxTokens": 258400,
+        "inputTokens": 22869,
+        "cachedInputTokens": 22656,
+        "outputTokens": 153,
+        "reasoningOutputTokens": 25,
+        "lastUsedTokens": 23022,
+        "lastInputTokens": 22869,
+        "lastCachedInputTokens": 22656,
+        "lastOutputTokens": 153,
+        "lastReasoningOutputTokens": 25,
+        "compactsAutomatically": true
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:42:55.942Z"
+    },
+    {
+      "id": "eb4eb29a-d9db-4234-893b-1c9861dd2f3e",
+      "tone": "info",
+      "kind": "context-window.updated",
+      "summary": "Context window updated",
+      "payload": {
+        "usedTokens": 23157,
+        "totalProcessedTokens": 134704,
+        "maxTokens": 258400,
+        "inputTokens": 23071,
+        "cachedInputTokens": 22912,
+        "outputTokens": 86,
+        "reasoningOutputTokens": 0,
+        "lastUsedTokens": 23157,
+        "lastInputTokens": 23071,
+        "lastCachedInputTokens": 22912,
+        "lastOutputTokens": 86,
+        "lastReasoningOutputTokens": 0,
+        "compactsAutomatically": true
+      },
+      "turnId": "019db3b6-512c-75b0-ae3e-41739746b058",
+      "createdAt": "2026-04-22T05:43:00.542Z"
+    }
+  ]
+}

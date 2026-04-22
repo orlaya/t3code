@@ -2,7 +2,7 @@ import { type ProviderKind, type ServerProvider } from "@t3tools/contracts";
 import { resolveSelectableModel } from "@t3tools/shared/model";
 import { memo, useState } from "react";
 import type { VariantProps } from "class-variance-authority";
-import { type ProviderPickerKind, PROVIDER_OPTIONS } from "../../session-logic";
+import { type ProviderPickerKind, PROVIDER_OPTIONS } from "../../session-logic/index";
 import { ChevronDownIcon } from "lucide-react";
 import { Button, buttonVariants } from "../ui/button";
 import {

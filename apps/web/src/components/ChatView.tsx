@@ -59,7 +59,8 @@ import {
   hasToolActivityForTurn,
   isLatestTurnSettled,
   formatElapsed,
-} from "../session-logic";
+} from "../session-logic/index";
+import { assembleClaudeTools } from "../ui-adapter";
 import { type LegendListRef } from "@legendapp/list/react";
 import {
   buildPendingUserInputAnswers,
@@ -1108,9 +1109,20 @@ export default function ChatView(props: ChatViewProps) {
     const count = Number(workLogHistory);
     return new Set(ordered.slice(-count));
   }, [activeLatestTurn?.turnId, threadActivities, workLogHistory]);
+  const assemblyResult = useMemo(
+    () => (providerName === "claudeAgent" ? assembleClaudeTools(threadActivities) : null),
+    [providerName, threadActivities],
+  );
+  const assembledTools = useMemo(() => assemblyResult?.tools ?? [], [assemblyResult]);
   const workLogEntries = useMemo(
-    () => deriveWorkLogEntries(threadActivities, visibleTurnIds, providerName),
-    [providerName, threadActivities, visibleTurnIds],
+    () =>
+      deriveWorkLogEntries(
+        threadActivities,
+        visibleTurnIds,
+        providerName,
+        assemblyResult?.claimedActivityIds,
+      ),
+    [assemblyResult?.claimedActivityIds, providerName, threadActivities, visibleTurnIds],
   );
   const editDiffEntries = useMemo(
     () => deriveEditDiffEntries(threadActivities, providerName),
@@ -1414,9 +1426,11 @@ export default function ChatView(props: ChatViewProps) {
         workLogEntries,
         editDiffEntries,
         visibleTurnIds,
+        assembledTools,
       ),
     [
       activeThread?.proposedPlans,
+      assembledTools,
       editDiffEntries,
       timelineMessages,
       visibleTurnIds,

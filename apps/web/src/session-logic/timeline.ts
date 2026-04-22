@@ -6,13 +6,14 @@
  */
 
 import type {
+  AssembledToolInvocation,
   OrchestrationLatestTurn,
   OrchestrationThreadActivity,
   TurnId,
 } from "@t3tools/contracts";
 
 import type { ChatMessage, ProposedPlan, TurnDiffSummary } from "../types";
-import { extractToolData } from "../ui-adapter";
+import { extractInlineDiffs } from "../ui-adapter";
 import type { EditDiffEntry, TimelineEntry, WorkLogEntry } from "./types";
 import { compareActivitiesByOrder } from "./helpers";
 
@@ -27,34 +28,29 @@ export function deriveEditDiffEntries(
   return [...activities]
     .filter((activity) => {
       if (activity.kind !== "tool.completed") return false;
-      const canonical = extractToolData(activity.payload, providerName);
-      if (!canonical?.input?.file_path) return false;
-      // Edit tool: old_string + new_string
-      const isEdit =
-        typeof canonical.input.old_string === "string" &&
-        typeof canonical.input.new_string === "string";
-      // Write tool: content (full file written, no old content)
-      const isWrite = canonical.toolName === "Write" && typeof canonical.input.content === "string";
-      return isEdit || isWrite;
+      return extractInlineDiffs(activity.payload, providerName).length > 0;
     })
     .toSorted(compareActivitiesByOrder)
-    .map((activity) => {
-      const canonical = extractToolData(activity.payload, providerName)!;
-      const input = canonical.input!;
-      const isWrite = canonical.toolName === "Write";
-      const entry: EditDiffEntry = {
-        id: `edit:${activity.id}`,
-        createdAt: activity.createdAt,
-        turnId: activity.turnId,
-        filePath: input.file_path!,
-        oldString: isWrite ? "" : (input.old_string as string),
-        newString: isWrite ? (input.content as string) : (input.new_string as string),
-        replaceAll: isWrite ? false : (input.replace_all ?? false),
-        toolName: canonical.toolName,
-      };
-      if (canonical.toolCallId) entry.toolCallId = canonical.toolCallId;
-      return entry;
-    });
+    .flatMap((activity) =>
+      extractInlineDiffs(activity.payload, providerName).map((diff, index) => {
+        const entry: EditDiffEntry = {
+          id: `edit:${activity.id}:${index}`,
+          createdAt: activity.createdAt,
+          turnId: activity.turnId,
+          source: diff.source,
+          filePath: diff.filePath,
+          changeKind: diff.changeKind,
+          toolName: diff.toolName,
+        };
+        if (diff.toolCallId) entry.toolCallId = diff.toolCallId;
+        if (diff.oldString !== undefined) entry.oldString = diff.oldString;
+        if (diff.newString !== undefined) entry.newString = diff.newString;
+        if (diff.unifiedPatch !== undefined) entry.unifiedPatch = diff.unifiedPatch;
+        if (diff.movePath !== undefined) entry.movePath = diff.movePath;
+        if (diff.anchorLine !== undefined) entry.anchorLine = diff.anchorLine;
+        return entry;
+      }),
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -67,10 +63,11 @@ export function deriveTimelineEntries(
   workEntries: WorkLogEntry[],
   editEntries: EditDiffEntry[],
   visibleTurnIds?: Set<TurnId> | TurnId,
+  assembledTools?: AssembledToolInvocation[],
 ): TimelineEntry[] {
   const visibleMessages = messages.filter((message) => {
     if (message.role !== "thinking") return true;
-    if (visibleTurnIds === undefined) return false;
+    if (visibleTurnIds === undefined) return true;
     if (visibleTurnIds instanceof Set)
       return message.turnId != null && visibleTurnIds.has(message.turnId);
     return message.turnId === visibleTurnIds;
@@ -94,11 +91,16 @@ export function deriveTimelineEntries(
   // Prefer exact tool invocation matches, then fall back to filePath order.
   // Each work entry consumes the next available edit for that path — one
   // edit per work entry so each renders as its own standalone row.
-  const editsByToolCallId = new Map<string, EditDiffEntry>();
+  const editsByToolCallId = new Map<string, EditDiffEntry[]>();
   const editsByFilePath = new Map<string, EditDiffEntry[]>();
   for (const editEntry of editEntries) {
     if (editEntry.toolCallId) {
-      editsByToolCallId.set(editEntry.toolCallId, editEntry);
+      let toolBucket = editsByToolCallId.get(editEntry.toolCallId);
+      if (!toolBucket) {
+        toolBucket = [];
+        editsByToolCallId.set(editEntry.toolCallId, toolBucket);
+      }
+      toolBucket.push(editEntry);
     }
     let bucket = editsByFilePath.get(editEntry.filePath);
     if (!bucket) {
@@ -110,11 +112,13 @@ export function deriveTimelineEntries(
   const matchedEditIds = new Set<string>();
   for (const workEntry of workEntries) {
     if (workEntry.itemType !== "file_change" || !workEntry.detail) continue;
-    const exactEdit =
+    const exactEdits =
       workEntry.toolCallId !== undefined ? editsByToolCallId.get(workEntry.toolCallId) : undefined;
-    if (exactEdit) {
-      workEntry.editDiffs = [exactEdit];
-      matchedEditIds.add(exactEdit.id);
+    if (exactEdits && exactEdits.length > 0) {
+      workEntry.editDiffs = [...exactEdits];
+      for (const edit of exactEdits) {
+        matchedEditIds.add(edit.id);
+      }
       continue;
     }
     const bucket = editsByFilePath.get(workEntry.detail);
@@ -134,17 +138,38 @@ export function deriveTimelineEntries(
     createdAt: entry.createdAt,
     entry,
   }));
+  // When assembled tools include edits/writes, suppress standalone edit rows
+  // for those tool call IDs — the assembled path renders them instead.
+  const assembledToolCallIds = new Set<string>();
+  if (assembledTools) {
+    for (const tool of assembledTools) {
+      if ((tool.kind === "edit" || tool.kind === "write") && tool.toolCallId) {
+        assembledToolCallIds.add(tool.toolCallId);
+      }
+    }
+  }
   const editRows: TimelineEntry[] = editEntries
     .filter((e) => !matchedEditIds.has(e.id))
+    .filter((e) => !e.toolCallId || !assembledToolCallIds.has(e.toolCallId))
     .map((editEntry) => ({
       id: editEntry.id,
       kind: "edit",
       createdAt: editEntry.createdAt,
       editEntry,
     }));
-  return [...messageRows, ...proposedPlanRows, ...workRows, ...editRows].toSorted((a, b) =>
-    a.createdAt.localeCompare(b.createdAt),
-  );
+  const assembledToolRows: TimelineEntry[] = (assembledTools ?? []).map((tool) => ({
+    id: tool.id,
+    kind: "assembled-tool" as const,
+    createdAt: tool.createdAt,
+    tool,
+  }));
+  return [
+    ...messageRows,
+    ...proposedPlanRows,
+    ...workRows,
+    ...editRows,
+    ...assembledToolRows,
+  ].toSorted((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { type ApprovalRequestId } from "@t3tools/contracts";
 import { memo, useEffect, useEffectEvent, useRef } from "react";
-import { type PendingUserInput } from "../../session-logic";
+import { type PendingUserInput } from "../../session-logic/index";
 import {
   derivePendingUserInputProgress,
   type PendingUserInputDraftAnswer,

@@ -1,5 +1,16 @@
 /**
- * Work log derivation.
+ * Work log derivation — LEGACY, being replaced by the assembly layer.
+ *
+ * DO NOT ADD NEW LOGIC TO THIS FILE. Claude already goes entirely through the
+ * assembly path (ui-adapter/claude/assembly.ts). This file only remains for
+ * providers that haven't been migrated yet (Codex, OpenCode, Cursor). As each
+ * provider gets its own assembly, it will stop hitting this file. Once all
+ * providers are migrated, this file and the WorkLogEntry type get deleted.
+ *
+ * The assembly layer returns a set of claimed activity IDs. Those are excluded
+ * here via the `excludeActivityIds` parameter so the work log never duplicates
+ * what assembly already handles. This keeps the file provider-agnostic — it
+ * does not know or care which provider claimed which activities.
  *
  * Transforms raw activity streams into WorkLogEntry[] for the UI. Uses the
  * UI adapter to extract canonical tool data instead of digging into
@@ -12,7 +23,12 @@
 
 import type { OrchestrationThreadActivity, TurnId } from "@t3tools/contracts";
 
-import { extractToolData } from "../ui-adapter";
+import {
+  extractInlineDiffs,
+  extractToolData,
+  normalizeCompactToolLabel,
+  resolveToolDisplayPresentation,
+} from "../ui-adapter";
 import type { WorkLogEntry } from "./types";
 import { compareActivitiesByOrder } from "./helpers";
 
@@ -293,14 +309,6 @@ function extractWorkLogRequestKind(
   return requestKindFromRequestType(payload?.requestType) ?? undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Collapse key / label normalisation
-// ---------------------------------------------------------------------------
-
-function normalizeCompactToolLabel(value: string): string {
-  return value.replace(/\s+(?:complete|completed)\s*$/i, "").trim();
-}
-
 function deriveToolLifecycleCollapseKey(entry: DerivedWorkLogEntry): string | undefined {
   if (entry.activityKind !== "tool.updated" && entry.activityKind !== "tool.completed") {
     return undefined;
@@ -327,6 +335,7 @@ function toDerivedWorkLogEntry(
 ): DerivedWorkLogEntry {
   const payload = asRecord(activity.payload);
   const canonical = extractToolData(activity.payload, providerName);
+  const inlineDiffs = extractInlineDiffs(activity.payload, providerName);
   const isTaskActivity = activity.kind === "task.progress" || activity.kind === "task.completed";
 
   // --- Task activities (task.progress / task.completed) ---
@@ -369,6 +378,7 @@ function toDerivedWorkLogEntry(
 
   // --- Tool activities (with canonical data from UI adapter) ---
   if (canonical) {
+    const presentation = resolveToolDisplayPresentation({ tool: canonical, providerName });
     const heading = canonical.toolName !== "unknown" ? canonical.toolName : activity.summary;
     const commandPreview = formatCommandForDisplay(canonical.input?.command);
     const detail = formatDetailForDisplay(
@@ -389,8 +399,17 @@ function toDerivedWorkLogEntry(
     if (detail) entry.detail = detail;
     if (commandPreview.command) entry.command = commandPreview.command;
     if (commandPreview.rawCommand) entry.rawCommand = commandPreview.rawCommand;
-    if (canonical.input?.file_path) entry.changedFiles = [canonical.input.file_path];
+    const changedFiles = inlineDiffs.map((diff) => diff.filePath);
+    if (changedFiles.length > 0) {
+      entry.changedFiles = Array.from(new Set(changedFiles));
+    } else if (canonical.input?.file_path) {
+      entry.changedFiles = [canonical.input.file_path];
+    }
     if (canonical.toolName !== "unknown") entry.toolTitle = canonical.toolName;
+    entry.displayKind = presentation.displayKind;
+    entry.displayHeading = presentation.heading;
+    entry.lifecycleShape = presentation.lifecycleShape;
+    entry.displayCapabilities = presentation.capabilities;
     entry.itemType = canonical.itemType;
     if (canonical.toolCallId) entry.toolCallId = canonical.toolCallId;
 
@@ -522,13 +541,18 @@ function shouldCollapseToolLifecycleEntries(
   if (previous.collapseKey !== undefined && previous.collapseKey === next.collapseKey) {
     return true;
   }
-  return (
-    previous.toolCallId !== undefined &&
-    next.toolCallId === undefined &&
+  // When one side has a toolCallId and the other doesn't (e.g. Claude's
+  // tool.updated has no id but tool.completed carries tool_use_id), fall
+  // back to matching by itemType + label.
+  if (
     previous.itemType === next.itemType &&
+    (previous.toolCallId === undefined) !== (next.toolCallId === undefined) &&
     normalizeCompactToolLabel(previous.toolTitle ?? previous.label) ===
       normalizeCompactToolLabel(next.toolTitle ?? next.label)
-  );
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function mergeDerivedWorkLogEntries(
@@ -540,6 +564,10 @@ function mergeDerivedWorkLogEntries(
   const command = next.command ?? previous.command;
   const rawCommand = next.rawCommand ?? previous.rawCommand;
   const toolTitle = next.toolTitle ?? previous.toolTitle;
+  const displayKind = next.displayKind ?? previous.displayKind;
+  const displayHeading = next.displayHeading ?? previous.displayHeading;
+  const lifecycleShape = next.lifecycleShape ?? previous.lifecycleShape;
+  const displayCapabilities = next.displayCapabilities ?? previous.displayCapabilities;
   const itemType = next.itemType ?? previous.itemType;
   const requestKind = next.requestKind ?? previous.requestKind;
   const collapseKey = next.collapseKey ?? previous.collapseKey;
@@ -552,6 +580,10 @@ function mergeDerivedWorkLogEntries(
     ...(rawCommand ? { rawCommand } : {}),
     ...(changedFiles.length > 0 ? { changedFiles } : {}),
     ...(toolTitle ? { toolTitle } : {}),
+    ...(displayKind ? { displayKind } : {}),
+    ...(displayHeading ? { displayHeading } : {}),
+    ...(lifecycleShape ? { lifecycleShape } : {}),
+    ...(displayCapabilities ? { displayCapabilities } : {}),
     ...(itemType ? { itemType } : {}),
     ...(requestKind ? { requestKind } : {}),
     ...(collapseKey ? { collapseKey } : {}),
@@ -576,9 +608,17 @@ export function deriveWorkLogEntries(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
   visibleTurnIds: Set<TurnId> | TurnId | undefined,
   providerName: string,
+  /** Activity IDs claimed by the assembly layer — these are excluded from the
+   *  work log to avoid duplicate entries. Provider-agnostic: the assembly layer
+   *  decides what it handles and returns the IDs, work-log just respects them. */
+  excludeActivityIds?: ReadonlySet<string>,
 ): WorkLogEntry[] {
   const ordered = [...activities].toSorted(compareActivitiesByOrder);
   const entries = ordered
+    .filter((activity) => {
+      if (excludeActivityIds && excludeActivityIds.has(activity.id)) return false;
+      return true;
+    })
     .filter((activity) => {
       if (visibleTurnIds === undefined) return true;
       if (visibleTurnIds instanceof Set)

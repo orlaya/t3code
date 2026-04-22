@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { extractToolData, getLifecycleMap } from "./index.ts";
+import {
+  extractInlineDiffs,
+  extractInlineDiffsFromApprovalArgs,
+  extractToolData,
+  getLifecycleMap,
+} from "./index.ts";
 
 import bashFixture from "./fixtures/claude-bash.json";
+import editFixture from "./fixtures/claude-edit.json";
 
 describe("extractToolData dispatcher", () => {
   it("dispatches to Claude extractor for claudeAgent", () => {
@@ -16,10 +22,61 @@ describe("extractToolData dispatcher", () => {
     expect(extractToolData(bashFixture.completed, "somethingElse")).toBeNull();
   });
 
-  it("returns null for stub providers (codex, opencode, cursor)", () => {
-    expect(extractToolData(bashFixture.completed, "codex")).toBeNull();
+  it("returns degraded result for cross-provider payloads (shared itemType field)", () => {
+    // Codex extractor can parse the itemType from a Claude payload — it
+    // returns a sparse/degraded result, not null. Both providers use the
+    // same itemType vocabulary.
+    const codexResult = extractToolData(bashFixture.completed, "codex");
+    expect(codexResult).not.toBeNull();
+    expect(codexResult?.toolName).toBe("unknown");
+    expect(codexResult?.itemType).toBe("command_execution");
+  });
+
+  it("returns null for stubbed providers", () => {
     expect(extractToolData(bashFixture.completed, "opencode")).toBeNull();
     expect(extractToolData(bashFixture.completed, "cursor")).toBeNull();
+  });
+});
+
+describe("extractInlineDiffs dispatcher", () => {
+  it("dispatches to Claude inline diff extraction", () => {
+    expect(extractInlineDiffs(editFixture.completed, "claudeAgent")).toMatchObject([
+      {
+        toolName: "Edit",
+        source: "before_after",
+        changeKind: "update",
+      },
+    ]);
+  });
+
+  it("returns empty array for unknown provider", () => {
+    expect(extractInlineDiffs(editFixture.completed, "somethingElse")).toEqual([]);
+  });
+});
+
+describe("extractInlineDiffsFromApprovalArgs", () => {
+  it("normalizes Claude-style approval args into inline diffs", () => {
+    expect(
+      extractInlineDiffsFromApprovalArgs({
+        toolName: "Edit",
+        toolUseId: "toolu-1",
+        input: {
+          file_path: "/tmp/example.ts",
+          old_string: "before",
+          new_string: "after",
+        },
+      }),
+    ).toEqual([
+      {
+        filePath: "/tmp/example.ts",
+        toolCallId: "toolu-1",
+        toolName: "Edit",
+        changeKind: "update",
+        source: "before_after",
+        oldString: "before",
+        newString: "after",
+      },
+    ]);
   });
 });
 

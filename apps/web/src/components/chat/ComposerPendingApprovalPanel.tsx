@@ -1,10 +1,11 @@
 import { memo, useCallback, useMemo } from "react";
-import { type PendingApproval } from "../../session-logic";
+import { type PendingApproval } from "../../session-logic/index";
 import { InlineEditDiff } from "./InlineEditDiff";
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";
 import { readLocalApi } from "~/localApi";
 import { openInPreferredEditor } from "../../editorPreferences";
 import { parseToolCallDetail } from "./toolCallDisplay";
+import { extractInlineDiffsFromApprovalArgs } from "../../ui-adapter";
 
 interface ComposerPendingApprovalPanelProps {
   approval: PendingApproval;
@@ -13,49 +14,30 @@ interface ComposerPendingApprovalPanelProps {
   resolvedTheme: "light" | "dark";
 }
 
-/**
- * Extract diff data from approval args for Edit (old_string/new_string)
- * or Write (content) tools.
- */
 function extractEditDiffEntry(approval: PendingApproval) {
   const args = approval.args;
   if (!args?.input || approval.requestKind !== "file-change") return null;
-
-  const input = args.input;
-  const filePath = typeof input.file_path === "string" ? input.file_path : null;
-  if (!filePath) return null;
-
-  const toolName = args.toolName ?? "Edit";
-  const isWrite = toolName === "Write";
-
-  if (isWrite) {
-    const content = typeof input.content === "string" ? input.content : null;
-    if (content == null) return null;
-    return {
-      id: approval.requestId,
-      createdAt: approval.createdAt,
-      turnId: null,
-      filePath,
-      oldString: "",
-      newString: content,
-      replaceAll: false,
-      toolName,
-    };
-  }
-
-  const oldString = typeof input.old_string === "string" ? input.old_string : null;
-  const newString = typeof input.new_string === "string" ? input.new_string : null;
-  if (oldString == null || newString == null) return null;
+  const diff = extractInlineDiffsFromApprovalArgs({
+    ...(args.toolName !== undefined ? { toolName: args.toolName } : {}),
+    input: args.input,
+    ...(args.toolUseId !== undefined ? { toolUseId: args.toolUseId } : {}),
+  })[0];
+  if (!diff) return null;
 
   return {
     id: approval.requestId,
     createdAt: approval.createdAt,
     turnId: null,
-    filePath,
-    oldString,
-    newString,
-    replaceAll: input.replace_all === true,
-    toolName,
+    source: diff.source,
+    ...(diff.toolCallId ? { toolCallId: diff.toolCallId } : {}),
+    filePath: diff.filePath,
+    ...(diff.oldString !== undefined ? { oldString: diff.oldString } : {}),
+    ...(diff.newString !== undefined ? { newString: diff.newString } : {}),
+    ...(diff.unifiedPatch !== undefined ? { unifiedPatch: diff.unifiedPatch } : {}),
+    changeKind: diff.changeKind,
+    ...(diff.movePath !== undefined ? { movePath: diff.movePath } : {}),
+    ...(diff.anchorLine !== undefined ? { anchorLine: diff.anchorLine } : {}),
+    toolName: diff.toolName,
   };
 }
 

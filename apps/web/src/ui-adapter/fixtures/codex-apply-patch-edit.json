@@ -1,0 +1,229 @@
+{
+  "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+  "messages": [
+    {
+      "id": "thinking:rs_07cc1a657112d5f90169e8603c7c608191b186eae8bace89e8",
+      "role": "thinking",
+      "text": "",
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:32.880Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:44:32.880Z"
+    },
+    {
+      "id": "assistant:msg_07cc1a657112d5f90169e86040f3e08191acc897526b03b681",
+      "role": "assistant",
+      "text": "I’m doing this as two separate patch edits so you get two distinct JSON samples: first a single-paragraph change, then a second patch that changes the top and bottom while leaving the middle untouched.",
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:32.882Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:44:33.676Z"
+    },
+    {
+      "id": "assistant:msg_07cc1a657112d5f90169e86044cb0881919f0a6d7788b500bb",
+      "role": "assistant",
+      "text": "The single-paragraph edit is in. I’m following it with a second patch that only touches the top and bottom sections so the middle line stays as-is.",
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:36.716Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:44:37.535Z"
+    },
+    {
+      "id": "assistant:msg_07cc1a657112d5f90169e86049a0448191904d089996da8c7e",
+      "role": "assistant",
+      "text": "Both edits are done in [tool-patch-create-example.md](/Users/sh/t3code/__notes/tool-patch-create-example.md:1).\n\nThe first patch changed only the middle paragraph. The second patch changed the heading and the last bullet, leaving the middle paragraph untouched.",
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:41.548Z",
+      "streaming": false,
+      "completedAt": "2026-04-22T05:44:42.956Z"
+    }
+  ],
+  "activities": [
+    {
+      "id": "ad29c08e-e188-4b71-9eff-5a7069e97187",
+      "tone": "info",
+      "kind": "context-window.updated",
+      "summary": "Context window updated",
+      "payload": {
+        "usedTokens": 23157,
+        "totalProcessedTokens": 134704,
+        "maxTokens": 258400,
+        "inputTokens": 23071,
+        "cachedInputTokens": 22912,
+        "outputTokens": 86,
+        "reasoningOutputTokens": 0,
+        "lastUsedTokens": 23157,
+        "lastInputTokens": 23071,
+        "lastCachedInputTokens": 22912,
+        "lastOutputTokens": 86,
+        "lastReasoningOutputTokens": 0,
+        "compactsAutomatically": true
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:26.912Z"
+    },
+    {
+      "id": "27778f2b-e4b4-4f0e-ae11-baa7a58db6b1",
+      "tone": "tool",
+      "kind": "tool.started",
+      "summary": "File change started",
+      "payload": {
+        "itemType": "file_change"
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:34.958Z"
+    },
+    {
+      "id": "6d938595-1119-4440-b722-53441f98ae82",
+      "tone": "tool",
+      "kind": "tool.completed",
+      "summary": "File change",
+      "payload": {
+        "itemType": "file_change",
+        "data": {
+          "item": {
+            "type": "fileChange",
+            "id": "call_jBZpQsLxnn1LParsZIDLZcMC",
+            "changes": [
+              {
+                "path": "/Users/sh/t3code/__notes/tool-patch-create-example.md",
+                "kind": {
+                  "type": "update",
+                  "move_path": null
+                },
+                "diff": "@@ -2,3 +2,3 @@\n \n-This file was created as a simple `apply_patch` test.\n+This file was created as a simple `apply_patch` edit test.\n \n"
+              }
+            ],
+            "status": "completed"
+          },
+          "threadId": "019db3b3-b5bb-7433-ac5c-79f3d52244bd",
+          "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7"
+        }
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:34.975Z"
+    },
+    {
+      "id": "47159298-3296-46d8-acc4-9fbc074fb97b",
+      "tone": "info",
+      "kind": "checkpoint.captured",
+      "summary": "Checkpoint captured",
+      "payload": {
+        "turnCount": 4,
+        "status": "ready"
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:34.976Z"
+    },
+    {
+      "id": "f94d8fdf-5829-42b5-811f-1bc360951a83",
+      "tone": "info",
+      "kind": "context-window.updated",
+      "summary": "Context window updated",
+      "payload": {
+        "usedTokens": 23523,
+        "totalProcessedTokens": 158227,
+        "maxTokens": 258400,
+        "inputTokens": 23168,
+        "cachedInputTokens": 22528,
+        "outputTokens": 355,
+        "reasoningOutputTokens": 237,
+        "lastUsedTokens": 23523,
+        "lastInputTokens": 23168,
+        "lastCachedInputTokens": 22528,
+        "lastOutputTokens": 355,
+        "lastReasoningOutputTokens": 237,
+        "compactsAutomatically": true
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:34.991Z"
+    },
+    {
+      "id": "c0bf863d-4e1b-40b7-9b87-cbef09201cb0",
+      "tone": "tool",
+      "kind": "tool.started",
+      "summary": "File change started",
+      "payload": {
+        "itemType": "file_change"
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:38.817Z"
+    },
+    {
+      "id": "123545cb-0d89-435c-a125-13e22ea49715",
+      "tone": "tool",
+      "kind": "tool.completed",
+      "summary": "File change",
+      "payload": {
+        "itemType": "file_change",
+        "data": {
+          "item": {
+            "type": "fileChange",
+            "id": "call_vlNdgDeDUYy26te198FjvXSQ",
+            "changes": [
+              {
+                "path": "/Users/sh/t3code/__notes/tool-patch-create-example.md",
+                "kind": {
+                  "type": "update",
+                  "move_path": null
+                },
+                "diff": "@@ -1,2 +1,2 @@\n-# Tool Patch Create Example\n+# Tool Patch Edit Example\n \n@@ -6,2 +6,2 @@\n - Location: `__notes`\n-- Format: Markdown\n+- Format: Markdown, updated in a second pass\n"
+              }
+            ],
+            "status": "completed"
+          },
+          "threadId": "019db3b3-b5bb-7433-ac5c-79f3d52244bd",
+          "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7"
+        }
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:38.845Z"
+    },
+    {
+      "id": "9a0b9fde-de79-4ba5-97b9-9aac9251f107",
+      "tone": "info",
+      "kind": "context-window.updated",
+      "summary": "Context window updated",
+      "payload": {
+        "usedTokens": 23682,
+        "totalProcessedTokens": 181909,
+        "maxTokens": 258400,
+        "inputTokens": 23572,
+        "cachedInputTokens": 23424,
+        "outputTokens": 110,
+        "reasoningOutputTokens": 0,
+        "lastUsedTokens": 23682,
+        "lastInputTokens": 23572,
+        "lastCachedInputTokens": 23424,
+        "lastOutputTokens": 110,
+        "lastReasoningOutputTokens": 0,
+        "compactsAutomatically": true
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:38.901Z"
+    },
+    {
+      "id": "cbc292ce-5bc5-466c-9a8b-2455345dd9ac",
+      "tone": "info",
+      "kind": "context-window.updated",
+      "summary": "Context window updated",
+      "payload": {
+        "usedTokens": 23791,
+        "totalProcessedTokens": 205700,
+        "maxTokens": 258400,
+        "inputTokens": 23731,
+        "cachedInputTokens": 23552,
+        "outputTokens": 60,
+        "reasoningOutputTokens": 0,
+        "lastUsedTokens": 23791,
+        "lastInputTokens": 23731,
+        "lastCachedInputTokens": 23552,
+        "lastOutputTokens": 60,
+        "lastReasoningOutputTokens": 0,
+        "compactsAutomatically": true
+      },
+      "turnId": "019db3b7-e49b-7163-bdf9-677937a480b7",
+      "createdAt": "2026-04-22T05:44:43.031Z"
+    }
+  ]
+}

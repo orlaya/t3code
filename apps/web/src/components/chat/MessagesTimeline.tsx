@@ -1,118 +1,53 @@
 import { type EnvironmentId, type MessageId, type TurnId } from "@t3tools/contracts";
-import {
-  createContext,
-  memo,
-  use,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+
+import { memo, use, useCallback, useEffect, useMemo, useRef } from "react";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
-import { deriveTimelineEntries, formatElapsed } from "../../session-logic";
+import { deriveTimelineEntries, formatElapsed } from "../../session-logic/index";
 import { type TurnDiffSummary } from "../../types";
-import { buildTurnDiffTree, summarizeTurnDiffStats } from "../../lib/turnDiffTree";
 import ChatMarkdown from "../ChatMarkdown";
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronUpIcon,
-  CircleAlertIcon,
-  EyeIcon,
-  GlobeIcon,
-  LoaderIcon,
-  LogsIcon,
-  type LucideIcon,
-  PencilIcon,
-  SearchIcon,
-  TerminalIcon,
-  Undo2Icon,
-  WrenchIcon,
-  ZapIcon,
-} from "lucide-react";
+import { LogsIcon, Undo2Icon } from "lucide-react";
 import { Button } from "../ui/button";
-import { Dialog, DialogPanel, DialogPopup } from "../ui/dialog";
 import { buildExpandedImagePreview, ExpandedImagePreview } from "./ExpandedImagePreview";
 import { ProposedPlanCard } from "./ProposedPlanCard";
-import { ChangedFilesTree } from "./ChangedFilesTree";
-import { DiffStatLabel, hasNonZeroStat } from "./DiffStatLabel";
-import { InlineEditDiff } from "./InlineEditDiff";
 import { MessageCopyButton } from "./MessageCopyButton";
 import {
-  computeStableMessagesTimelineRows,
-  MAX_VISIBLE_WORK_LOG_ENTRIES,
   deriveMessagesTimelineRows,
-  normalizeCompactToolLabel,
   resolveAssistantMessageCopyState,
-  type StableMessagesTimelineRowsState,
   type MessagesTimelineRow,
 } from "./MessagesTimeline.logic";
-import { TerminalContextInlineChip } from "./TerminalContextInlineChip";
-import { formatToolCallPreview, parseToolCallDetail } from "./toolCallDisplay";
-import { ToolResultDialog } from "./TerminalHighlight";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import {
-  deriveDisplayedUserMessageState,
-  type ParsedTerminalContextEntry,
-} from "~/lib/terminalContext";
+
+import { AssistantChangedFilesSection } from "./messages-timeline/ChangedFiles";
+import { ThinkingSection } from "./messages-timeline/ThinkingSection";
+import { StandaloneEditRow } from "./messages-timeline/StandaloneEditRow";
+import { WorkGroupSection } from "./messages-timeline/WorkGroup";
+import { AssembledEditRow, AssembledWriteRow } from "./messages-timeline/AssembledEditRow";
+import { AssembledWorkGroup } from "./messages-timeline/AssembledWorkGroup";
+import { deriveDisplayedUserMessageState } from "~/lib/terminalContext";
 import { cn } from "~/lib/utils";
-import { useUiStateStore } from "~/uiStateStore";
 import { type TimestampFormat } from "@t3tools/contracts/settings";
 import { formatTimestamp } from "../../timestampFormat";
 import { SearchOverlay } from "../SearchOverlay";
 import { useTimelineSearch } from "../../hooks/useTimelineSearch";
 
-import {
-  buildInlineTerminalContextText,
-  formatInlineTerminalContextLabel,
-  textContainsInlineTerminalContextLabels,
-} from "./userMessageTerminalContexts";
-import { formatWorkspaceRelativePath } from "../../filePathDisplay";
-import { readLocalApi } from "~/localApi";
-import { openInPreferredEditor } from "../../editorPreferences";
-import { splitPathAndPosition } from "../../terminal-links";
-
-// ---------------------------------------------------------------------------
 // Context — shared state consumed by every row component via useContext.
-// Propagates through LegendList's memo boundaries for shared callbacks and
-// non-row-scoped state. `nowIso` is intentionally excluded — self-ticking
-// components (WorkingTimer, LiveElapsed) handle it.
-// ---------------------------------------------------------------------------
+// Definitions live in messages-timeline/shared.ts so extracted sub-components
+// can import them without circular deps.
 
-interface TimelineRowSharedState {
-  activeTurnInProgress: boolean;
-  activeTurnId: TurnId | null | undefined;
-  isWorking: boolean;
-  isRevertingCheckpoint: boolean;
-  completionSummary: string | null;
-  timestampFormat: TimestampFormat;
-  routeThreadKey: string;
-  markdownCwd: string | undefined;
-  resolvedTheme: "light" | "dark";
-  workspaceRoot: string | undefined;
-  activeThreadEnvironmentId: EnvironmentId;
-  onRevertUserMessage: (messageId: MessageId) => void;
-  onImageExpand: (preview: ExpandedImagePreview) => void;
-  onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
-  onCopyTurnJson: (turnId: TurnId) => void;
-  agentEditedFilesByTurnId: Map<TurnId, Set<string>>;
-}
+import {
+  TimelineRowCtx,
+  SearchQueryCtx,
+  WorkLogEntriesCtx,
+  formatMessageMeta,
+  type TimelineRowSharedState,
+  useStableRows,
+} from "./messages-timeline/shared";
+import {
+  CollapsibleUserMessageContent,
+  parseSlashCommandText,
+  UserMessageBody,
+} from "~/components/chat/messages-timeline/UserMessage";
 
-const TimelineRowCtx = createContext<TimelineRowSharedState>(null!);
-
-/** Separate context for search query — avoids invalidating the main shared
- *  state on every keystroke. Only components that check for hidden matches
- *  (collapsible sections) subscribe to this. */
-const SearchQueryCtx = createContext<string>("");
-
-// ---------------------------------------------------------------------------
 // Props (public API)
-// ---------------------------------------------------------------------------
 
 interface MessagesTimelineProps {
   isWorking: boolean;
@@ -142,9 +77,7 @@ interface MessagesTimelineProps {
   onSearchClose: () => void;
 }
 
-// ---------------------------------------------------------------------------
 // MessagesTimeline — list owner
-// ---------------------------------------------------------------------------
 
 export const MessagesTimeline = memo(function MessagesTimeline({
   isWorking,
@@ -193,6 +126,13 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     ],
   );
   const rows = useStableRows(rawRows);
+
+  // All work log entries from the timeline — provided via context for the
+  // sub-agent detail dialog to filter task.progress entries by taskId.
+  const allWorkLogEntries = useMemo(
+    () => timelineEntries.flatMap((e) => (e.kind === "work" ? [e.entry] : [])),
+    [timelineEntries],
+  );
 
   const handleScroll = useCallback(() => {
     const state = listRef.current?.getState?.();
@@ -269,6 +209,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       case "edit":
         return 400;
       case "work":
+      case "assembled-tool":
+      case "assembled-tool-group":
         return 70;
       case "thinking":
         return 120;
@@ -292,10 +234,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     [],
   );
 
-  // ---------------------------------------------------------------------------
+  //
+  //
   // Search
-  // ---------------------------------------------------------------------------
-
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const timelineSearch = useTimelineSearch(rows, listRef, searchContainerRef);
 
@@ -323,35 +264,37 @@ export const MessagesTimeline = memo(function MessagesTimeline({
 
   return (
     <TimelineRowCtx.Provider value={sharedState}>
-      <SearchQueryCtx.Provider value={timelineSearch.state.query}>
-        <SearchOverlay
-          open={searchOpen}
-          onClose={handleSearchClose}
-          matchCount={timelineSearch.state.matches.length}
-          currentMatch={timelineSearch.state.currentIndex}
-          onSearch={handleSearchQuery}
-          onNext={timelineSearch.next}
-          onPrev={timelineSearch.prev}
-        />
-        <div ref={searchContainerRef} className="h-full">
-          <LegendList<MessagesTimelineRow>
-            ref={listRef}
-            data={rows}
-            keyExtractor={keyExtractor}
-            renderItem={renderItem}
-            getEstimatedItemSize={getEstimatedItemSize}
-            estimatedItemSize={90}
-            initialScrollAtEnd
-            maintainScrollAtEnd
-            maintainScrollAtEndThreshold={0.1}
-            maintainVisibleContentPosition
-            onScroll={handleScroll}
-            className="h-full overflow-x-hidden overscroll-y-contain px-3 sm:px-5"
-            ListHeaderComponent={<div className="h-3 sm:h-4" />}
-            ListFooterComponent={<div className="h-3 sm:h-4" />}
+      <WorkLogEntriesCtx.Provider value={allWorkLogEntries}>
+        <SearchQueryCtx.Provider value={timelineSearch.state.query}>
+          <SearchOverlay
+            open={searchOpen}
+            onClose={handleSearchClose}
+            matchCount={timelineSearch.state.matches.length}
+            currentMatch={timelineSearch.state.currentIndex}
+            onSearch={handleSearchQuery}
+            onNext={timelineSearch.next}
+            onPrev={timelineSearch.prev}
           />
-        </div>
-      </SearchQueryCtx.Provider>
+          <div ref={searchContainerRef} className="h-full">
+            <LegendList<MessagesTimelineRow>
+              ref={listRef}
+              data={rows}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              getEstimatedItemSize={getEstimatedItemSize}
+              estimatedItemSize={90}
+              initialScrollAtEnd
+              maintainScrollAtEnd
+              maintainScrollAtEndThreshold={0.1}
+              maintainVisibleContentPosition
+              onScroll={handleScroll}
+              className="h-full overflow-x-hidden overscroll-y-contain px-3 sm:px-5"
+              ListHeaderComponent={<div className="h-3 sm:h-4" />}
+              ListFooterComponent={<div className="h-3 sm:h-4" />}
+            />
+          </div>
+        </SearchQueryCtx.Provider>
+      </WorkLogEntriesCtx.Provider>
     </TimelineRowCtx.Provider>
   );
 });
@@ -360,13 +303,12 @@ function keyExtractor(item: MessagesTimelineRow) {
   return item.id;
 }
 
-// ---------------------------------------------------------------------------
+//
+//
+//
 // TimelineRowContent — the actual row component
-// ---------------------------------------------------------------------------
-
 type TimelineEntry = ReturnType<typeof deriveTimelineEntries>[number];
 type TimelineMessage = Extract<TimelineEntry, { kind: "message" }>["message"];
-type TimelineWorkEntry = Extract<MessagesTimelineRow, { kind: "work" }>["groupedEntries"][number];
 type TimelineRow = MessagesTimelineRow;
 
 function TimelineRowContent({ row }: { row: TimelineRow }) {
@@ -386,6 +328,26 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
       {row.kind === "work" && <WorkGroupSection groupedEntries={row.groupedEntries} />}
 
       {row.kind === "thinking" && <ThinkingSection message={row.message} />}
+
+      {row.kind === "assembled-tool" && row.tool.kind === "edit" && (
+        <AssembledEditRow
+          tool={row.tool}
+          workspaceRoot={ctx.workspaceRoot}
+          resolvedTheme={ctx.resolvedTheme}
+        />
+      )}
+
+      {row.kind === "assembled-tool" && row.tool.kind === "write" && (
+        <AssembledWriteRow
+          tool={row.tool}
+          workspaceRoot={ctx.workspaceRoot}
+          resolvedTheme={ctx.resolvedTheme}
+        />
+      )}
+
+      {row.kind === "assembled-tool-group" && (
+        <AssembledWorkGroup tools={row.tools} workEntries={row.workEntries} />
+      )}
 
       {row.kind === "edit" && (
         <StandaloneEditRow
@@ -586,1417 +548,3 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// Extracted row sections — own their state / store subscriptions so changes
-// re-render only the affected row, not the entire list.
-// ---------------------------------------------------------------------------
-
-/** Owns its own expand/collapse state so toggling re-renders only this row.
- *  State resets on unmount which is fine — work groups start collapsed. */
-const WorkGroupSection = memo(function WorkGroupSection({
-  groupedEntries,
-}: {
-  groupedEntries: Extract<MessagesTimelineRow, { kind: "work" }>["groupedEntries"];
-}) {
-  const { workspaceRoot, resolvedTheme } = use(TimelineRowCtx);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Standalone file_change entry (Edit/Write) — renders the work entry label
-  // with an inline diff below it, never grouped with other tools.
-  if (groupedEntries.length === 1 && groupedEntries[0]?.itemType === "file_change") {
-    const entry = groupedEntries[0];
-    return (
-      <div className="rounded-lg border border-border/45 bg-card/25 overflow-hidden">
-        <div className="px-0.5">
-          <SimpleWorkEntryRow workEntry={entry} workspaceRoot={workspaceRoot} />
-        </div>
-        {entry.editDiffs?.map((diff) => (
-          <InlineEditDiff
-            key={diff.id}
-            editEntry={diff}
-            workspaceRoot={workspaceRoot}
-            resolvedTheme={resolvedTheme}
-            variant="flush"
-            hideHeader
-          />
-        ))}
-      </div>
-    );
-  }
-
-  // Split out sub-agent entries — they always pin at the top regardless of status.
-  const pinnedSubAgents = groupedEntries.filter((e) => e.itemType === "collab_agent_tool_call");
-  const regularEntries = groupedEntries.filter((e) => e.itemType !== "collab_agent_tool_call");
-
-  // Lifted dialog state — one dialog navigates across all pinned sub-agents in the group.
-  const [selectedSubAgentIdx, setSelectedSubAgentIdx] = useState<number | null>(null);
-
-  const isCompactionOnly =
-    regularEntries.length === 1 &&
-    pinnedSubAgents.length === 0 &&
-    (regularEntries[0]?.isCompacting || regularEntries[0]?.isCompacted);
-
-  const hasOverflow = regularEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
-  const visibleEntries =
-    hasOverflow && !isExpanded
-      ? regularEntries.slice(-MAX_VISIBLE_WORK_LOG_ENTRIES)
-      : regularEntries;
-  const onlyToolEntries =
-    regularEntries.every((entry) => entry.tone === "tool") && pinnedSubAgents.length === 0;
-  const isSingleEntry = regularEntries.length <= 1 && pinnedSubAgents.length === 0;
-  const showHeader =
-    !isSingleEntry && (hasOverflow || !onlyToolEntries || pinnedSubAgents.length > 0);
-  const groupLabel = onlyToolEntries ? "Tool calls" : "Work log";
-
-  return (
-    <div
-      className={cn(
-        isCompactionOnly
-          ? "rounded-md"
-          : cn(
-              "rounded-lg border border-border/45 bg-card/25",
-              showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5",
-            ),
-        hasOverflow && "group/wl cursor-pointer",
-      )}
-      onClick={hasOverflow ? () => setIsExpanded((v) => !v) : undefined}
-    >
-      {showHeader &&
-        (hasOverflow ? (
-          <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-            <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-              {groupLabel} ({regularEntries.length + pinnedSubAgents.length})
-            </p>
-            <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/wl:text-foreground">
-              {isExpanded ? (
-                <ChevronUpIcon className="size-3.5" />
-              ) : (
-                <ChevronDownIcon className="size-3.5" />
-              )}
-            </span>
-          </div>
-        ) : regularEntries.length > 0 || pinnedSubAgents.length > 0 ? (
-          <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-            <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-              {groupLabel} ({regularEntries.length + pinnedSubAgents.length})
-            </p>
-          </div>
-        ) : null)}
-      {pinnedSubAgents.length > 0 && (
-        <div className={cn("space-y-0.5", visibleEntries.length > 0 && "mb-1")}>
-          {pinnedSubAgents.map((entry, idx) => (
-            <PinnedSubAgentEntry
-              key={`pinned-subagent:${entry.id}`}
-              workEntry={entry}
-              workspaceRoot={workspaceRoot}
-              onOpen={() => setSelectedSubAgentIdx(idx)}
-            />
-          ))}
-          {selectedSubAgentIdx != null && pinnedSubAgents[selectedSubAgentIdx]?.subAgentBrief && (
-            <SubAgentDetailDialog
-              open
-              onOpenChange={(v) => {
-                if (!v) setSelectedSubAgentIdx(null);
-              }}
-              workEntry={pinnedSubAgents[selectedSubAgentIdx]!}
-              allEntries={groupedEntries}
-              workspaceRoot={workspaceRoot}
-              siblingSubAgents={pinnedSubAgents}
-              siblingIndex={selectedSubAgentIdx}
-              onNavigate={setSelectedSubAgentIdx}
-            />
-          )}
-        </div>
-      )}
-      {visibleEntries.length > 0 && (
-        <div className="space-y-0 [&>*]:py-0.25">
-          {visibleEntries.map((workEntry) =>
-            workEntry.isCompacting || workEntry.isCompacted ? (
-              <CompactionEntry key={`work-row:${workEntry.id}`} workEntry={workEntry} />
-            ) : (
-              <SimpleWorkEntryRow
-                key={`work-row:${workEntry.id}`}
-                workEntry={workEntry}
-                workspaceRoot={workspaceRoot}
-              />
-            ),
-          )}
-        </div>
-      )}
-    </div>
-  );
-});
-
-/** Compaction entry — styled like a sub-agent task with colored background. */
-const CompactionEntry = memo(function CompactionEntry({
-  workEntry,
-}: {
-  workEntry: TimelineWorkEntry;
-}) {
-  const inProgress = workEntry.isCompacting === true;
-  const label = workEntry.label ?? "Context compacted";
-
-  return (
-    <div
-      className={cn(
-        "flex w-full items-center gap-1.5 rounded-md px-3 py-0.5",
-        inProgress ? "bg-primary/5" : "bg-muted/40",
-      )}
-    >
-      {inProgress ? (
-        <LoaderIcon className="size-4 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
-      ) : (
-        <CheckIcon className="size-4 shrink-0 text-primary/70" />
-      )}
-      <p
-        className={cn(
-          "truncate text-[13px] leading-5 py-2",
-          inProgress ? "text-foreground/90" : "font-medium text-foreground/80",
-        )}
-      >
-        {label}
-      </p>
-    </div>
-  );
-});
-
-/** Pinned sub-agent entry — always shown at the top of the work log. */
-const PinnedSubAgentEntry = memo(function PinnedSubAgentEntry({
-  workEntry,
-  workspaceRoot,
-  onOpen,
-}: {
-  workEntry: TimelineWorkEntry;
-  workspaceRoot: string | undefined;
-  onOpen: () => void;
-}) {
-  const heading = toolWorkEntryHeading(workEntry);
-  const preview = workEntryPreview(workEntry, workspaceRoot);
-  const displayText =
-    preview &&
-    normalizeCompactToolLabel(preview).toLowerCase() !==
-      normalizeCompactToolLabel(heading).toLowerCase()
-      ? preview
-      : null;
-  const inProgress = workEntry.isSubAgentInProgress === true;
-  const hasBrief = workEntry.subAgentBrief != null;
-
-  return (
-    <button
-      type="button"
-      className={cn(
-        "flex w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left",
-        inProgress ? "bg-primary/5" : "bg-muted/40",
-        hasBrief && "cursor-pointer hover:bg-muted/60",
-      )}
-      onClick={() => {
-        if (hasBrief) onOpen();
-      }}
-    >
-      {inProgress ? (
-        <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
-      ) : (
-        <CheckIcon className="size-3 shrink-0 text-primary/70" />
-      )}
-      <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "truncate text-[11px] leading-5",
-            inProgress ? "text-foreground/90" : "font-medium text-foreground/80",
-          )}
-        >
-          {heading}
-          {displayText && <span className="text-muted-foreground/70"> — {displayText}</span>}
-        </p>
-      </div>
-    </button>
-  );
-});
-
-/** Dialog showing the sub-agent's brief, work log, and (when available) its response. */
-const SubAgentDetailDialog = memo(function SubAgentDetailDialog({
-  open,
-  onOpenChange,
-  workEntry,
-  allEntries,
-  workspaceRoot,
-  siblingSubAgents,
-  siblingIndex,
-  onNavigate,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  workEntry: TimelineWorkEntry;
-  allEntries: ReadonlyArray<TimelineWorkEntry>;
-  workspaceRoot: string | undefined;
-  /** All sub-agent entries in this work group (for left/right navigation). */
-  siblingSubAgents: ReadonlyArray<TimelineWorkEntry>;
-  /** Index of the currently displayed sub-agent within siblingSubAgents. */
-  siblingIndex: number;
-  /** Callback to navigate to a different sub-agent by index. */
-  onNavigate: (index: number) => void;
-}) {
-  const brief = workEntry.subAgentBrief;
-  if (!brief) return null;
-
-  const heading = toolWorkEntryHeading(workEntry);
-  const preview = workEntryPreview(workEntry, undefined);
-  const displayText =
-    preview &&
-    normalizeCompactToolLabel(preview).toLowerCase() !==
-      normalizeCompactToolLabel(heading).toLowerCase()
-      ? preview
-      : null;
-  const inProgress = workEntry.isSubAgentInProgress === true;
-
-  const [briefExpanded, setBriefExpanded] = useState(false);
-  const [workLogExpanded, setWorkLogExpanded] = useState(false);
-
-  // Detect when the combined heading + displayText overflows a single line.
-  const headingMeasureRef = useRef<HTMLSpanElement>(null);
-  const headingContainerRef = useRef<HTMLDivElement>(null);
-  const [headingOverflows, setHeadingOverflows] = useState(false);
-
-  useLayoutEffect(() => {
-    const measure = headingMeasureRef.current;
-    const container = headingContainerRef.current;
-    if (!measure || !container) return;
-    // Compare the natural (nowrap) width of the text against the container's
-    // available content width (minus icon + gap).
-    setHeadingOverflows(measure.scrollWidth > container.clientWidth);
-  }, [heading, displayText, open]);
-
-  // Left/right navigation across sibling sub-agents (loops around).
-  const hasSiblings = siblingSubAgents.length > 1;
-
-  const navigateSubAgent = useCallback(
-    (direction: -1 | 1) => {
-      if (!hasSiblings) return;
-      const next = (siblingIndex + direction + siblingSubAgents.length) % siblingSubAgents.length;
-      // Reset collapsible sections when navigating.
-      setBriefExpanded(false);
-      setWorkLogExpanded(false);
-      onNavigate(next);
-    },
-    [siblingIndex, siblingSubAgents.length, onNavigate, hasSiblings],
-  );
-
-  // Capture-phase listener so arrow keys navigate sub-agents before the
-  // dialog's internal focus management can intercept them.
-  useEffect(() => {
-    if (!open || !hasSiblings) return;
-    const onKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "ArrowLeft") {
-        e.preventDefault();
-        e.stopPropagation();
-        navigateSubAgent(-1);
-      } else if (e.key === "ArrowRight") {
-        e.preventDefault();
-        e.stopPropagation();
-        navigateSubAgent(1);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown, true);
-    return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [open, hasSiblings, navigateSubAgent]);
-
-  // Filter work log entries belonging to this sub-agent's task.
-  const taskEntries = useMemo(() => {
-    if (!workEntry.taskId) return [];
-    return allEntries.filter(
-      (e) => e.taskId === workEntry.taskId && e.itemType !== "collab_agent_tool_call",
-    );
-  }, [allEntries, workEntry.taskId]);
-
-  const workLogHasOverflow = taskEntries.length > MAX_VISIBLE_WORK_LOG_ENTRIES;
-  const visibleTaskEntries =
-    workLogHasOverflow && !workLogExpanded
-      ? taskEntries.slice(-MAX_VISIBLE_WORK_LOG_ENTRIES)
-      : taskEntries;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogPopup
-        className="max-w-lg max-h-[75vh] focus:outline-none [&_[data-slot=scroll-area-scrollbar]]:me-0"
-        showCloseButton
-      >
-        {/* Left/right navigation chevrons — only when multiple sub-agents in group */}
-        {hasSiblings && (
-          <button
-            type="button"
-            tabIndex={-1}
-            className="absolute -left-11 top-1/2 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-popover/80 text-foreground/60 shadow-md backdrop-blur-sm transition-colors hover:bg-popover hover:text-foreground focus:outline-none"
-            aria-label="Previous sub-agent"
-            onClick={() => navigateSubAgent(-1)}
-          >
-            <ChevronLeftIcon className="size-4" />
-          </button>
-        )}
-        {hasSiblings && (
-          <button
-            type="button"
-            tabIndex={-1}
-            className="absolute -right-11 top-1/2 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full bg-popover/80 text-foreground/60 shadow-md backdrop-blur-sm transition-colors hover:bg-popover hover:text-foreground focus:outline-none"
-            aria-label="Next sub-agent"
-            onClick={() => navigateSubAgent(1)}
-          >
-            <ChevronRightIcon className="size-4" />
-          </button>
-        )}
-        <DialogPanel className="pt-8 pr-8 pb-8">
-          {/* Sub-agent heading — mirrors the pinned entry row */}
-          <div
-            className={cn(
-              "flex items-start gap-2 rounded-lg px-3.5 py-2",
-              inProgress ? "border border-border/45 bg-primary/5" : "bg-muted/40",
-            )}
-          >
-            {inProgress ? (
-              <LoaderIcon className="size-3.5 mt-[3px] shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
-            ) : (
-              <CheckIcon className="size-3.5 mt-[3px] shrink-0 text-primary/70" />
-            )}
-            <div
-              ref={headingContainerRef}
-              className="min-w-0 text-[13px] leading-5 text-foreground/85"
-            >
-              {/* Hidden measurement span — single-line, no wrapping */}
-              {displayText && (
-                <span
-                  ref={headingMeasureRef}
-                  className="pointer-events-none invisible absolute whitespace-nowrap text-[13px]"
-                  aria-hidden="true"
-                >
-                  {heading} — {displayText}
-                </span>
-              )}
-              {displayText && headingOverflows ? (
-                <>
-                  <p className="font-semibold">{heading}</p>
-                  <p className="text-foreground/55">{displayText}</p>
-                </>
-              ) : (
-                <p>
-                  <span className="font-semibold">{heading}</span>
-                  {displayText && <span className="text-foreground/55"> — {displayText}</span>}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Brief prompt text — collapsible, closed by default */}
-          <div
-            className="group/brief mt-4 cursor-pointer rounded-lg border border-border/45 bg-card/25 px-2 py-1.5"
-            onClick={() => setBriefExpanded((v) => !v)}
-          >
-            <div className="flex items-center justify-between gap-2 px-0.5">
-              <p className="pb-1 pt-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-                Brief
-              </p>
-              <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/brief:text-foreground">
-                {briefExpanded ? (
-                  <ChevronUpIcon className="size-3.5" />
-                ) : (
-                  <ChevronDownIcon className="size-3.5" />
-                )}
-              </span>
-            </div>
-            <div
-              className={cn(
-                "relative text-[12.5px] italic leading-relaxed text-foreground/50 whitespace-pre-wrap",
-                !briefExpanded && "max-h-[12.5em] overflow-hidden",
-              )}
-            >
-              {brief.prompt}
-              {!briefExpanded && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-card/80 to-transparent" />
-              )}
-            </div>
-          </div>
-
-          {/* Sub-agent work log — collapsible, closed by default */}
-          {taskEntries.length > 0 && (
-            <div className="mt-4 rounded-lg border border-border/45 bg-card/25 px-2 py-1.5">
-              <div
-                className="group/wl flex cursor-pointer items-center justify-between gap-2 px-0.5"
-                onClick={() => setWorkLogExpanded((v) => !v)}
-              >
-                <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
-                  Work log ({taskEntries.length})
-                </p>
-                <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/wl:text-foreground">
-                  {workLogExpanded ? (
-                    <ChevronUpIcon className="size-3.5" />
-                  ) : (
-                    <ChevronDownIcon className="size-3.5" />
-                  )}
-                </span>
-              </div>
-              <div className="space-y-0 [&>*]:py-0.25">
-                {visibleTaskEntries.map((entry) => (
-                  <SimpleWorkEntryRow
-                    key={`subagent-work:${entry.id}`}
-                    workEntry={entry}
-                    workspaceRoot={workspaceRoot}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Response — divider styled like the main chat completion divider */}
-          {workEntry.subAgentResult != null && (
-            <>
-              <div className="my-3 mt-6 flex items-center gap-3">
-                <span className="h-px flex-1 bg-border" />
-              </div>
-              <div className="px-1 pt-2 text-[12.5px] leading-snug">
-                <ChatMarkdown text={workEntry.subAgentResult} cwd={undefined} />
-              </div>
-            </>
-          )}
-        </DialogPanel>
-        {/* Navigation counter — positioned outside the dialog card */}
-        {hasSiblings && (
-          <p className="absolute -bottom-9 left-1/2 -translate-x-1/2 rounded-full bg-popover/80 px-3 py-1 text-[11px] text-foreground/60 shadow-md backdrop-blur-sm">
-            {siblingIndex + 1} / {siblingSubAgents.length}
-          </p>
-        )}
-      </DialogPopup>
-    </Dialog>
-  );
-});
-
-const THINKING_EXPAND_CHAR_THRESHOLD = 300;
-
-const ThinkingSection = memo(function ThinkingSection({
-  message,
-}: {
-  message: Extract<MessagesTimelineRow, { kind: "thinking" }>["message"];
-}) {
-  const { markdownCwd } = use(TimelineRowCtx);
-  const searchQuery = use(SearchQueryCtx);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [hasHiddenMatch, setHasHiddenMatch] = useState(false);
-  const collapsedScrollRef = useRef<HTMLDivElement | null>(null);
-  const isSubAgent = message.agentKind === "sub";
-
-  useEffect(() => {
-    if (isExpanded || !collapsedScrollRef.current) return;
-    collapsedScrollRef.current.scrollTop = collapsedScrollRef.current.scrollHeight;
-  }, [message.text, isExpanded]);
-
-  const canExpand = !isSubAgent && message.text.length > THINKING_EXPAND_CHAR_THRESHOLD;
-
-  // Check for matches in the hidden overflow area using DOM positions.
-  useEffect(() => {
-    if (!canExpand || isExpanded || !searchQuery) {
-      setHasHiddenMatch(false);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setHasHiddenMatch(hasMatchOutsideVisibleBounds(collapsedScrollRef.current, searchQuery));
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [canExpand, isExpanded, searchQuery]);
-
-  if (isSubAgent) {
-    const preview =
-      message.text
-        .split("\n")
-        .map((line) => line.trim())
-        .find((line) => line.length > 0) ?? "";
-    return (
-      <div className="flex items-center gap-2 px-2 py-1 text-[11px] italic text-muted-foreground/80">
-        <span className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/80">
-          Sub-agent thinking
-        </span>
-        {preview && <span className="min-w-0 flex-1 truncate">{preview}</span>}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={cn(
-        "rounded-lg border border-border/45 bg-card/25 px-2 py-1.5",
-        canExpand && "group/think cursor-pointer",
-      )}
-      onClick={canExpand ? () => setIsExpanded((v) => !v) : undefined}
-    >
-      <div className="mb-0.5 flex items-center justify-between gap-2 px-0.5">
-        {/*0.2em over 0.16 to make up for the THINKING skinnery characters so it looks the same as the others */}
-        <p className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground/55">Thinking</p>
-        {canExpand && (
-          <span className="flex items-center gap-1 text-muted-foreground/70 transition-colors duration-150 group-hover/think:text-foreground">
-            {hasHiddenMatch && <SearchMatchDot />}
-            {isExpanded ? (
-              <ChevronUpIcon className="size-3.5" />
-            ) : (
-              <ChevronDownIcon className="size-3.5" />
-            )}
-          </span>
-        )}
-      </div>
-      <div className="relative">
-        <div
-          ref={collapsedScrollRef}
-          className={cn(
-            "px-1.5 text-[12.5px] italic leading-snug text-muted-foreground/80",
-            canExpand && !isExpanded && "thinking-collapsed-scroll max-h-28 overflow-y-auto",
-          )}
-        >
-          <ChatMarkdown
-            text={message.text}
-            cwd={markdownCwd}
-            isStreaming={Boolean(message.streaming)}
-            className="pt-0.5 chat-markdown-thinking text-[12.5px] leading-snug text-muted-foreground/80"
-          />
-        </div>
-        {canExpand && !isExpanded && (
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-card/80 to-transparent" />
-        )}
-      </div>
-    </div>
-  );
-});
-
-/** Subscribes directly to the UI state store for expand/collapse state,
- *  so toggling re-renders only this component — not the entire list. */
-const AssistantChangedFilesSection = memo(function AssistantChangedFilesSection({
-  turnSummary,
-  agentEditedFilesByTurnId,
-  routeThreadKey,
-  resolvedTheme,
-  onOpenTurnDiff,
-}: {
-  turnSummary: TurnDiffSummary | undefined;
-  agentEditedFilesByTurnId: Map<TurnId, Set<string>>;
-  routeThreadKey: string;
-  resolvedTheme: "light" | "dark";
-  onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
-}) {
-  if (!turnSummary) return null;
-
-  // Filter to only files the agent actually edited via Edit/Write tool calls,
-  // excluding unrelated changes from the user or other sessions.
-  // Git diff paths are repo-relative, tool call paths may be absolute — use endsWith matching.
-  const agentTouchedFiles = agentEditedFilesByTurnId.get(turnSummary.turnId);
-  const checkpointFiles = agentTouchedFiles
-    ? turnSummary.files.filter((f) => {
-        for (const agentPath of agentTouchedFiles) {
-          if (agentPath === f.path || agentPath.endsWith("/" + f.path)) return true;
-        }
-        return false;
-      })
-    : [];
-  if (checkpointFiles.length === 0) return null;
-
-  return (
-    <AssistantChangedFilesSectionInner
-      turnSummary={turnSummary}
-      checkpointFiles={checkpointFiles}
-      routeThreadKey={routeThreadKey}
-      resolvedTheme={resolvedTheme}
-      onOpenTurnDiff={onOpenTurnDiff}
-    />
-  );
-});
-
-/** Inner component that only mounts when there are actual changed files,
- *  so the store subscription is unconditional (no hooks after early return). */
-function AssistantChangedFilesSectionInner({
-  turnSummary,
-  checkpointFiles,
-  routeThreadKey,
-  resolvedTheme,
-  onOpenTurnDiff,
-}: {
-  turnSummary: TurnDiffSummary;
-  checkpointFiles: TurnDiffSummary["files"];
-  routeThreadKey: string;
-  resolvedTheme: "light" | "dark";
-  onOpenTurnDiff: (turnId: TurnId, filePath?: string) => void;
-}) {
-  const allDirectoriesExpanded = useUiStateStore(
-    (store) => store.threadChangedFilesExpandedById[routeThreadKey]?.[turnSummary.turnId] ?? false,
-  );
-  const setExpanded = useUiStateStore((store) => store.setThreadChangedFilesExpanded);
-  const summaryStat = summarizeTurnDiffStats(checkpointFiles);
-  const changedFileCountLabel = String(checkpointFiles.length);
-  const hasDirectories = useMemo(
-    () => buildTurnDiffTree(checkpointFiles).some((n) => n.kind === "directory"),
-    [checkpointFiles],
-  );
-
-  return (
-    <div className="mt-6 mb-2 rounded-lg border border-border/80 bg-card/45 p-2.5 animate-in fade-in duration-300">
-      <div
-        className={cn(
-          "group/expand mb-1.5 flex items-center justify-between gap-2",
-          hasDirectories && "cursor-pointer",
-        )}
-        data-scroll-anchor-ignore
-        onClick={
-          hasDirectories
-            ? () => setExpanded(routeThreadKey, turnSummary.turnId, !allDirectoriesExpanded)
-            : undefined
-        }
-      >
-        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
-          <span>Changed files ({changedFileCountLabel})</span>
-          {hasNonZeroStat(summaryStat) && (
-            <>
-              <span className="mx-1">•</span>
-              <DiffStatLabel additions={summaryStat.additions} deletions={summaryStat.deletions} />
-            </>
-          )}
-        </p>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="shrink-0 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70 transition-colors duration-150 hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              onOpenTurnDiff(turnSummary.turnId, checkpointFiles[0]?.path);
-            }}
-          >
-            View diff
-          </button>
-          {hasDirectories && (
-            <span className="text-muted-foreground/70 transition-colors duration-150 group-hover/expand:text-foreground">
-              {allDirectoriesExpanded ? (
-                <ChevronUpIcon className="size-3.5" />
-              ) : (
-                <ChevronDownIcon className="size-3.5" />
-              )}
-            </span>
-          )}
-        </div>
-      </div>
-      <ChangedFilesTree
-        key={`changed-files-tree:${turnSummary.turnId}`}
-        turnId={turnSummary.turnId}
-        files={checkpointFiles}
-        allDirectoriesExpanded={allDirectoriesExpanded}
-        resolvedTheme={resolvedTheme}
-        onOpenTurnDiff={onOpenTurnDiff}
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Leaf components
-// ---------------------------------------------------------------------------
-
-const UserMessageTerminalContextInlineLabel = memo(
-  function UserMessageTerminalContextInlineLabel(props: { context: ParsedTerminalContextEntry }) {
-    const tooltipText =
-      props.context.body.length > 0
-        ? `${props.context.header}\n${props.context.body}`
-        : props.context.header;
-
-    return <TerminalContextInlineChip label={props.context.header} tooltipText={tooltipText} />;
-  },
-);
-
-// ---------------------------------------------------------------------------
-// Collapsible wrapper for long user messages
-// ---------------------------------------------------------------------------
-
-/** Collapsed height in px — roughly 10 lines of body text at 14px/relaxed. */
-const USER_MSG_COLLAPSED_MAX_HEIGHT = 300;
-
-const CollapsibleUserMessageContent = memo(function CollapsibleUserMessageContent({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-  const [hasHiddenMatch, setHasHiddenMatch] = useState(false);
-  const measureRef = useRef<HTMLDivElement>(null);
-  const clipRef = useRef<HTMLDivElement>(null);
-  const searchQuery = use(SearchQueryCtx);
-
-  // Measure the inner div (which never has maxHeight) so the natural content
-  // height is always reported, regardless of the outer div's collapsed state.
-  // This prevents layout thrashing when content is right at the threshold.
-  useEffect(() => {
-    const el = measureRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(() => {
-      setIsOverflowing(el.scrollHeight > USER_MSG_COLLAPSED_MAX_HEIGHT);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Check for matches in the hidden overflow area using DOM positions.
-  useEffect(() => {
-    if (!isOverflowing || isExpanded || !searchQuery) {
-      setHasHiddenMatch(false);
-      return;
-    }
-    // Small delay to let the DOM settle after renders.
-    const timer = setTimeout(() => {
-      setHasHiddenMatch(hasMatchOutsideVisibleBounds(clipRef.current, searchQuery));
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [isOverflowing, isExpanded, searchQuery]);
-
-  const handleToggle = useCallback(() => {
-    setIsExpanded((v) => !v);
-  }, []);
-
-  // Always constrain until explicitly expanded (prevents render-then-collapse bounce).
-  const showExpanded = isOverflowing && isExpanded;
-
-  return (
-    <div>
-      <div
-        ref={clipRef}
-        className="relative"
-        style={
-          showExpanded
-            ? undefined
-            : {
-                maxHeight: USER_MSG_COLLAPSED_MAX_HEIGHT,
-                overflow: "hidden",
-                maskImage: isOverflowing
-                  ? "linear-gradient(to bottom, black 88%, rgba(0,0,0,0.4) 94%, transparent 100%)"
-                  : undefined,
-                WebkitMaskImage: isOverflowing
-                  ? "linear-gradient(to bottom, black 88%, rgba(0,0,0,0.4) 94%, transparent 100%)"
-                  : undefined,
-              }
-        }
-      >
-        <div ref={measureRef}>{children}</div>
-      </div>
-      {isOverflowing && (
-        <button
-          type="button"
-          className="mb-0.5 mt-0 flex w-full items-center justify-center gap-1.5 text-center text-[9px] uppercase tracking-[0.12em] text-muted-foreground/55 transition-colors duration-150 hover:text-foreground/75"
-          onClick={handleToggle}
-        >
-          {hasHiddenMatch && <SearchMatchDot />}
-          {isExpanded ? "Show less" : "Show more"}
-        </button>
-      )}
-    </div>
-  );
-});
-
-// ---------------------------------------------------------------------------
-// Slash command detection for user message styling
-// ---------------------------------------------------------------------------
-
-interface SlashCommandMatch {
-  name: string;
-  extraText: string;
-}
-
-function parseSlashCommandText(text: string): SlashCommandMatch | null {
-  if (!text.startsWith("/")) return null;
-  const match = /^\/([a-z0-9][a-z0-9_-]*)(?:\s([\s\S]*))?$/.exec(text);
-  if (!match) return null;
-  return { name: match[1]!, extraText: match[2]?.trim() ?? "" };
-}
-
-const UserMessageBody = memo(function UserMessageBody(props: {
-  text: string;
-  terminalContexts: ParsedTerminalContextEntry[];
-  slashCommandMatch: SlashCommandMatch | null;
-}) {
-  if (props.terminalContexts.length > 0) {
-    const hasEmbeddedInlineLabels = textContainsInlineTerminalContextLabels(
-      props.text,
-      props.terminalContexts,
-    );
-    const inlinePrefix = buildInlineTerminalContextText(props.terminalContexts);
-    const inlineNodes: ReactNode[] = [];
-
-    if (hasEmbeddedInlineLabels) {
-      let cursor = 0;
-
-      for (const context of props.terminalContexts) {
-        const label = formatInlineTerminalContextLabel(context.header);
-        const matchIndex = props.text.indexOf(label, cursor);
-        if (matchIndex === -1) {
-          inlineNodes.length = 0;
-          break;
-        }
-        if (matchIndex > cursor) {
-          inlineNodes.push(
-            <span key={`user-terminal-context-inline-before:${context.header}:${cursor}`}>
-              {props.text.slice(cursor, matchIndex)}
-            </span>,
-          );
-        }
-        inlineNodes.push(
-          <UserMessageTerminalContextInlineLabel
-            key={`user-terminal-context-inline:${context.header}`}
-            context={context}
-          />,
-        );
-        cursor = matchIndex + label.length;
-      }
-
-      if (inlineNodes.length > 0) {
-        if (cursor < props.text.length) {
-          inlineNodes.push(
-            <span key={`user-message-terminal-context-inline-rest:${cursor}`}>
-              {props.text.slice(cursor)}
-            </span>,
-          );
-        }
-
-        return (
-          <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
-            {inlineNodes}
-          </div>
-        );
-      }
-    }
-
-    for (const context of props.terminalContexts) {
-      inlineNodes.push(
-        <UserMessageTerminalContextInlineLabel
-          key={`user-terminal-context-inline:${context.header}`}
-          context={context}
-        />,
-      );
-      inlineNodes.push(
-        <span key={`user-terminal-context-inline-space:${context.header}`} aria-hidden="true">
-          {" "}
-        </span>,
-      );
-    }
-
-    if (props.text.length > 0) {
-      inlineNodes.push(<span key="user-message-terminal-context-inline-text">{props.text}</span>);
-    } else if (inlinePrefix.length === 0) {
-      return null;
-    }
-
-    return (
-      <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
-        {inlineNodes}
-      </div>
-    );
-  }
-
-  if (props.text.length === 0) {
-    return null;
-  }
-
-  if (props.slashCommandMatch) {
-    const { name, extraText } = props.slashCommandMatch;
-    return (
-      <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
-        <span className="mr-px text-primary">/</span>
-        <span className="font-semibold">{name}</span>
-        {extraText && <span> {extraText}</span>}
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
-      {props.text}
-    </div>
-  );
-});
-
-// ---------------------------------------------------------------------------
-// Search match indicator — shown on collapsed sections that contain matches.
-// ---------------------------------------------------------------------------
-
-/**
- * Check if any text matches for `query` exist outside the visible bounds of
- * a clipped container (overflow: hidden/auto with a max-height).
- *
- * Returns true when at least one match is fully outside the container's
- * visible rect — i.e. it's in the hidden/overflowed portion.
- */
-function hasMatchOutsideVisibleBounds(container: HTMLElement | null, query: string): boolean {
-  if (!container || !query) return false;
-  const lowerQuery = query.toLowerCase();
-  const containerRect = container.getBoundingClientRect();
-
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-  let node: Text | null;
-  while ((node = walker.nextNode() as Text | null)) {
-    const text = node.textContent;
-    if (!text) continue;
-    const lowerText = text.toLowerCase();
-    let startPos = 0;
-    while (true) {
-      const idx = lowerText.indexOf(lowerQuery, startPos);
-      if (idx === -1) break;
-      const range = document.createRange();
-      range.setStart(node, idx);
-      range.setEnd(node, idx + lowerQuery.length);
-      const rangeRect = range.getBoundingClientRect();
-      // Match is hidden if its bottom is above container top or its top is below container bottom.
-      if (rangeRect.bottom <= containerRect.top || rangeRect.top >= containerRect.bottom) {
-        return true;
-      }
-      startPos = idx + lowerQuery.length;
-    }
-  }
-  return false;
-}
-
-/** Small coloured dot indicating hidden search matches inside a collapsed section. */
-function SearchMatchDot() {
-  return (
-    <span
-      className="inline-block size-1.5 shrink-0 rounded-full"
-      style={{ backgroundColor: "oklch(0.85 0.15 85)" }}
-      title="Search match in collapsed content"
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Structural sharing — reuse old row references when data hasn't changed
-// so LegendList (and React) can skip re-rendering unchanged items.
-// ---------------------------------------------------------------------------
-
-/** Returns a structurally-shared copy of `rows`: for each row whose content
- *  hasn't changed since last call, the previous object reference is reused. */
-function useStableRows(rows: MessagesTimelineRow[]): MessagesTimelineRow[] {
-  const prevState = useRef<StableMessagesTimelineRowsState>({
-    byId: new Map<string, MessagesTimelineRow>(),
-    result: [],
-  });
-
-  return useMemo(() => {
-    const nextState = computeStableMessagesTimelineRows(rows, prevState.current);
-    prevState.current = nextState;
-    return nextState.result;
-  }, [rows]);
-}
-
-// ---------------------------------------------------------------------------
-// Standalone edit row — unmatched EditDiffEntry rendered to look identical
-// to a matched file_change work entry (SimpleWorkEntryRow header + flush diff).
-// ---------------------------------------------------------------------------
-
-const StandaloneEditRow = memo(function StandaloneEditRow({
-  editEntry,
-  workspaceRoot,
-  resolvedTheme,
-}: {
-  editEntry: import("../../session-logic").EditDiffEntry;
-  workspaceRoot: string | undefined;
-  resolvedTheme: "light" | "dark";
-}) {
-  const displayPath = formatWorkspaceRelativePath(editEntry.filePath, workspaceRoot);
-  const heading = editEntry.toolName === "Write" ? "Write" : "Edit";
-
-  const handleOpenInEditor = useCallback(() => {
-    const api = readLocalApi();
-    if (!api) return;
-    void openInPreferredEditor(api, editEntry.filePath);
-  }, [editEntry.filePath]);
-
-  return (
-    <div className="rounded-lg border border-border/45 bg-card/25 overflow-hidden">
-      <div className="px-0.5">
-        <div
-          className="group/file cursor-pointer rounded-lg px-0.25 py-1"
-          onClick={handleOpenInEditor}
-        >
-          <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-            <span className="flex size-5 shrink-0 items-center justify-center text-foreground/60">
-              <PencilIcon className="size-3" />
-            </span>
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <p className="truncate text-[11px] leading-5 text-muted-foreground/90">
-                <span className="text-muted-foreground/90">{heading}</span>
-                <span className="text-muted-foreground/85">
-                  {" "}
-                  -{" "}
-                  <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
-                    {displayPath}
-                  </span>
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      <InlineEditDiff
-        editEntry={editEntry}
-        workspaceRoot={workspaceRoot}
-        resolvedTheme={resolvedTheme}
-        variant="flush"
-        hideHeader
-      />
-    </div>
-  );
-});
-
-// ---------------------------------------------------------------------------
-// Pure helpers
-// ---------------------------------------------------------------------------
-
-function formatMessageMeta(
-  createdAt: string,
-  duration: string | null,
-  timestampFormat: TimestampFormat,
-): string {
-  if (!duration) return formatTimestamp(createdAt, timestampFormat);
-  return `${formatTimestamp(createdAt, timestampFormat)} • ${duration}`;
-}
-
-function workToneIcon(tone: TimelineWorkEntry["tone"]): {
-  icon: LucideIcon;
-  className: string;
-} {
-  if (tone === "error") {
-    return {
-      icon: CircleAlertIcon,
-      className: "text-foreground/60",
-    };
-  }
-  // thinking = sub agents only in claude
-  if (tone === "thinking") {
-    return {
-      icon: SearchIcon,
-      className: "text-foreground/60",
-    };
-  }
-  if (tone === "info") {
-    return {
-      icon: CheckIcon,
-      className: "text-foreground/60",
-    };
-  }
-  return {
-    icon: ZapIcon,
-    className: "text-foreground/60",
-  };
-}
-
-function workToneClass(tone: "thinking" | "tool" | "info" | "error"): string {
-  if (tone === "error") return "text-rose-300/50 dark:text-rose-300/50";
-  if (tone === "tool") return "text-muted-foreground/90";
-  if (tone === "thinking") return "text-muted-foreground/90";
-  return "text-muted-foreground/90";
-}
-
-/** Return the first absolute file path from a work entry, if one exists. */
-function workEntryPrimaryFilePath(
-  workEntry: Pick<TimelineWorkEntry, "changedFiles" | "detail">,
-  workspaceRoot: string | undefined,
-): string | null {
-  // Prefer changedFiles (already extracted absolute paths)
-  const first = workEntry.changedFiles?.[0];
-  if (first) {
-    if (first.startsWith("/") || /^[A-Za-z]:[\\/]/.test(first)) return first;
-    if (workspaceRoot) return `${workspaceRoot}/${first}`;
-  }
-  // Fall back to detail — Read/Edit entries store the file path there.
-  // Only trust it when it's already an absolute path; detail is arbitrary
-  // text (could be a bash command, a description, etc.) so no guessing.
-  const detail = workEntry.detail?.trim();
-  if (detail?.startsWith("/") || /^[A-Za-z]:[\\/]/.test(detail ?? "")) {
-    // Normalise range suffixes produced by tool summaries (e.g. path:0-100 or
-    // path:50+) into the standard path:line format that editors understand.
-    const rangeMatch = detail!.match(/:(\d+)[-+](\d*)$/);
-    if (rangeMatch?.[1]) {
-      const path = detail!.slice(0, -rangeMatch[0].length);
-      const startLine = rangeMatch[1];
-      return `${path}:${startLine}`;
-    }
-    const { path, line } = splitPathAndPosition(detail!);
-    return line ? `${path}:${line}` : path;
-  }
-  return null;
-}
-
-function workEntryPreview(
-  workEntry: Pick<
-    TimelineWorkEntry,
-    "detail" | "command" | "changedFiles" | "itemType" | "requestKind"
-  >,
-  workspaceRoot: string | undefined,
-) {
-  if (workEntry.command) return workEntry.command;
-  if (
-    (workEntry.itemType === "dynamic_tool_call" ||
-      workEntry.itemType === "web_search" ||
-      workEntry.requestKind === "tool-call") &&
-    workEntry.detail
-  ) {
-    return formatToolCallPreview(workEntry.detail) ?? workEntry.detail;
-  }
-  if (workEntry.detail) return workEntry.detail;
-  if ((workEntry.changedFiles?.length ?? 0) === 0) return null;
-  const [firstPath] = workEntry.changedFiles ?? [];
-  if (!firstPath) return null;
-  const displayPath = formatWorkspaceRelativePath(firstPath, workspaceRoot);
-  return workEntry.changedFiles!.length === 1
-    ? displayPath
-    : `${displayPath} +${workEntry.changedFiles!.length - 1} more`;
-}
-
-function workEntryRawCommand(
-  workEntry: Pick<TimelineWorkEntry, "command" | "rawCommand">,
-): string | null {
-  const rawCommand = workEntry.rawCommand?.trim();
-  if (!rawCommand || !workEntry.command) {
-    return null;
-  }
-  return rawCommand === workEntry.command.trim() ? null : rawCommand;
-}
-
-function workEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
-  if (workEntry.requestKind === "command") return TerminalIcon;
-  if (workEntry.requestKind === "file-read") return EyeIcon;
-  if (workEntry.requestKind === "file-change") return PencilIcon;
-
-  if (workEntry.itemType === "command_execution" || workEntry.command) {
-    return TerminalIcon;
-  }
-  if (workEntry.itemType === "file_change") return PencilIcon;
-  if ((workEntry.changedFiles?.length ?? 0) > 0) {
-    return SearchIcon;
-  }
-  if (workEntry.itemType === "web_search") return GlobeIcon;
-  if (workEntry.itemType === "image_view") return EyeIcon;
-
-  switch (workEntry.itemType) {
-    case "mcp_tool_call":
-      return WrenchIcon;
-    case "dynamic_tool_call":
-    case "collab_agent_tool_call":
-      return SearchIcon;
-  }
-
-  return workToneIcon(workEntry.tone).icon;
-}
-
-function capitalizePhrase(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) {
-    return value;
-  }
-  return `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
-}
-
-function toolWorkEntryHeading(workEntry: TimelineWorkEntry): string {
-  if (!workEntry.toolTitle) {
-    return capitalizePhrase(normalizeCompactToolLabel(workEntry.label));
-  }
-  return capitalizePhrase(normalizeCompactToolLabel(workEntry.toolTitle));
-}
-
-const SimpleWorkEntryRow = memo(function SimpleWorkEntryRow(props: {
-  workEntry: TimelineWorkEntry;
-  workspaceRoot: string | undefined;
-}) {
-  const { workEntry, workspaceRoot } = props;
-  const iconConfig = workToneIcon(workEntry.tone);
-  const EntryIcon = workEntryIcon(workEntry);
-  const heading = toolWorkEntryHeading(workEntry);
-  const rawPreview = workEntryPreview(workEntry, workspaceRoot);
-  const preview =
-    rawPreview &&
-    normalizeCompactToolLabel(rawPreview).toLowerCase() ===
-      normalizeCompactToolLabel(heading).toLowerCase()
-      ? null
-      : rawPreview;
-  const rawCommand = workEntryRawCommand(workEntry);
-  const displayText = preview ? `${heading} - ${preview}` : heading;
-  const hasChangedFiles = (workEntry.changedFiles?.length ?? 0) > 0;
-  const previewIsChangedFiles = hasChangedFiles && !workEntry.command && !workEntry.detail;
-  const primaryFilePath = workEntryPrimaryFilePath(workEntry, workspaceRoot);
-  const primaryFileDisplayPath = primaryFilePath
-    ? formatWorkspaceRelativePath(workEntry.detail?.trim() ?? primaryFilePath, workspaceRoot)
-    : null;
-  const isToolCall =
-    workEntry.itemType === "dynamic_tool_call" || workEntry.requestKind === "tool-call";
-  const toolCallParsed = isToolCall ? parseToolCallDetail(workEntry.detail) : null;
-
-  const [resultDialogOpen, setResultDialogOpen] = useState(false);
-  const hasResult = !!workEntry.resultContent;
-
-  const handleOpenInEditor = useCallback(() => {
-    if (!primaryFilePath) return;
-    const api = readLocalApi();
-    if (!api) return;
-    void openInPreferredEditor(api, primaryFilePath);
-  }, [primaryFilePath]);
-
-  const handleClick = primaryFilePath
-    ? handleOpenInEditor
-    : hasResult
-      ? () => setResultDialogOpen(true)
-      : undefined;
-
-  const isClickable = !!primaryFilePath || hasResult;
-
-  return (
-    <>
-      <div
-        className={cn("rounded-lg px-0.25 py-1", isClickable && "group/file cursor-pointer")}
-        onClick={handleClick}
-      >
-        <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-          <span
-            className={cn("flex size-5 shrink-0 items-center justify-center", iconConfig.className)}
-          >
-            {workEntry.isToolInProgress ? (
-              <LoaderIcon className="size-3 animate-spin [animation-duration:4s]" />
-            ) : (
-              <EntryIcon className="size-3" />
-            )}
-          </span>
-          <div className="min-w-0 flex-1 overflow-hidden">
-            {rawCommand ? (
-              <div className="max-w-full">
-                <p
-                  className={cn(
-                    "truncate text-xs leading-5",
-                    workToneClass(workEntry.tone),
-                    preview ? "text-muted-foreground/80" : "",
-                  )}
-                  title={displayText}
-                >
-                  <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
-                    {heading}
-                  </span>
-                  {preview && (
-                    <Tooltip>
-                      <TooltipTrigger
-                        closeDelay={0}
-                        delay={75}
-                        render={
-                          <span className="max-w-full cursor-default text-muted-foreground/85">
-                            {" "}
-                            - <span className="font-mono text-[10px]">{preview}</span>
-                          </span>
-                        }
-                      />
-                      <TooltipPopup
-                        align="start"
-                        className="max-w-[min(56rem,calc(100vw-2rem))] px-0 py-0"
-                        side="top"
-                      >
-                        <div className="max-w-[min(56rem,calc(100vw-2rem))] overflow-x-auto px-1.5 py-1 font-mono text-[11px] leading-4 whitespace-nowrap">
-                          {rawCommand}
-                        </div>
-                      </TooltipPopup>
-                    </Tooltip>
-                  )}
-                </p>
-              </div>
-            ) : primaryFilePath ? (
-              <p className={cn("truncate text-[11px] leading-5", workToneClass(workEntry.tone))}>
-                <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
-                  {heading}
-                </span>
-                <span className="text-muted-foreground/85">
-                  {" "}
-                  -{" "}
-                  <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
-                    {primaryFileDisplayPath}
-                  </span>
-                </span>
-              </p>
-            ) : toolCallParsed?.url ? (
-              <p className={cn("truncate text-[11px] leading-5", workToneClass(workEntry.tone))}>
-                <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
-                  {heading}
-                </span>
-                <span className="text-muted-foreground/85">
-                  {" — "}
-                  <a
-                    href={toolCallParsed.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:text-foreground/70"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {toolCallParsed.url}
-                  </a>
-                </span>
-              </p>
-            ) : (
-              <Tooltip>
-                <TooltipTrigger className="block min-w-0 w-full text-left" aria-label={displayText}>
-                  <p
-                    className={cn(
-                      "truncate text-[11px] leading-5",
-                      workToneClass(workEntry.tone),
-                      preview ? "text-muted-foreground/80" : "",
-                    )}
-                  >
-                    <span className={cn("text-foreground/80", workToneClass(workEntry.tone))}>
-                      {heading}
-                    </span>
-                    {preview && <span className="text-muted-foreground/85"> - {preview}</span>}
-                  </p>
-                </TooltipTrigger>
-                <TooltipPopup className="max-w-[min(720px,calc(100vw-2rem))]">
-                  <p className="whitespace-pre-wrap wrap-break-word text-xs leading-5">
-                    {displayText}
-                  </p>
-                </TooltipPopup>
-              </Tooltip>
-            )}
-          </div>
-        </div>
-        {hasChangedFiles &&
-          !previewIsChangedFiles &&
-          (() => {
-            const filteredFiles = primaryFilePath
-              ? workEntry.changedFiles?.filter(
-                  (fp) => fp !== primaryFilePath && !primaryFilePath.endsWith("/" + fp),
-                )
-              : workEntry.changedFiles;
-            const totalFiltered = filteredFiles?.length ?? 0;
-            if (totalFiltered === 0) return null;
-            return (
-              <div className="mt-1 flex flex-wrap gap-1 pl-6">
-                {filteredFiles?.slice(0, 4).map((filePath) => {
-                  const displayPath = formatWorkspaceRelativePath(filePath, workspaceRoot);
-                  return (
-                    <span
-                      key={`${workEntry.id}:${filePath}`}
-                      className="rounded-md bg-background/75 px-0.5 py-0.75 font-mono text-[10.5px] text-muted-foreground/85"
-                      title={displayPath}
-                    >
-                      {displayPath}
-                    </span>
-                  );
-                })}
-                {totalFiltered > 4 && (
-                  <span className="px-1 text-[10px] text-muted-foreground/80">
-                    +{totalFiltered - 4}
-                  </span>
-                )}
-              </div>
-            );
-          })()}
-      </div>
-      {hasResult && (
-        <ToolResultDialog
-          open={resultDialogOpen}
-          onOpenChange={setResultDialogOpen}
-          heading={heading}
-          command={workEntry.rawCommand ?? workEntry.command}
-          resultContent={workEntry.resultContent!}
-        />
-      )}
-    </>
-  );
-});
