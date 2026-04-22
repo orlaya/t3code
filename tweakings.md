@@ -425,7 +425,8 @@
 
 **Custom slash commands (NEW feature — see `__notes/PLAN.custom-slash-commands.md` for the full plan):**
 
-- `packages/contracts/src/settings.ts` — `CustomSlashCommandScope`, `CustomSlashCommand` schemas, `customSlashCommands` array on `ServerSettings` (defaults `[]`) and `ServerSettingsPatch`.
+- `packages/contracts/src/settingsHooks.ts` — **new file**. `CustomSlashCommandScope`, `CustomSlashCommand` schemas extracted here from `settings.ts`. Also contains `CustomHook` schema and all hook-related types (see custom hooks entry below).
+- `packages/contracts/src/settings.ts` — `customSlashCommands` and `customHooks` arrays on `ServerSettings` (both default `[]`) and `ServerSettingsPatch`. Schemas imported from `settingsHooks.ts`.
 - `packages/contracts/src/orchestration.ts` — `CustomSlashCommandRef` schema (name + optional extraText), added optional `customSlashCommand` to `ThreadTurnStartCommand`, `ClientThreadTurnStartCommand`, and `ThreadTurnStartRequestedPayload`.
 - `apps/server/src/orchestration/decider.ts` — transfers `customSlashCommand` from command → event payload in the `thread.turn.start` case.
 - `apps/server/src/orchestration/Layers/ProviderCommandReactor.ts` — resolves custom slash command prompt in `processTurnStartRequested`: looks up command from settings, reads prompt file with `readFileSync` if set, concatenates file → promptMessage → extraText, replaces `messageText`. Error cases emit failure activities.
@@ -438,6 +439,11 @@
 - `apps/web/src/components/ChatView.tsx` — `onSend` detects custom commands from composer text, tags `thread.turn.start` dispatch with `customSlashCommand`.
 - `apps/web/src/components/chat/MessagesTimeline.tsx` — user messages starting with `/{command}` get styled: primary-coloured `/`, bold command name, tinted bubble (`bg-primary/5`, `border-primary/20`). Applies to all slash commands (custom, built-in, provider).
 - `apps/web/src/components/ui/textarea.tsx` — added `placeholder:text-muted-foreground/72` to match Input placeholder opacity.
+
+**Custom hooks (NEW feature — WIP, schema only so far):**
+
+- `packages/contracts/src/settingsHooks.ts` — `HookEvent` (6 events: PreToolUse, PostToolUse, PostCompact, SessionStart, UserPromptSubmit, FileChanged), `HookStatus` (active/draft), 5 action types (`CommandHookAction`, `PromptHookAction`, `AgentHookAction`, `HttpHookAction`, `SystemPromptHookAction`), `HookAction` union, `CustomHook` schema. The first 4 action types mirror the Claude Agent SDK's native hook types. `SystemPromptHookAction` is t3code-specific — injects content into the dynamic section of the system prompt.
+- `packages/contracts/src/settings.ts` — `customHooks` array on `ServerSettings` (defaults `[]`) and `ServerSettingsPatch`.
 
 **Vitest reporter + Turbo output noise reduction:**
 
