@@ -120,6 +120,7 @@ function deriveTerminalAssistantMessageIds(timelineEntries: ReadonlyArray<Timeli
 }
 
 const isCompactionEntry = (entry: WorkLogEntry) => entry.isCompacting || entry.isCompacted;
+const isFileChangeEntry = (entry: WorkLogEntry) => entry.itemType === "file_change";
 
 export function deriveMessagesTimelineRows(input: {
   timelineEntries: ReadonlyArray<TimelineEntry>;
@@ -170,12 +171,25 @@ export function deriveMessagesTimelineRows(input: {
         continue;
       }
 
+      // Edit/Write (file_change) entries are always standalone — they render
+      // their own diff inline and should never be grouped with other tools.
+      if (isFileChangeEntry(timelineEntry.entry)) {
+        nextRows.push({
+          kind: "work",
+          id: timelineEntry.id,
+          createdAt: timelineEntry.createdAt,
+          groupedEntries: [timelineEntry.entry],
+        });
+        continue;
+      }
+
       const groupedEntries = [timelineEntry.entry];
       let cursor = index + 1;
       while (cursor < input.timelineEntries.length) {
         const nextEntry = input.timelineEntries[cursor];
         if (!nextEntry || nextEntry.kind !== "work") break;
         if (isCompactionEntry(nextEntry.entry)) break;
+        if (isFileChangeEntry(nextEntry.entry)) break;
         groupedEntries.push(nextEntry.entry);
         cursor += 1;
       }

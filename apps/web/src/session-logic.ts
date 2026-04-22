@@ -67,6 +67,8 @@ export interface WorkLogEntry {
   resultContent?: string;
   /** True when a tool call hasn't completed yet (spinner indicator). */
   isToolInProgress?: boolean;
+  /** Attached edit/write diff — present on completed file_change entries. One diff per work entry. */
+  editDiffs?: EditDiffEntry[];
 }
 
 interface DerivedWorkLogEntry extends WorkLogEntry {
@@ -529,7 +531,12 @@ export function deriveWorkLogEntries(
         return activity.turnId !== null && visibleTurnIds.has(activity.turnId);
       return activity.turnId === visibleTurnIds;
     })
-    .filter((activity) => activity.kind !== "tool.started")
+    .filter((activity) => {
+      if (activity.kind !== "tool.started") return true;
+      const p = activity.payload as Record<string, unknown> | null;
+      const itemType = p?.itemType;
+      return itemType === "file_change" || itemType === "collab_agent_tool_call";
+    })
     .filter((activity) => activity.kind !== "task.started")
     .filter((activity) => activity.kind !== "context-window.updated")
     .filter((activity) => activity.kind !== "provider.approval.respond.failed")
@@ -538,6 +545,26 @@ export function deriveWorkLogEntries(
     .filter((activity) => !isPlanBoundaryToolActivity(activity))
     .map(toDerivedWorkLogEntry);
   const collapsed = collapseDerivedWorkLogEntries(entries);
+
+  // Drop tool.started entries for sub-agents that have been superseded by
+  // a tool.updated (task.progress entries prevent adjacency collapse).
+  // Each tool.updated consumes the earliest unmatched tool.started.
+  const supersededSubAgentStartedIds = new Set<string>();
+  {
+    const startedQueue: string[] = [];
+    for (const entry of collapsed) {
+      if (entry.itemType !== "collab_agent_tool_call") continue;
+      if (entry.activityKind === "tool.started") {
+        startedQueue.push(entry.id);
+      } else if (
+        (entry.activityKind === "tool.updated" || entry.activityKind === "tool.completed") &&
+        startedQueue.length > 0
+      ) {
+        supersededSubAgentStartedIds.add(startedQueue.shift()!);
+      }
+    }
+    // Any remaining in startedQueue are still in-progress (no tool.updated yet) — keep them.
+  }
 
   // The tool.updated and tool.completed for a collab_agent_tool_call are
   // usually NOT consecutive (task.progress entries sit between them), so
@@ -645,6 +672,10 @@ export function deriveWorkLogEntries(
       ) {
         return false;
       }
+      // Drop tool.started sub-agent entries once a tool.updated has arrived.
+      if (supersededSubAgentStartedIds.has(entry.id)) {
+        return false;
+      }
       // Drop the tool.updated sub-agent entry when a tool.completed exists —
       // the completed entry supersedes it and carries the full result data.
       if (
@@ -684,7 +715,7 @@ export function deriveWorkLogEntries(
       }
       if (
         entry.itemType !== "collab_agent_tool_call" &&
-        activityKind === "tool.updated" &&
+        (activityKind === "tool.updated" || activityKind === "tool.started") &&
         !(collapseKey && graftedToolKeys.has(collapseKey))
       ) {
         entry.isToolInProgress = true;
@@ -855,6 +886,17 @@ function shouldCollapseToolLifecycleEntries(
   previous: DerivedWorkLogEntry,
   next: DerivedWorkLogEntry,
 ): boolean {
+  // tool.started → tool.updated collapse for file_change and collab_agent_tool_call.
+  // tool.started has no collapseKey or toolCallId, so match by itemType.
+  if (
+    previous.activityKind === "tool.started" &&
+    (next.activityKind === "tool.updated" || next.activityKind === "tool.completed") &&
+    previous.itemType === next.itemType &&
+    (previous.itemType === "file_change" || previous.itemType === "collab_agent_tool_call")
+  ) {
+    return true;
+  }
+
   if (previous.activityKind !== "tool.updated" && previous.activityKind !== "tool.completed") {
     return false;
   }
@@ -1228,7 +1270,8 @@ function extractToolDetail(
   heading: string,
 ): string | null {
   const rawDetail = asTrimmedString(payload?.detail);
-  const detail = rawDetail ? stripTrailingExitCode(rawDetail).output : null;
+  // tool.started events use "{}" as a placeholder detail — skip it.
+  const detail = rawDetail && rawDetail !== "{}" ? stripTrailingExitCode(rawDetail).output : null;
   const normalizedHeading = normalizePreviewForComparison(heading);
   const normalizedDetail = normalizePreviewForComparison(detail);
 
@@ -1473,18 +1516,43 @@ export function deriveTimelineEntries(
     createdAt: proposedPlan.createdAt,
     proposedPlan,
   }));
+  // Attach edit diff data to matching work entries so they render inline.
+  // Match by filePath (work entry's `detail` === edit entry's `filePath`).
+  // Each work entry consumes the next available edit for that path — one
+  // edit per work entry so each renders as its own standalone row.
+  const editsByFilePath = new Map<string, EditDiffEntry[]>();
+  for (const editEntry of editEntries) {
+    let bucket = editsByFilePath.get(editEntry.filePath);
+    if (!bucket) {
+      bucket = [];
+      editsByFilePath.set(editEntry.filePath, bucket);
+    }
+    bucket.push(editEntry);
+  }
+  const matchedEditIds = new Set<string>();
+  for (const workEntry of workEntries) {
+    if (workEntry.itemType !== "file_change" || !workEntry.detail) continue;
+    const bucket = editsByFilePath.get(workEntry.detail);
+    if (!bucket || bucket.length === 0) continue;
+    const nextEdit = bucket.shift()!;
+    workEntry.editDiffs = [nextEdit];
+    matchedEditIds.add(nextEdit.id);
+  }
+
   const workRows: TimelineEntry[] = workEntries.map((entry) => ({
     id: entry.id,
     kind: "work",
     createdAt: entry.createdAt,
     entry,
   }));
-  const editRows: TimelineEntry[] = editEntries.map((editEntry) => ({
-    id: editEntry.id,
-    kind: "edit",
-    createdAt: editEntry.createdAt,
-    editEntry,
-  }));
+  const editRows: TimelineEntry[] = editEntries
+    .filter((e) => !matchedEditIds.has(e.id))
+    .map((editEntry) => ({
+      id: editEntry.id,
+      kind: "edit",
+      createdAt: editEntry.createdAt,
+      editEntry,
+    }));
   return [...messageRows, ...proposedPlanRows, ...workRows, ...editRows].toSorted((a, b) =>
     a.createdAt.localeCompare(b.createdAt),
   );

@@ -16,6 +16,7 @@ function makeUiState(overrides: Partial<UiState> = {}): UiState {
   return {
     projectExpandedById: {},
     projectOrder: [],
+    threadListExpandedByProject: new Set(),
     threadLastVisitedAtById: {},
     threadChangedFilesExpandedById: {},
     pinnedThreadKeys: new Set(),

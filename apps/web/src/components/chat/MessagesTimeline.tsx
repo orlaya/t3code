@@ -28,6 +28,7 @@ import {
   LoaderIcon,
   LogsIcon,
   type LucideIcon,
+  PencilIcon,
   SearchIcon,
   TerminalIcon,
   Undo2Icon,
@@ -387,11 +388,10 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
       {row.kind === "thinking" && <ThinkingSection message={row.message} />}
 
       {row.kind === "edit" && (
-        <InlineEditDiff
+        <StandaloneEditRow
           editEntry={row.editEntry}
           workspaceRoot={ctx.workspaceRoot}
           resolvedTheme={ctx.resolvedTheme}
-          headerLabel={row.editEntry.toolName === "Write" ? "WRITE" : "EDIT"}
         />
       )}
 
@@ -600,8 +600,31 @@ const WorkGroupSection = memo(function WorkGroupSection({
 }: {
   groupedEntries: Extract<MessagesTimelineRow, { kind: "work" }>["groupedEntries"];
 }) {
-  const { workspaceRoot } = use(TimelineRowCtx);
+  const { workspaceRoot, resolvedTheme } = use(TimelineRowCtx);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Standalone file_change entry (Edit/Write) — renders the work entry label
+  // with an inline diff below it, never grouped with other tools.
+  if (groupedEntries.length === 1 && groupedEntries[0]?.itemType === "file_change") {
+    const entry = groupedEntries[0];
+    return (
+      <div className="rounded-lg border border-border/45 bg-card/25 overflow-hidden">
+        <div className="px-0.5">
+          <SimpleWorkEntryRow workEntry={entry} workspaceRoot={workspaceRoot} />
+        </div>
+        {entry.editDiffs?.map((diff) => (
+          <InlineEditDiff
+            key={diff.id}
+            editEntry={diff}
+            workspaceRoot={workspaceRoot}
+            resolvedTheme={resolvedTheme}
+            variant="flush"
+            hideHeader
+          />
+        ))}
+      </div>
+    );
+  }
 
   // Split out sub-agent entries — they always pin at the top regardless of status.
   const pinnedSubAgents = groupedEntries.filter((e) => e.itemType === "collab_agent_tool_call");
@@ -1561,6 +1584,66 @@ function useStableRows(rows: MessagesTimelineRow[]): MessagesTimelineRow[] {
 }
 
 // ---------------------------------------------------------------------------
+// Standalone edit row — unmatched EditDiffEntry rendered to look identical
+// to a matched file_change work entry (SimpleWorkEntryRow header + flush diff).
+// ---------------------------------------------------------------------------
+
+const StandaloneEditRow = memo(function StandaloneEditRow({
+  editEntry,
+  workspaceRoot,
+  resolvedTheme,
+}: {
+  editEntry: import("../../session-logic").EditDiffEntry;
+  workspaceRoot: string | undefined;
+  resolvedTheme: "light" | "dark";
+}) {
+  const displayPath = formatWorkspaceRelativePath(editEntry.filePath, workspaceRoot);
+  const heading = editEntry.toolName === "Write" ? "Write" : "Edit";
+
+  const handleOpenInEditor = useCallback(() => {
+    const api = readLocalApi();
+    if (!api) return;
+    void openInPreferredEditor(api, editEntry.filePath);
+  }, [editEntry.filePath]);
+
+  return (
+    <div className="rounded-lg border border-border/45 bg-card/25 overflow-hidden">
+      <div className="px-0.5">
+        <div
+          className="group/file cursor-pointer rounded-lg px-0.25 py-1"
+          onClick={handleOpenInEditor}
+        >
+          <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
+            <span className="flex size-5 shrink-0 items-center justify-center text-foreground/60">
+              <PencilIcon className="size-3" />
+            </span>
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <p className="truncate text-[11px] leading-5 text-muted-foreground/90">
+                <span className="text-muted-foreground/90">{heading}</span>
+                <span className="text-muted-foreground/85">
+                  {" "}
+                  -{" "}
+                  <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
+                    {displayPath}
+                  </span>
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <InlineEditDiff
+        editEntry={editEntry}
+        workspaceRoot={workspaceRoot}
+        resolvedTheme={resolvedTheme}
+        variant="flush"
+        hideHeader
+      />
+    </div>
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Pure helpers
 // ---------------------------------------------------------------------------
 
@@ -1678,12 +1761,13 @@ function workEntryRawCommand(
 function workEntryIcon(workEntry: TimelineWorkEntry): LucideIcon {
   if (workEntry.requestKind === "command") return TerminalIcon;
   if (workEntry.requestKind === "file-read") return EyeIcon;
-  if (workEntry.requestKind === "file-change") return SearchIcon;
+  if (workEntry.requestKind === "file-change") return PencilIcon;
 
   if (workEntry.itemType === "command_execution" || workEntry.command) {
     return TerminalIcon;
   }
-  if (workEntry.itemType === "file_change" || (workEntry.changedFiles?.length ?? 0) > 0) {
+  if (workEntry.itemType === "file_change") return PencilIcon;
+  if ((workEntry.changedFiles?.length ?? 0) > 0) {
     return SearchIcon;
   }
   if (workEntry.itemType === "web_search") return GlobeIcon;

@@ -25,6 +25,7 @@ interface PersistedUiState {
 export interface UiProjectState {
   projectExpandedById: Record<string, boolean>;
   projectOrder: string[];
+  threadListExpandedByProject: Set<string>;
 }
 
 export interface UiThreadState {
@@ -48,6 +49,7 @@ export interface SyncThreadInput {
 const initialState: UiState = {
   projectExpandedById: {},
   projectOrder: [],
+  threadListExpandedByProject: new Set(),
   threadLastVisitedAtById: {},
   threadChangedFilesExpandedById: {},
   pinnedThreadKeys: new Set(),
@@ -490,26 +492,85 @@ export function toggleThreadPinned(state: UiState, threadKey: string): UiState {
   return { ...state, pinnedThreadKeys: next };
 }
 
-export function toggleProject(state: UiState, projectId: string): UiState {
-  const expanded = state.projectExpandedById[projectId] ?? true;
+/** Expand only this project (step 1 of accordion). */
+function expandProject(state: UiState, projectId: string): UiState {
   return {
     ...state,
     projectExpandedById: {
       ...state.projectExpandedById,
-      [projectId]: !expanded,
+      [projectId]: true,
     },
   };
 }
+
+/** Collapse every project except the given one (step 2 of accordion). */
+function collapseOtherProjects(state: UiState, projectId: string): UiState {
+  const nextExpandedById: Record<string, boolean> = {};
+  for (const id of Object.keys(state.projectExpandedById)) {
+    nextExpandedById[id] = id === projectId;
+  }
+
+  let nextThreadListExpanded = state.threadListExpandedByProject;
+  if (nextThreadListExpanded.size > 0) {
+    nextThreadListExpanded = new Set<string>();
+    if (state.threadListExpandedByProject.has(projectId)) {
+      nextThreadListExpanded.add(projectId);
+    }
+  }
+
+  return {
+    ...state,
+    projectExpandedById: nextExpandedById,
+    threadListExpandedByProject: nextThreadListExpanded,
+  };
+}
+
+/** Collapse a single project. */
+function collapseProject(state: UiState, projectId: string): UiState {
+  return {
+    ...state,
+    projectExpandedById: {
+      ...state.projectExpandedById,
+      [projectId]: false,
+    },
+  };
+}
+
+const ACCORDION_COLLAPSE_DELAY_MS = 100;
 
 export function setProjectExpanded(state: UiState, projectId: string, expanded: boolean): UiState {
   if ((state.projectExpandedById[projectId] ?? true) === expanded) {
     return state;
   }
+
+  // Accordion: when expanding, collapse all others
+  if (expanded) {
+    const nextExpandedById: Record<string, boolean> = {};
+    for (const id of Object.keys(state.projectExpandedById)) {
+      nextExpandedById[id] = false;
+    }
+    nextExpandedById[projectId] = true;
+
+    let nextThreadListExpanded = state.threadListExpandedByProject;
+    if (nextThreadListExpanded.size > 0) {
+      nextThreadListExpanded = new Set<string>();
+      if (state.threadListExpandedByProject.has(projectId)) {
+        nextThreadListExpanded.add(projectId);
+      }
+    }
+
+    return {
+      ...state,
+      projectExpandedById: nextExpandedById,
+      threadListExpandedByProject: nextThreadListExpanded,
+    };
+  }
+
   return {
     ...state,
     projectExpandedById: {
       ...state.projectExpandedById,
-      [projectId]: expanded,
+      [projectId]: false,
     },
   };
 }
@@ -567,6 +628,8 @@ interface UiStateStore extends UiState {
   toggleThreadPinned: (threadKey: string) => void;
   toggleProject: (projectId: string) => void;
   setProjectExpanded: (projectId: string, expanded: boolean) => void;
+  expandThreadListForProject: (projectKey: string) => void;
+  collapseThreadListForProject: (projectKey: string) => void;
   reorderProjects: (
     draggedProjectIds: readonly string[],
     targetProjectIds: readonly string[],
@@ -585,9 +648,46 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
   setThreadChangedFilesExpanded: (threadId, turnId, expanded) =>
     set((state) => setThreadChangedFilesExpanded(state, threadId, turnId, expanded)),
   toggleThreadPinned: (threadKey) => set((state) => toggleThreadPinned(state, threadKey)),
-  toggleProject: (projectId) => set((state) => toggleProject(state, projectId)),
-  setProjectExpanded: (projectId, expanded) =>
-    set((state) => setProjectExpanded(state, projectId, expanded)),
+  toggleProject: (projectId) => {
+    const state = useUiStateStore.getState();
+    const expanded = state.projectExpandedById[projectId] ?? true;
+    if (expanded) {
+      // User is closing — immediate, no stagger needed
+      set((s) => collapseProject(s, projectId));
+    } else {
+      // User is opening — expand immediately, collapse others after a short delay
+      set((s) => expandProject(s, projectId));
+      setTimeout(() => {
+        set((s) => collapseOtherProjects(s, projectId));
+      }, ACCORDION_COLLAPSE_DELAY_MS);
+    }
+  },
+  setProjectExpanded: (projectId, expanded) => {
+    const state = useUiStateStore.getState();
+    if ((state.projectExpandedById[projectId] ?? true) === expanded) return;
+    if (expanded) {
+      set((s) => expandProject(s, projectId));
+      setTimeout(() => {
+        set((s) => collapseOtherProjects(s, projectId));
+      }, ACCORDION_COLLAPSE_DELAY_MS);
+    } else {
+      set((s) => collapseProject(s, projectId));
+    }
+  },
+  expandThreadListForProject: (projectKey) =>
+    set((state) => {
+      if (state.threadListExpandedByProject.has(projectKey)) return state;
+      const next = new Set(state.threadListExpandedByProject);
+      next.add(projectKey);
+      return { ...state, threadListExpandedByProject: next };
+    }),
+  collapseThreadListForProject: (projectKey) =>
+    set((state) => {
+      if (!state.threadListExpandedByProject.has(projectKey)) return state;
+      const next = new Set(state.threadListExpandedByProject);
+      next.delete(projectKey);
+      return { ...state, threadListExpandedByProject: next };
+    }),
   reorderProjects: (draggedProjectIds, targetProjectIds) =>
     set((state) => reorderProjects(state, draggedProjectIds, targetProjectIds)),
 }));

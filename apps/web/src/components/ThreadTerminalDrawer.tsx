@@ -592,7 +592,7 @@ export function TerminalViewport({
                   const suffix = rawPath.endsWith("/") ? rawPath.slice(0, -1) : rawPath;
                   const matches = result.entries
                     .filter((e) => e.path.endsWith(suffix) && e.kind === "file")
-                    .sort((a, b) => a.path.length - b.path.length);
+                    .toSorted((a, b) => a.path.length - b.path.length);
                   const exactMatch = matches[0];
                   if (exactMatch) {
                     const position = line ? `:${line}${column ? `:${column}` : ""}` : "";

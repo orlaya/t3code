@@ -1,6 +1,7 @@
 import { memo, useMemo, type CSSProperties } from "react";
 import { TerminalIcon } from "lucide-react";
 import { Dialog, DialogPanel, DialogPopup } from "../ui/dialog";
+import { MessageCopyButton } from "./MessageCopyButton";
 
 /**
  * Lightweight terminal-output syntax highlighter.
@@ -81,7 +82,7 @@ const CACHE_BYPASS_RE = /(cache bypass, force executing \w+)/i;
 // Single source of truth — classifyInlineMatch also uses these.
 const ERROR_WORDS = "error|errors|failed|failure|fatal|bugger";
 const WARNING_WORDS = "warning|warnings|warn|hmm";
-const SUCCESS_WORDS = "successful|success|ok|passed|0 errors|0 warnings";
+const SUCCESS_WORDS = "successful|success|ok|passed|0 errors|0 warnings|0 failures";
 
 // Bracket labels: `[types]`, `[check]`, `[build]`, etc.
 const BRACKET_LABEL = "\\[[^\\]]+\\]";
@@ -94,7 +95,7 @@ const FILEPATH = "(?:[\\w@.\\-]+/)+[\\w.\\-]+\\.\\w+";
 // Order matters: file paths before keywords (so `src/errors/Fatal.ts` matches
 // as a path, not as the word "error" inside it).
 const INLINE_RE = new RegExp(
-  `(${BRACKET_LABEL})|(${FILEPATH})|\\b(${ERROR_WORDS})\\b|\\b(${WARNING_WORDS})\\b|\\b(${SUCCESS_WORDS})\\b`,
+  `(${BRACKET_LABEL})|(${FILEPATH})|\\b(${ERROR_WORDS})\\b|\\b(${WARNING_WORDS})\\b|(\\b(?:\\d+\\s+)?(?:${SUCCESS_WORDS})\\b|✓)`,
   "gi",
 );
 
@@ -224,6 +225,7 @@ export const HighlightedTerminalOutput = memo(function HighlightedTerminalOutput
         const isGroupBreak = lineIdx > 0 && (isBlank || leadType !== prevLeadType);
         return (
           <div
+            // eslint-disable-next-line react/no-array-index-key
             key={lineIdx}
             style={{
               lineHeight: "1.6",
@@ -231,6 +233,7 @@ export const HighlightedTerminalOutput = memo(function HighlightedTerminalOutput
             }}
           >
             {tokens.map(([type, text], tokenIdx) => (
+              // eslint-disable-next-line react/no-array-index-key
               <span key={tokenIdx} style={termTokenStyles[type]}>
                 {text}
               </span>
@@ -284,12 +287,20 @@ export const ToolResultDialog = memo(function ToolResultDialog({
           )}
 
           {/* Output */}
-          <div className="mt-3 rounded-lg border border-border/45 bg-card/25 px-3 py-2">
-            <p className="pb-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
+          <div className="relative mt-3 rounded-lg border border-border/45 bg-card/25 pt-2">
+            <MessageCopyButton
+              text={resultContent}
+              size="icon-xs"
+              variant="ghost"
+              className="absolute top-1.5 right-1.5 z-10 text-muted-foreground/55"
+            />
+            <p className="px-3 pb-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
               Output
             </p>
-            <div className="max-h-[50vh] overflow-y-auto">
-              <HighlightedTerminalOutput content={resultContent} />
+            <div className="max-h-[50vh] overflow-y-auto pb-2">
+              <div className="px-3">
+                <HighlightedTerminalOutput content={resultContent} />
+              </div>
             </div>
           </div>
         </DialogPanel>

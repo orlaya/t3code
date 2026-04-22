@@ -131,7 +131,7 @@
   --destructive-foreground: #e06c6c;
   --info: oklch(0.758 0.084 214);
   --info-foreground: oklch(0.811 0.066 213);
-  --success:  #cae28f;
+  --success: #cae28f;
   --success-foreground: #cae28f;
   --warning: oklch(0.752 0.15 53);
   --warning-foreground: oklch(0.787 0.125 49);
@@ -163,9 +163,9 @@
     --destructive-foreground: #e06c6c;
     --info: oklch(0.758 0.084 214);
     --info-foreground: oklch(0.811 0.066 213);
-    --success:  #cae28f;
+    --success: #cae28f;
     --success-foreground: #cae28f;
-    --warning:  oklch(0.752 0.15 53);
+    --warning: oklch(0.752 0.15 53);
     --warning-foreground: oklch(0.787 0.125 49);
   }
 }

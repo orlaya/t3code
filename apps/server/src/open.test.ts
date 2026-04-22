@@ -187,7 +187,7 @@ it.layer(NodeServices.layer)("resolveEditorLaunch", (it) => {
       );
       assert.deepEqual(zedLineOnly, {
         command: "zed",
-        args: ["/tmp/workspace/AGENTS.md:48"],
+        args: ["--add", "/tmp/workspace/AGENTS.md:48"],
       });
 
       const ideaLineOnly = yield* resolveEditorLaunch(

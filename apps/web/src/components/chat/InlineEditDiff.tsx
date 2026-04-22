@@ -31,6 +31,7 @@ export const InlineEditDiff = memo(function InlineEditDiff({
   resolvedTheme,
   headerLabel,
   variant = "card",
+  hideHeader = false,
 }: {
   editEntry: EditDiffEntry;
   workspaceRoot: string | undefined;
@@ -39,6 +40,8 @@ export const InlineEditDiff = memo(function InlineEditDiff({
   headerLabel?: string;
   /** "card" (default) renders with rounded corners, border, and bg. "flush" removes those to fill the parent. */
   variant?: "card" | "flush";
+  /** When true, the header row (label + file path) is hidden — useful when the parent already shows the file path. */
+  hideHeader?: boolean;
 }) {
   const displayPath = formatWorkspaceRelativePath(editEntry.filePath, workspaceRoot);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -100,33 +103,35 @@ export const InlineEditDiff = memo(function InlineEditDiff({
     <div
       className={
         variant === "flush"
-          ? "overflow-hidden"
+          ? "cursor-pointer overflow-hidden"
           : "cursor-pointer rounded-lg border border-border/45 bg-card/25 overflow-hidden transition-colors duration-100 hover:border-border/70"
       }
-      onClick={variant === "flush" ? undefined : handleOpenInEditor}
+      onClick={handleOpenInEditor}
     >
-      <div className="flex items-center gap-2 bg-black/15 px-2.5 py-1.5">
-        {headerLabel && (
-          <span className="shrink-0 text-[10.2px] uppercase tracking-[0.16em] text-muted-foreground/70">
-            {headerLabel}
+      {!hideHeader && (
+        <div className="flex items-center gap-2 bg-black/15 px-2.5 py-1.5">
+          {headerLabel && (
+            <span className="shrink-0 text-[10.2px] uppercase tracking-[0.16em] text-muted-foreground/70">
+              {headerLabel}
+            </span>
+          )}
+          <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/80">
+            {displayPath}
           </span>
-        )}
-        <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground/80">
-          {displayPath}
-        </span>
-        {isOverflowing && (
-          <div
-            className={`${TOGGLE_CHEVRON_CLASSES} ml-auto flex flex-1 cursor-pointer items-center justify-end self-stretch shrink-0`}
-            onClick={handleToggle}
-          >
-            {isExpanded ? (
-              <ChevronUpIcon className="size-3.5" />
-            ) : (
-              <ChevronDownIcon className="size-3.5" />
-            )}
-          </div>
-        )}
-      </div>
+          {isOverflowing && (
+            <div
+              className={`${TOGGLE_CHEVRON_CLASSES} ml-auto flex flex-1 cursor-pointer items-center justify-end self-stretch shrink-0`}
+              onClick={handleToggle}
+            >
+              {isExpanded ? (
+                <ChevronUpIcon className="size-3.5" />
+              ) : (
+                <ChevronDownIcon className="size-3.5" />
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div
         ref={diffContainerRef}
