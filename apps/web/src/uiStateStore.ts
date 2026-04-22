@@ -247,7 +247,7 @@ export function syncProjects(state: UiState, projects: readonly SyncProjectInput
       (previousProjectIdForCwd ? previousExpandedById[previousProjectIdForCwd] : undefined) ??
       (persistedExpandedProjectCwds.size > 0
         ? persistedExpandedProjectCwds.has(project.cwd)
-        : true);
+        : false);
     nextExpandedById[project.key] = expanded;
     return {
       id: project.key,
@@ -304,6 +304,15 @@ export function syncProjects(state: UiState, projects: readonly SyncProjectInput
             return left.incomingIndex - right.incomingIndex;
           })
           .map((project) => project.id);
+
+  // Accordion: ensure at most one project is expanded after sync
+  const expandedKeys = Object.keys(nextExpandedById).filter((id) => nextExpandedById[id]);
+  if (expandedKeys.length > 1) {
+    // Keep only the first expanded project (respects persisted/order priority)
+    for (let i = 1; i < expandedKeys.length; i++) {
+      nextExpandedById[expandedKeys[i]!] = false;
+    }
+  }
 
   if (
     recordsEqual(state.projectExpandedById, nextExpandedById) &&
@@ -539,7 +548,7 @@ function collapseProject(state: UiState, projectId: string): UiState {
 const ACCORDION_COLLAPSE_DELAY_MS = 100;
 
 export function setProjectExpanded(state: UiState, projectId: string, expanded: boolean): UiState {
-  if ((state.projectExpandedById[projectId] ?? true) === expanded) {
+  if ((state.projectExpandedById[projectId] ?? false) === expanded) {
     return state;
   }
 
@@ -650,7 +659,7 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
   toggleThreadPinned: (threadKey) => set((state) => toggleThreadPinned(state, threadKey)),
   toggleProject: (projectId) => {
     const state = useUiStateStore.getState();
-    const expanded = state.projectExpandedById[projectId] ?? true;
+    const expanded = state.projectExpandedById[projectId] ?? false;
     if (expanded) {
       // User is closing — immediate, no stagger needed
       set((s) => collapseProject(s, projectId));
@@ -664,7 +673,7 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
   },
   setProjectExpanded: (projectId, expanded) => {
     const state = useUiStateStore.getState();
-    if ((state.projectExpandedById[projectId] ?? true) === expanded) return;
+    if ((state.projectExpandedById[projectId] ?? false) === expanded) return;
     if (expanded) {
       set((s) => expandProject(s, projectId));
       setTimeout(() => {

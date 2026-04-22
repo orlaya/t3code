@@ -1085,7 +1085,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   sidebarThreadByKeyRef.current = sidebarThreadByKey;
   const projectThreads = sidebarThreads;
   const projectExpanded = useUiStateStore(
-    (state) => state.projectExpandedById[project.projectKey] ?? true,
+    (state) => state.projectExpandedById[project.projectKey] ?? false,
   );
   const threadLastVisitedAts = useUiStateStore(
     useShallow((state) =>
@@ -3154,7 +3154,7 @@ export default function Sidebar() {
           sidebarThreadSortOrder,
           projectPinnedIds,
         );
-        const projectExpanded = projectExpandedById[project.projectKey] ?? true;
+        const projectExpanded = projectExpandedById[project.projectKey] ?? false;
         const activeThreadKey = routeThreadKey ?? undefined;
         const pinnedCollapsedThread =
           !projectExpanded && activeThreadKey
