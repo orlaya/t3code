@@ -1086,6 +1086,7 @@ export default function ChatView(props: ChatViewProps) {
   const selectedProvider: ProviderKind = lockedProvider ?? unlockedSelectedProvider;
   const phase = derivePhase(activeThread?.session ?? null);
   const threadActivities = activeThread?.activities ?? EMPTY_ACTIVITIES;
+  const providerName = activeThread?.session?.provider ?? threadProvider ?? "codex";
   const workLogHistory = settings.workLogHistory;
   const visibleTurnIds = useMemo((): Set<TurnId> | TurnId | undefined => {
     const latestId = activeLatestTurn?.turnId;
@@ -1108,12 +1109,12 @@ export default function ChatView(props: ChatViewProps) {
     return new Set(ordered.slice(-count));
   }, [activeLatestTurn?.turnId, threadActivities, workLogHistory]);
   const workLogEntries = useMemo(
-    () => deriveWorkLogEntries(threadActivities, visibleTurnIds),
-    [threadActivities, visibleTurnIds],
+    () => deriveWorkLogEntries(threadActivities, visibleTurnIds, providerName),
+    [providerName, threadActivities, visibleTurnIds],
   );
   const editDiffEntries = useMemo(
-    () => deriveEditDiffEntries(threadActivities),
-    [threadActivities],
+    () => deriveEditDiffEntries(threadActivities, providerName),
+    [providerName, threadActivities],
   );
   const latestTurnHasToolActivity = useMemo(
     () => hasToolActivityForTurn(threadActivities, activeLatestTurn?.turnId),

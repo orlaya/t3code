@@ -525,3 +525,13 @@
 - `apps/web/src/components/chat/MessagesTimeline.logic.ts` — `isFileChangeEntry` helper. File_change work entries always standalone rows (never grouped with other tools), same pattern as compaction entries. Grouping loop breaks on file_change.
 - `apps/web/src/components/chat/MessagesTimeline.tsx` — `WorkGroupSection` early return for single file_change entries: renders `SimpleWorkEntryRow` label + `InlineEditDiff` (flush, hideHeader). Unmatched `kind: "edit"` rows render via new `StandaloneEditRow` component that mimics `SimpleWorkEntryRow` header style (icon + heading + file path) with flush `InlineEditDiff` below — visually identical to matched entries.
 - `apps/web/src/components/chat/MessagesTimeline.tsx` — `PencilIcon` replaces `SearchIcon` for `file_change` itemType and `file-change` requestKind in `workEntryIcon()`. `SearchIcon` retained for the `changedFiles` fallback (Grep/Read tools that reference file paths). `StandaloneEditRow` also uses `PencilIcon`.
+
+**UI adapter — read-time extraction layer (new files, additive only):**
+
+- `packages/contracts/src/ui-adapter.ts` — canonical types: `CanonicalToolData`, `CanonicalToolInput`, `CanonicalToolResult`, `CanonicalApprovalData`, lifecycle registry types (`ToolLifecycleKind`, `ToolLifecycleDeclaration`, `ProviderLifecycleMap`). Exported from `index.ts`.
+- `apps/web/src/ui-adapter/index.ts` — dispatcher: `extractToolData(payload, providerName)`, `extractApprovalData(payload, providerName)`, `extractApprovalDecision(payload, providerName)`.
+- `apps/web/src/ui-adapter/claude.ts` — Claude extraction functions (near pass-through).
+- `apps/web/src/ui-adapter/codex.ts`, `opencode.ts`, `cursor.ts` — stubs returning null.
+- `apps/web/src/ui-adapter/lifecycle.ts` — per-provider lifecycle declarations, `getLifecycleMap(providerName)`.
+- `apps/web/src/ui-adapter/fixtures/*.json` — 12 JSON fixture files with real Claude payloads.
+- `apps/web/src/ui-adapter/claude.test.ts`, `index.test.ts` — 34 tests. Nothing calls the adapter yet — Phase 2 (switchover in session-logic.ts) is next.

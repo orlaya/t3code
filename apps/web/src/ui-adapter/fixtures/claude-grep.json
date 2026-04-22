@@ -1,0 +1,36 @@
+{
+  "started": {
+    "itemType": "dynamic_tool_call",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "dynamic_tool_call",
+    "status": "inProgress",
+    "detail": "/tmp/ui-adapter-fixture-bait.ts \u00b7 REPLACE_ME",
+    "data": {
+      "toolName": "Grep",
+      "input": {
+        "pattern": "REPLACE_ME",
+        "path": "/tmp/ui-adapter-fixture-bait.ts",
+        "output_mode": "content"
+      }
+    }
+  },
+  "completed": {
+    "itemType": "dynamic_tool_call",
+    "detail": "/tmp/ui-adapter-fixture-bait.ts \u00b7 REPLACE_ME",
+    "data": {
+      "toolName": "Grep",
+      "input": {
+        "pattern": "REPLACE_ME",
+        "path": "/tmp/ui-adapter-fixture-bait.ts",
+        "output_mode": "content"
+      },
+      "result": {
+        "tool_use_id": "toolu_01KVprGoQqi8ZPpnmnFjiewi",
+        "type": "tool_result",
+        "content": "3:const placeholder = \"REPLACE_ME\";\n4:const another = \"REPLACE_ME\";\n5:const third = \"REPLACE_ME\";"
+      }
+    }
+  }
+}

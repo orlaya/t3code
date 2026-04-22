@@ -1,0 +1,37 @@
+{
+  "started": {
+    "itemType": "command_execution",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "command_execution",
+    "status": "inProgress",
+    "detail": "cd /Users/sh/t3code && bun run typecheck",
+    "data": {
+      "toolName": "Bash",
+      "input": {
+        "command": "cd /Users/sh/t3code && bun run typecheck",
+        "description": "Run typecheck",
+        "timeout": 120000
+      }
+    }
+  },
+  "completed": {
+    "itemType": "command_execution",
+    "detail": "cd /Users/sh/t3code && bun run typecheck",
+    "data": {
+      "toolName": "Bash",
+      "input": {
+        "command": "cd /Users/sh/t3code && bun run typecheck",
+        "description": "Run typecheck",
+        "timeout": 120000
+      },
+      "result": {
+        "tool_use_id": "toolu_01Kfinm1YJUAumJztREbBqpW",
+        "type": "tool_result",
+        "content": "$ turbo run typecheck\n\n Tasks:    9 successful, 9 total\n  Time:    36.552s",
+        "is_error": false
+      }
+    }
+  }
+}

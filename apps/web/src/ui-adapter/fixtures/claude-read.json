@@ -1,0 +1,32 @@
+{
+  "started": {
+    "itemType": "dynamic_tool_call",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "dynamic_tool_call",
+    "status": "inProgress",
+    "detail": "/Users/sh/t3code/__notes/CLAUDE.md",
+    "data": {
+      "toolName": "Read",
+      "input": {
+        "file_path": "/Users/sh/t3code/__notes/CLAUDE.md"
+      }
+    }
+  },
+  "completed": {
+    "itemType": "dynamic_tool_call",
+    "detail": "/Users/sh/t3code/__notes/CLAUDE.md",
+    "data": {
+      "toolName": "Read",
+      "input": {
+        "file_path": "/Users/sh/t3code/__notes/CLAUDE.md"
+      },
+      "result": {
+        "tool_use_id": "toolu_01Y6CR3yNx7gEn47y9Muqox9",
+        "type": "tool_result",
+        "content": "1\t# Project notes\n2\t\n3\tSome content here..."
+      }
+    }
+  }
+}

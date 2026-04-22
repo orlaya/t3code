@@ -1,0 +1,41 @@
+{
+  "started": {
+    "itemType": "collab_agent_tool_call",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "collab_agent_tool_call",
+    "status": "inProgress",
+    "detail": "Explore: Read T3 code notes file",
+    "data": {
+      "toolName": "Agent",
+      "input": {
+        "description": "Read T3 code notes file",
+        "subagent_type": "Explore",
+        "prompt": "Read the file at sh/t3code/__notes/CLAUDE.md and report back what's in it."
+      }
+    }
+  },
+  "completed": {
+    "itemType": "collab_agent_tool_call",
+    "detail": "Explore: Read T3 code notes file",
+    "data": {
+      "toolName": "Agent",
+      "input": {
+        "description": "Read T3 code notes file",
+        "subagent_type": "Explore",
+        "prompt": "Read the file at sh/t3code/__notes/CLAUDE.md and report back what's in it."
+      },
+      "result": {
+        "tool_use_id": "toolu_01RQCg7eAtEN1Lns7SPnexiL",
+        "type": "tool_result",
+        "content": [
+          {
+            "type": "text",
+            "text": "The file contains project instructions and configuration notes."
+          }
+        ]
+      }
+    }
+  }
+}

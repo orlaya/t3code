@@ -1,0 +1,34 @@
+{
+  "started": {
+    "itemType": "file_change",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "file_change",
+    "status": "inProgress",
+    "detail": "/tmp/ui-adapter-fixture-bait.ts",
+    "data": {
+      "toolName": "Write",
+      "input": {
+        "file_path": "/tmp/ui-adapter-fixture-bait.ts",
+        "content": "// Temporary file to generate real Claude payloads for fixtures.\n// This will be used with Edit (replace_all) next.\nconst placeholder = \"REPLACE_ME\";\nconst another = \"REPLACE_ME\";\nconst third = \"REPLACE_ME\";\n"
+      }
+    }
+  },
+  "completed": {
+    "itemType": "file_change",
+    "detail": "/tmp/ui-adapter-fixture-bait.ts",
+    "data": {
+      "toolName": "Write",
+      "input": {
+        "file_path": "/tmp/ui-adapter-fixture-bait.ts",
+        "content": "// Temporary file to generate real Claude payloads for fixtures.\n// This will be used with Edit (replace_all) next.\nconst placeholder = \"REPLACE_ME\";\nconst another = \"REPLACE_ME\";\nconst third = \"REPLACE_ME\";\n"
+      },
+      "result": {
+        "tool_use_id": "toolu_01SWMcvoTyjw6RsuiA997MLM",
+        "type": "tool_result",
+        "content": "File created successfully at: /tmp/ui-adapter-fixture-bait.ts"
+      }
+    }
+  }
+}

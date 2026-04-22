@@ -1,0 +1,37 @@
+{
+  "started": {
+    "itemType": "file_change",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "file_change",
+    "status": "inProgress",
+    "detail": "/Users/sh/t3code/apps/web/src/components/chat/MessagesTimeline.tsx",
+    "data": {
+      "toolName": "Edit",
+      "input": {
+        "file_path": "/Users/sh/t3code/apps/web/src/components/chat/MessagesTimeline.tsx",
+        "old_string": "const foo = 1;",
+        "new_string": "const foo = 2;"
+      }
+    }
+  },
+  "completed": {
+    "itemType": "file_change",
+    "detail": "/Users/sh/t3code/apps/web/src/components/chat/MessagesTimeline.tsx",
+    "data": {
+      "toolName": "Edit",
+      "input": {
+        "file_path": "/Users/sh/t3code/apps/web/src/components/chat/MessagesTimeline.tsx",
+        "old_string": "const foo = 1;",
+        "new_string": "const foo = 2;"
+      },
+      "result": {
+        "tool_use_id": "toolu_01ABC123",
+        "type": "tool_result",
+        "content": "The file has been edited successfully.",
+        "is_error": false
+      }
+    }
+  }
+}

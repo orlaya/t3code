@@ -1,0 +1,30 @@
+{
+  "requested": {
+    "requestId": "7fdfa34f-7577-493b-a557-cf11f3118363",
+    "requestKind": "file-change",
+    "requestType": "file_change_approval",
+    "detail": "/tmp/ui-adapter-fixture-bait.ts",
+    "args": {
+      "toolName": "Edit",
+      "input": {
+        "file_path": "/tmp/ui-adapter-fixture-bait.ts",
+        "old_string": "const placeholder = \"REPLACED\";",
+        "new_string": "const placeholder = \"APPROVAL_TEST\";",
+        "replace_all": false
+      },
+      "toolUseId": "toolu_01HWJ3nMqdiubw4v3StAbeWq"
+    }
+  },
+  "resolvedDecline": {
+    "requestId": "7fdfa34f-7577-493b-a557-cf11f3118363",
+    "requestKind": "file-change",
+    "requestType": "file_change_approval",
+    "decision": "decline"
+  },
+  "resolvedAccept": {
+    "requestId": "870f016f-01fb-4f07-a78b-975b49234943",
+    "requestKind": "file-change",
+    "requestType": "file_change_approval",
+    "decision": "accept"
+  }
+}

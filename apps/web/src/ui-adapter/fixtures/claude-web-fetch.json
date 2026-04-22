@@ -1,0 +1,52 @@
+{
+  "started": {
+    "itemType": "dynamic_tool_call",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "dynamic_tool_call",
+    "status": "inProgress",
+    "detail": "{\"url\":\"https://registry.npmjs.org/lucide-react/latest\",\"prompt\":\"What is the version number?\"}",
+    "data": {
+      "toolName": "WebFetch",
+      "input": {
+        "url": "https://registry.npmjs.org/lucide-react/latest",
+        "prompt": "What is the version number?"
+      }
+    }
+  },
+  "completed": {
+    "itemType": "dynamic_tool_call",
+    "detail": "{\"url\":\"https://registry.npmjs.org/lucide-react/latest\",\"prompt\":\"What is the version number?\"}",
+    "data": {
+      "toolName": "WebFetch",
+      "input": {
+        "url": "https://registry.npmjs.org/lucide-react/latest",
+        "prompt": "What is the version number?"
+      },
+      "result": {
+        "tool_use_id": "toolu_01ABC456",
+        "type": "tool_result",
+        "content": "The latest version is 0.565.0"
+      }
+    }
+  },
+  "failed": {
+    "itemType": "dynamic_tool_call",
+    "status": "failed",
+    "detail": "{\"url\":\"https://www.npmjs.com/package/lucide-react\",\"prompt\":\"What is the latest version?\"}",
+    "data": {
+      "toolName": "WebFetch",
+      "input": {
+        "url": "https://www.npmjs.com/package/lucide-react",
+        "prompt": "What is the latest version?"
+      },
+      "result": {
+        "type": "tool_result",
+        "content": "Request failed with status code 403",
+        "is_error": true,
+        "tool_use_id": "toolu_017JxvEUpM7eCETCHt6EHeeF"
+      }
+    }
+  }
+}

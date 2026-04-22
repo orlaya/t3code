@@ -11,6 +11,7 @@ import {
   deriveCompletionDividerBeforeEntryId,
   deriveActiveWorkStartedAt,
   deriveActivePlanState,
+  deriveEditDiffEntries,
   derivePendingApprovals,
   derivePendingUserInputs,
   deriveTimelineEntries,
@@ -21,6 +22,8 @@ import {
   hasToolActivityForTurn,
   isLatestTurnSettled,
 } from "./session-logic";
+
+const TEST_PROVIDER_NAME = "claudeAgent";
 
 function makeActivity(overrides: {
   id?: string;
@@ -587,7 +590,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries.map((entry) => entry.id)).toEqual(["tool-complete"]);
   });
 
@@ -616,7 +619,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries.map((entry) => entry.id)).toEqual(["task-progress", "task-complete"]);
   });
 
@@ -632,7 +635,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries[0]?.label).toBe("Searching for API endpoints");
   });
 
@@ -648,7 +651,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries[0]?.label).toBe("Failed to deploy changes");
     expect(entries[0]?.tone).toBe("error");
   });
@@ -665,7 +668,7 @@ describe("deriveWorkLogEntries", () => {
       makeActivity({ id: "no-turn", summary: "Checkpoint captured", tone: "info" }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, TurnId.make("turn-2"));
+    const entries = deriveWorkLogEntries(activities, TurnId.make("turn-2"), TEST_PROVIDER_NAME);
     expect(entries.map((entry) => entry.id)).toEqual(["turn-2"]);
   });
 
@@ -686,8 +689,127 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries.map((entry) => entry.id)).toEqual(["tool-complete"]);
+  });
+
+  it("keeps separate edit tool invocations for the same file distinct", () => {
+    const filePath = "/Users/sh/t3code/__notes/scratch-test.md";
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "edit-1-start",
+        createdAt: "2026-02-23T00:00:01.000Z",
+        kind: "tool.started",
+        summary: "Edit started",
+        payload: { itemType: "file_change", detail: "{}" },
+      }),
+      makeActivity({
+        id: "edit-1-update",
+        createdAt: "2026-02-23T00:00:02.000Z",
+        kind: "tool.updated",
+        summary: "Edit",
+        payload: {
+          itemType: "file_change",
+          status: "inProgress",
+          detail: filePath,
+          data: {
+            toolName: "Edit",
+            input: {
+              file_path: filePath,
+              old_string: "first old",
+              new_string: "first new",
+            },
+            result: {
+              tool_use_id: "toolu-first",
+              type: "tool_result",
+              content: "updated",
+            },
+          },
+        },
+      }),
+      makeActivity({
+        id: "edit-1-complete",
+        createdAt: "2026-02-23T00:00:02.000Z",
+        kind: "tool.completed",
+        summary: "Edit",
+        payload: {
+          itemType: "file_change",
+          detail: filePath,
+          data: {
+            toolName: "Edit",
+            input: {
+              file_path: filePath,
+              old_string: "first old",
+              new_string: "first new",
+            },
+            result: {
+              tool_use_id: "toolu-first",
+              type: "tool_result",
+              content: "updated",
+            },
+          },
+        },
+      }),
+      makeActivity({
+        id: "edit-2-start",
+        createdAt: "2026-02-23T00:00:03.000Z",
+        kind: "tool.started",
+        summary: "Edit started",
+        payload: { itemType: "file_change", detail: "{}" },
+      }),
+      makeActivity({
+        id: "edit-2-update",
+        createdAt: "2026-02-23T00:00:04.000Z",
+        kind: "tool.updated",
+        summary: "Edit",
+        payload: {
+          itemType: "file_change",
+          status: "inProgress",
+          detail: filePath,
+          data: {
+            toolName: "Edit",
+            input: {
+              file_path: filePath,
+              old_string: "second old",
+              new_string: "second new",
+            },
+            result: {
+              tool_use_id: "toolu-second",
+              type: "tool_result",
+              content: "updated",
+            },
+          },
+        },
+      }),
+      makeActivity({
+        id: "edit-2-complete",
+        createdAt: "2026-02-23T00:00:04.000Z",
+        kind: "tool.completed",
+        summary: "Edit",
+        payload: {
+          itemType: "file_change",
+          detail: filePath,
+          data: {
+            toolName: "Edit",
+            input: {
+              file_path: filePath,
+              old_string: "second old",
+              new_string: "second new",
+            },
+            result: {
+              tool_use_id: "toolu-second",
+              type: "tool_result",
+              content: "updated",
+            },
+          },
+        },
+      }),
+    ];
+
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
+
+    expect(entries).toHaveLength(2);
+    expect(entries.map((entry) => entry.toolCallId)).toEqual(["toolu-first", "toolu-second"]);
   });
 
   it("omits ExitPlanMode lifecycle entries once the plan card is shown", () => {
@@ -722,7 +844,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries.map((entry) => entry.id)).toEqual(["real-work-log"]);
   });
 
@@ -744,7 +866,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries.map((entry) => entry.id)).toEqual(["first", "second"]);
   });
 
@@ -765,7 +887,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry?.command).toBe("bun run lint");
   });
 
@@ -786,7 +908,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry?.command).toBe("bun run lint");
     expect(entry?.rawCommand).toBe(
       "\"C:\\Program Files\\PowerShell\\7\\pwsh.exe\" -Command 'bun run lint'",
@@ -810,7 +932,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry?.command).toBe("rg -n foo .");
     expect(entry?.rawCommand).toBe(
       '"C:\\Program Files\\PowerShell\\7\\pwsh.exe" -Command "rg -n foo ."',
@@ -831,7 +953,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry?.command).toBe('rg -n -F "new Date()" .');
     expect(entry?.rawCommand).toBe(
       `"C:\\Program Files\\PowerShell\\7\\pwsh.exe" -NoLogo -NoProfile -Command 'rg -n -F "new Date()" .'`,
@@ -855,7 +977,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry?.command).toBe("bash script.sh");
     expect(entry?.rawCommand).toBeUndefined();
   });
@@ -884,7 +1006,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry).toMatchObject({
       command: "bun run dev",
       detail: '{ "dev": "vite dev --port 3000" }',
@@ -913,7 +1035,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry?.changedFiles).toEqual([
       "apps/web/src/components/ChatView.tsx",
       "apps/web/src/session-logic.ts",
@@ -934,7 +1056,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry?.toolTitle).toBe("Read File");
     expect(entry?.detail).toBeUndefined();
   });
@@ -978,7 +1100,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       id: "grep-complete",
@@ -1027,7 +1149,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       id: "read-complete",
@@ -1061,7 +1183,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const [entry] = deriveWorkLogEntries(activities, undefined);
+    const [entry] = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entry).toMatchObject({
       id: "cursor-command-complete",
       label: "Ran command",
@@ -1103,7 +1225,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
       id: "legacy-read-complete",
@@ -1155,7 +1277,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
 
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({
@@ -1217,7 +1339,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
 
     expect(entries.map((entry) => entry.id)).toEqual(["tool-1-complete", "tool-2-complete"]);
   });
@@ -1259,7 +1381,7 @@ describe("deriveWorkLogEntries", () => {
       }),
     ];
 
-    const entries = deriveWorkLogEntries(activities, undefined);
+    const entries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
 
     expect(entries).toHaveLength(1);
     expect(entries[0]?.id).toBe("a-complete-same-timestamp");
@@ -1342,6 +1464,154 @@ describe("deriveTimelineEntries", () => {
       }),
     ).toBe("assistant-final");
   });
+
+  it("keeps same-file edit diffs attached to the correct invocation around later assistant messages", () => {
+    const filePath = "/Users/sh/t3code/__notes/scratch-test.md";
+    const activities: OrchestrationThreadActivity[] = [
+      makeActivity({
+        id: "edit-1-start",
+        createdAt: "2026-02-23T00:00:30.000Z",
+        kind: "tool.started",
+        summary: "Edit started",
+        payload: { itemType: "file_change", detail: "{}" },
+      }),
+      makeActivity({
+        id: "edit-1-update",
+        createdAt: "2026-02-23T00:00:33.000Z",
+        kind: "tool.updated",
+        summary: "Edit",
+        payload: {
+          itemType: "file_change",
+          status: "inProgress",
+          detail: filePath,
+          data: {
+            toolName: "Edit",
+            input: {
+              file_path: filePath,
+              old_string: "middle old",
+              new_string: "middle new",
+            },
+            result: {
+              tool_use_id: "toolu-middle",
+              type: "tool_result",
+              content: "updated",
+            },
+          },
+        },
+      }),
+      makeActivity({
+        id: "edit-1-complete",
+        createdAt: "2026-02-23T00:00:33.000Z",
+        kind: "tool.completed",
+        summary: "Edit",
+        payload: {
+          itemType: "file_change",
+          detail: filePath,
+          data: {
+            toolName: "Edit",
+            input: {
+              file_path: filePath,
+              old_string: "middle old",
+              new_string: "middle new",
+            },
+            result: {
+              tool_use_id: "toolu-middle",
+              type: "tool_result",
+              content: "updated",
+            },
+          },
+        },
+      }),
+      makeActivity({
+        id: "edit-2-start",
+        createdAt: "2026-02-23T00:00:37.000Z",
+        kind: "tool.started",
+        summary: "Edit started",
+        payload: { itemType: "file_change", detail: "{}" },
+      }),
+      makeActivity({
+        id: "edit-2-update",
+        createdAt: "2026-02-23T00:00:43.000Z",
+        kind: "tool.updated",
+        summary: "Edit",
+        payload: {
+          itemType: "file_change",
+          status: "inProgress",
+          detail: filePath,
+          data: {
+            toolName: "Edit",
+            input: {
+              file_path: filePath,
+              old_string: "top old",
+              new_string: "top new",
+            },
+            result: {
+              tool_use_id: "toolu-top",
+              type: "tool_result",
+              content: "updated",
+            },
+          },
+        },
+      }),
+      makeActivity({
+        id: "edit-2-complete",
+        createdAt: "2026-02-23T00:00:43.000Z",
+        kind: "tool.completed",
+        summary: "Edit",
+        payload: {
+          itemType: "file_change",
+          detail: filePath,
+          data: {
+            toolName: "Edit",
+            input: {
+              file_path: filePath,
+              old_string: "top old",
+              new_string: "top new",
+            },
+            result: {
+              tool_use_id: "toolu-top",
+              type: "tool_result",
+              content: "updated",
+            },
+          },
+        },
+      }),
+    ];
+
+    const workEntries = deriveWorkLogEntries(activities, undefined, TEST_PROVIDER_NAME);
+    const editEntries = deriveEditDiffEntries(activities, TEST_PROVIDER_NAME);
+    const timelineEntries = deriveTimelineEntries(
+      [
+        {
+          id: MessageId.make("assistant-before"),
+          role: "assistant",
+          text: "first batch",
+          createdAt: "2026-02-23T00:00:29.000Z",
+          streaming: false,
+        },
+        {
+          id: MessageId.make("assistant-between"),
+          role: "assistant",
+          text: "second batch",
+          createdAt: "2026-02-23T00:00:36.000Z",
+          streaming: false,
+        },
+      ],
+      [],
+      workEntries,
+      editEntries,
+    );
+
+    expect(
+      timelineEntries.map((entry) =>
+        entry.kind === "message"
+          ? entry.message.id
+          : entry.kind === "work"
+            ? entry.entry.editDiffs?.[0]?.oldString
+            : entry.id,
+      ),
+    ).toEqual(["assistant-before", "middle old", "assistant-between", "top old"]);
+  });
 });
 
 describe("deriveWorkLogEntries context window handling", () => {
@@ -1364,6 +1634,7 @@ describe("deriveWorkLogEntries context window handling", () => {
         }),
       ],
       TurnId.make("turn-1"),
+      TEST_PROVIDER_NAME,
     );
 
     expect(entries).toHaveLength(1);
@@ -1382,6 +1653,7 @@ describe("deriveWorkLogEntries context window handling", () => {
         }),
       ],
       TurnId.make("turn-1"),
+      TEST_PROVIDER_NAME,
     );
 
     expect(entries).toHaveLength(1);

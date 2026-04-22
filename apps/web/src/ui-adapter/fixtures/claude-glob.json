@@ -1,0 +1,34 @@
+{
+  "started": {
+    "itemType": "dynamic_tool_call",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "dynamic_tool_call",
+    "status": "inProgress",
+    "detail": "/tmp \u00b7 ui-adapter-fixture-bait*",
+    "data": {
+      "toolName": "Glob",
+      "input": {
+        "pattern": "ui-adapter-fixture-bait*",
+        "path": "/tmp"
+      }
+    }
+  },
+  "completed": {
+    "itemType": "dynamic_tool_call",
+    "detail": "/tmp \u00b7 ui-adapter-fixture-bait*",
+    "data": {
+      "toolName": "Glob",
+      "input": {
+        "pattern": "ui-adapter-fixture-bait*",
+        "path": "/tmp"
+      },
+      "result": {
+        "tool_use_id": "toolu_01AKEXQDnLvdBGJNbb9zX31E",
+        "type": "tool_result",
+        "content": "/tmp/ui-adapter-fixture-bait.ts"
+      }
+    }
+  }
+}

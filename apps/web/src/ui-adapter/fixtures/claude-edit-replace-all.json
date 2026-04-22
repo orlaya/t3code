@@ -1,0 +1,38 @@
+{
+  "started": {
+    "itemType": "file_change",
+    "detail": "{}"
+  },
+  "updated": {
+    "itemType": "file_change",
+    "status": "inProgress",
+    "detail": "/tmp/ui-adapter-fixture-bait.ts",
+    "data": {
+      "toolName": "Edit",
+      "input": {
+        "file_path": "/tmp/ui-adapter-fixture-bait.ts",
+        "old_string": "REPLACE_ME",
+        "new_string": "REPLACED",
+        "replace_all": true
+      }
+    }
+  },
+  "completed": {
+    "itemType": "file_change",
+    "detail": "/tmp/ui-adapter-fixture-bait.ts",
+    "data": {
+      "toolName": "Edit",
+      "input": {
+        "file_path": "/tmp/ui-adapter-fixture-bait.ts",
+        "old_string": "REPLACE_ME",
+        "new_string": "REPLACED",
+        "replace_all": true
+      },
+      "result": {
+        "tool_use_id": "toolu_01ASgZKv8CKz5xZL6hDR9TGW",
+        "type": "tool_result",
+        "content": "The file /tmp/ui-adapter-fixture-bait.ts has been updated. All occurrences were successfully replaced."
+      }
+    }
+  }
+}

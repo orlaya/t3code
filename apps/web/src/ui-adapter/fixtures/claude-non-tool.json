@@ -1,0 +1,39 @@
+{
+  "contentDelta": {
+    "text": "Here is some streaming text from the assistant."
+  },
+  "contextCompaction": {
+    "state": "compacted",
+    "detail": {
+      "type": "system",
+      "subtype": "compact_boundary",
+      "session_id": "0b2b8fd9-d3b9-43b3-8385-25c3371f9143",
+      "uuid": "f7acdaa4-606d-4542-8ece-f1384c3aa0b9",
+      "compact_metadata": {
+        "trigger": "auto",
+        "pre_tokens": 167577,
+        "post_tokens": 7375,
+        "duration_ms": 120953
+      }
+    }
+  },
+  "approval": {
+    "requestId": "c3810b59-b7a3-4fe7-b5b9-d1d9cdc7c909",
+    "requestKind": "file-read",
+    "requestType": "file_read_approval",
+    "detail": "{\"query\":\"Claude AI 2026\"}",
+    "args": {
+      "toolName": "WebSearch",
+      "input": { "query": "Claude AI 2026" },
+      "toolUseId": "toolu_01U2P6WhHtjJX7FUgCwbArT1"
+    }
+  },
+  "contextWindowUpdated": {
+    "usedTokens": 37424,
+    "lastUsedTokens": 37424,
+    "inputTokens": 37175,
+    "outputTokens": 249,
+    "maxTokens": 200000,
+    "totalProcessedTokens": 75807
+  }
+}
