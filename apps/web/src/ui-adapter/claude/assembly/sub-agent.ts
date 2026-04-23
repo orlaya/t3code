@@ -11,11 +11,17 @@
 import type { OrchestrationThreadActivity, AssembledSubAgent } from "@t3tools/contracts";
 
 import { extractClaudeToolData } from "../extraction";
-import { extractItemType, extractDescription, extractResultContent } from "./shared";
+import {
+  extractItemType,
+  extractDescription,
+  extractResultContent,
+  shiftMatchingTurnId,
+} from "./shared";
 
 interface SubAgentInvocation {
   /** Grouping key — description from tool.updated data.input.description. */
   description: string | undefined;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasStarted: boolean;
   hasCompleted: boolean;
@@ -127,6 +133,7 @@ export function groupSubAgentActivities(
     if (activity.kind === "tool.started") {
       const inv: SubAgentInvocation = {
         description: undefined,
+        turnId: activity.turnId,
         activities: [activity],
         hasStarted: true,
         hasCompleted: false,
@@ -140,7 +147,7 @@ export function groupSubAgentActivities(
     const desc = extractDescription(activity.payload);
 
     if (activity.kind === "tool.updated") {
-      const pendingStarted = startedQueue.shift();
+      const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
       if (pendingStarted && pendingStarted.description === undefined) {
         pendingStarted.description = desc;
         pendingStarted.activities.push(activity);
@@ -153,8 +160,6 @@ export function groupSubAgentActivities(
           bucket.push(pendingStarted);
         }
       } else {
-        if (pendingStarted) startedQueue.unshift(pendingStarted);
-
         let matched = false;
         if (desc) {
           const bucket = byDescription.get(desc);
@@ -167,6 +172,7 @@ export function groupSubAgentActivities(
         if (!matched) {
           const inv: SubAgentInvocation = {
             description: desc,
+            turnId: activity.turnId,
             activities: [activity],
             hasStarted: false,
             hasCompleted: false,
@@ -200,6 +206,7 @@ export function groupSubAgentActivities(
       if (!matched) {
         const inv: SubAgentInvocation = {
           description: desc,
+          turnId: activity.turnId,
           activities: [activity],
           hasStarted: false,
           hasCompleted: true,

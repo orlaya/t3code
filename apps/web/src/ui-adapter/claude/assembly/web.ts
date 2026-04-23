@@ -17,6 +17,7 @@ import {
   extractQuery,
   extractUrl,
   extractResultContent,
+  shiftMatchingTurnId,
 } from "./shared";
 
 // =========================================================================
@@ -30,6 +31,7 @@ import {
 interface WebSearchInvocation {
   /** Grouping key — query string from input. */
   query: string | undefined;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasStarted: boolean;
   hasCompleted: boolean;
@@ -122,6 +124,7 @@ export function groupWebSearchActivities(
     if (activity.kind === "tool.started") {
       const inv: WebSearchInvocation = {
         query: undefined,
+        turnId: activity.turnId,
         activities: [activity],
         hasStarted: true,
         hasCompleted: false,
@@ -135,7 +138,7 @@ export function groupWebSearchActivities(
     const query = extractQuery(activity.payload);
 
     if (activity.kind === "tool.updated") {
-      const pendingStarted = startedQueue.shift();
+      const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
       if (pendingStarted && pendingStarted.query === undefined) {
         pendingStarted.query = query;
         pendingStarted.activities.push(activity);
@@ -148,8 +151,6 @@ export function groupWebSearchActivities(
           bucket.push(pendingStarted);
         }
       } else {
-        if (pendingStarted) startedQueue.unshift(pendingStarted);
-
         let matched = false;
         if (query) {
           const bucket = byQuery.get(query);
@@ -162,6 +163,7 @@ export function groupWebSearchActivities(
         if (!matched) {
           const inv: WebSearchInvocation = {
             query,
+            turnId: activity.turnId,
             activities: [activity],
             hasStarted: false,
             hasCompleted: false,
@@ -195,6 +197,7 @@ export function groupWebSearchActivities(
       if (!matched) {
         const inv: WebSearchInvocation = {
           query,
+          turnId: activity.turnId,
           activities: [activity],
           hasStarted: false,
           hasCompleted: true,

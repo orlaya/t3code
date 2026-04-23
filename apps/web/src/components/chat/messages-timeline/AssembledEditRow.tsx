@@ -1,5 +1,7 @@
 import { memo, useCallback, useMemo } from "react";
-import { LoaderIcon, PencilIcon } from "lucide-react";
+import { PenLine } from "lucide-react";
+import { cn } from "~/lib/utils";
+import { ToolRowIcon, toolHeadingClass, toolHeadingSuffix } from "./ToolRowIcon";
 import { InlineEditDiff } from "../InlineEditDiff";
 import { formatWorkspaceRelativePath } from "../../../filePathDisplay";
 import { readLocalApi } from "~/localApi";
@@ -19,9 +21,10 @@ export const AssembledEditRow = memo(function AssembledEditRow({
   workspaceRoot: string | undefined;
   resolvedTheme: "light" | "dark";
 }) {
-  const isInProgress = tool.state === "starting" || tool.state === "in-progress";
   const displayPath = formatWorkspaceRelativePath(tool.filePath, workspaceRoot);
   const hasInlineDiff = tool.inlineDiffs.length > 0;
+  const heading = tool.heading + toolHeadingSuffix(tool.state);
+  const headingCls = toolHeadingClass(tool.state);
 
   const handleOpenInEditor = useCallback(() => {
     const api = readLocalApi();
@@ -61,16 +64,10 @@ export const AssembledEditRow = memo(function AssembledEditRow({
           onClick={handleOpenInEditor}
         >
           <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-            <span className="flex size-5 shrink-0 items-center justify-center text-foreground/60">
-              {isInProgress ? (
-                <LoaderIcon className="size-3 animate-spin [animation-duration:4s]" />
-              ) : (
-                <PencilIcon className="size-3" />
-              )}
-            </span>
+            <ToolRowIcon state={tool.state} restIcon={PenLine} />
             <div className="min-w-0 flex-1 overflow-hidden">
-              <p className="truncate text-[11px] leading-5 text-muted-foreground/90">
-                <span className="text-muted-foreground/90">{tool.heading}</span>
+              <p className={cn("truncate text-[11px] leading-5", headingCls)}>
+                <span className={headingCls}>{heading}</span>
                 {tool.filePath && (
                   <span className="text-muted-foreground/85">
                     {" "}
@@ -111,8 +108,9 @@ export const AssembledWriteRow = memo(function AssembledWriteRow({
   workspaceRoot: string | undefined;
   resolvedTheme: "light" | "dark";
 }) {
-  const isInProgress = tool.state === "starting" || tool.state === "in-progress";
   const displayPath = formatWorkspaceRelativePath(tool.filePath, workspaceRoot);
+  const heading = tool.heading + toolHeadingSuffix(tool.state);
+  const headingCls = toolHeadingClass(tool.state);
 
   const handleOpenInEditor = useCallback(() => {
     const api = readLocalApi();
@@ -147,16 +145,10 @@ export const AssembledWriteRow = memo(function AssembledWriteRow({
           onClick={handleOpenInEditor}
         >
           <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-            <span className="flex size-5 shrink-0 items-center justify-center text-foreground/60">
-              {isInProgress ? (
-                <LoaderIcon className="size-3 animate-spin [animation-duration:4s]" />
-              ) : (
-                <PencilIcon className="size-3" />
-              )}
-            </span>
+            <ToolRowIcon state={tool.state} restIcon={PenLine} />
             <div className="min-w-0 flex-1 overflow-hidden">
-              <p className="truncate text-[11px] leading-5 text-muted-foreground/90">
-                <span className="text-muted-foreground/90">{tool.heading}</span>
+              <p className={cn("truncate text-[11px] leading-5", headingCls)}>
+                <span className={headingCls}>{heading}</span>
                 {tool.filePath && (
                   <span className="text-muted-foreground/85">
                     {" "}

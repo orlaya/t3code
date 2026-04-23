@@ -22,6 +22,7 @@ import {
   extractPattern,
   extractSearchPath,
   extractResultContent,
+  shiftMatchingTurnId,
 } from "./shared";
 
 // =========================================================================
@@ -31,6 +32,7 @@ import {
 interface FileChangeInvocation {
   /** Grouping key — file_path extracted from the updated/completed payload. */
   filePath: string | undefined;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasStarted: boolean;
   hasCompleted: boolean;
@@ -149,6 +151,7 @@ export function groupFileChangeActivities(
     if (activity.kind === "tool.started") {
       const inv: FileChangeInvocation = {
         filePath: undefined,
+        turnId: activity.turnId,
         activities: [activity],
         hasStarted: true,
         hasCompleted: false,
@@ -162,7 +165,7 @@ export function groupFileChangeActivities(
     const fp = extractFilePath(activity.payload);
 
     if (activity.kind === "tool.updated") {
-      const pendingStarted = startedQueue.shift();
+      const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
       if (pendingStarted && pendingStarted.filePath === undefined) {
         // Marry to earliest unmatched started
         pendingStarted.filePath = fp;
@@ -176,9 +179,6 @@ export function groupFileChangeActivities(
           bucket.push(pendingStarted);
         }
       } else {
-        // Put it back and check for existing invocation by file path
-        if (pendingStarted) startedQueue.unshift(pendingStarted);
-
         let matched = false;
         if (fp) {
           const bucket = byFilePath.get(fp);
@@ -191,6 +191,7 @@ export function groupFileChangeActivities(
         if (!matched) {
           const inv: FileChangeInvocation = {
             filePath: fp,
+            turnId: activity.turnId,
             activities: [activity],
             hasStarted: false,
             hasCompleted: false,
@@ -224,6 +225,7 @@ export function groupFileChangeActivities(
       if (!matched) {
         const inv: FileChangeInvocation = {
           filePath: fp,
+          turnId: activity.turnId,
           activities: [activity],
           hasStarted: false,
           hasCompleted: true,

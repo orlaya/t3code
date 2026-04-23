@@ -13,7 +13,12 @@
 import type { OrchestrationThreadActivity, AssembledCommand } from "@t3tools/contracts";
 
 import { extractClaudeToolData } from "../extraction";
-import { extractCommandString, extractItemType, extractResultContent } from "./shared";
+import {
+  extractCommandString,
+  extractItemType,
+  extractResultContent,
+  shiftMatchingTurnId,
+} from "./shared";
 
 // ---------------------------------------------------------------------------
 // Shell wrapper unwrapping
@@ -119,6 +124,7 @@ interface CommandInvocation {
   itemType: string;
   /** Command string — the grouping key. Undefined until first updated/completed. */
   commandString: string | undefined;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasStarted: boolean;
   hasCompleted: boolean;
@@ -224,6 +230,7 @@ export function groupCommandActivities(
       const inv: CommandInvocation = {
         itemType,
         commandString: undefined,
+        turnId: activity.turnId,
         activities: [activity],
         hasStarted: true,
         hasCompleted: false,
@@ -237,8 +244,8 @@ export function groupCommandActivities(
     const cmdStr = extractCommandString(activity.payload);
 
     if (activity.kind === "tool.updated") {
-      // Try to marry to the earliest unmatched tool.started
-      const pendingStarted = startedQueue.shift();
+      // Try to marry to the earliest unmatched tool.started from the same turn
+      const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
       if (pendingStarted && pendingStarted.commandString === undefined) {
         // Marry this updated to the pending started
         pendingStarted.commandString = cmdStr;
@@ -257,8 +264,6 @@ export function groupCommandActivities(
         // check if this updated belongs to an existing invocation by command string.
         // Prefer an incomplete invocation, but also absorb into a completed one
         // (Claude sends duplicate updated events at the same time as completed).
-        if (pendingStarted) startedQueue.unshift(pendingStarted);
-
         let matched = false;
         if (cmdStr) {
           const bucket = byCommandString.get(cmdStr);
@@ -273,6 +278,7 @@ export function groupCommandActivities(
           const inv: CommandInvocation = {
             itemType,
             commandString: cmdStr,
+            turnId: activity.turnId,
             activities: [activity],
             hasStarted: false,
             hasCompleted: false,
@@ -308,6 +314,7 @@ export function groupCommandActivities(
         const inv: CommandInvocation = {
           itemType,
           commandString: cmdStr,
+          turnId: activity.turnId,
           activities: [activity],
           hasStarted: false,
           hasCompleted: true,

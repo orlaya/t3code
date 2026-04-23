@@ -77,6 +77,26 @@ export function extractDescription(payload: unknown): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
+// Started queue helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Find and remove the first queue entry whose turnId matches the given
+ * activity's turnId. Returns the matched entry, or undefined if none match.
+ *
+ * This prevents cross-turn contamination: if Turn A was interrupted and left
+ * an orphaned tool.started in the queue, Turn B's tool.updated won't steal it.
+ */
+export function shiftMatchingTurnId<T extends { turnId: string | null }>(
+  queue: T[],
+  activityTurnId: string | null,
+): T | undefined {
+  const idx = queue.findIndex((entry) => entry.turnId === activityTurnId);
+  if (idx === -1) return undefined;
+  return queue.splice(idx, 1)[0];
+}
+
+// ---------------------------------------------------------------------------
 // Result content extraction
 // ---------------------------------------------------------------------------
 

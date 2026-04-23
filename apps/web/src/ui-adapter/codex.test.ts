@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { extractCodexInlineDiffs, extractCodexToolData } from "./codex.ts";
+import { extractCodexInlineDiffs, extractCodexToolData } from "./codex/index.ts";
 import editFixture from "./fixtures/codex-apply-patch-edit.json";
 import writeFixture from "./fixtures/codex-apply-patch-write.json";
 

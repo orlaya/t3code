@@ -14,6 +14,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronUpIcon,
+  CircleAlertIcon,
   LoaderIcon,
 } from "lucide-react";
 import type { AssembledSubAgent } from "@t3tools/contracts";
@@ -36,10 +37,11 @@ export const AssembledPinnedSubAgentEntry = memo(function AssembledPinnedSubAgen
   onOpen: () => void;
 }) {
   const inProgress = tool.state === "starting" || tool.state === "in-progress";
+  const isInterrupted = tool.state === "interrupted";
   const hasBrief = tool.brief.prompt.length > 0;
 
   // Heading: "Sub-agent", preview: "Explore: description"
-  const heading = "Sub-agent";
+  const heading = "Sub-agent" + (isInterrupted ? " — interrupted" : "");
   const preview =
     tool.brief.description.length > 0
       ? tool.brief.agentType
@@ -61,6 +63,8 @@ export const AssembledPinnedSubAgentEntry = memo(function AssembledPinnedSubAgen
     >
       {inProgress ? (
         <LoaderIcon className="size-3 shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
+      ) : isInterrupted ? (
+        <CircleAlertIcon className="size-3 shrink-0 text-destructive" />
       ) : (
         <CheckIcon className="size-3 shrink-0 text-primary/70" />
       )}
@@ -105,8 +109,9 @@ export const AssembledSubAgentDetailDialog = memo(function AssembledSubAgentDeta
   const allWorkLogEntries = use(WorkLogEntriesCtx);
   const brief = tool.brief;
   const inProgress = tool.state === "starting" || tool.state === "in-progress";
+  const isInterrupted = tool.state === "interrupted";
 
-  const heading = "Sub-agent";
+  const heading = "Sub-agent" + (isInterrupted ? " — interrupted" : "");
   const preview =
     brief.description.length > 0
       ? brief.agentType
@@ -215,6 +220,8 @@ export const AssembledSubAgentDetailDialog = memo(function AssembledSubAgentDeta
           >
             {inProgress ? (
               <LoaderIcon className="size-3.5 mt-[3px] shrink-0 animate-spin [animation-duration:4s] text-primary/70" />
+            ) : isInterrupted ? (
+              <CircleAlertIcon className="size-3.5 mt-[3px] shrink-0 text-destructive" />
             ) : (
               <CheckIcon className="size-3.5 mt-[3px] shrink-0 text-primary/70" />
             )}

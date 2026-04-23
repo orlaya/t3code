@@ -64,19 +64,11 @@ export const HttpHookAction = Schema.Struct({
   headers: Schema.optional(Schema.Record(Schema.String, Schema.String)),
 });
 
-// t3code-specific action type
-export const SystemPromptHookAction = Schema.Struct({
-  type: Schema.Literal("systemPrompt"),
-  filePath: Schema.optional(TrimmedNonEmptyString),
-  content: Schema.optional(Schema.String),
-});
-
 export const HookAction = Schema.Union([
   CommandHookAction,
   PromptHookAction,
   AgentHookAction,
   HttpHookAction,
-  SystemPromptHookAction,
 ]);
 export type HookAction = typeof HookAction.Type;
 

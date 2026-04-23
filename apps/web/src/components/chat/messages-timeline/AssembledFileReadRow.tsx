@@ -1,6 +1,7 @@
 import { memo, useCallback, useState } from "react";
-import { LoaderIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { ToolRowIcon, toolHeadingClass, toolHeadingSuffix } from "./ToolRowIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../../ui/tooltip";
 import { ToolResultDialog } from "../TerminalHighlight";
 import { formatWorkspaceRelativePath } from "../../../filePathDisplay";
@@ -17,12 +18,11 @@ export const AssembledFileReadRow = memo(function AssembledFileReadRow({
 }) {
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const hasResult = !!tool.resultContent;
-  const isInProgress = tool.state === "starting" || tool.state === "in-progress";
-
   const displayPath = tool.filePath
     ? formatWorkspaceRelativePath(tool.filePath, workspaceRoot)
     : null;
-  const heading = tool.heading;
+  const heading = tool.heading + toolHeadingSuffix(tool.state);
+  const headingCls = toolHeadingClass(tool.state);
   const displayText = displayPath ? `${heading} - ${displayPath}` : heading;
 
   const handleOpenInEditor = useCallback(() => {
@@ -42,26 +42,18 @@ export const AssembledFileReadRow = memo(function AssembledFileReadRow({
         onClick={handleResultClick}
       >
         <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-          <span className="flex size-5 shrink-0 items-center justify-center text-foreground/60">
-            {isInProgress ? (
-              <LoaderIcon className="size-3 animate-spin [animation-duration:4s]" />
-            ) : (
-              <SearchIcon className="size-3" />
-            )}
-          </span>
+          <ToolRowIcon state={tool.state} restIcon={SearchIcon} />
           <div className="min-w-0 flex-1 overflow-hidden">
             <Tooltip>
               <TooltipTrigger className="block min-w-0 w-full text-left" aria-label={displayText}>
                 <p
                   className={cn(
                     "truncate text-[11px] leading-5",
-                    "text-muted-foreground/90",
+                    headingCls,
                     displayPath ? "text-muted-foreground/80" : "",
                   )}
                 >
-                  <span className={cn("text-foreground/80", "text-muted-foreground/90")}>
-                    {heading}
-                  </span>
+                  <span className={cn("text-foreground/80", headingCls)}>{heading}</span>
                   {displayPath && (
                     <span
                       className="text-muted-foreground/85 hover:underline"

@@ -442,7 +442,7 @@
 
 **Custom hooks (NEW feature — WIP, schema only so far):**
 
-- `packages/contracts/src/settingsHooks.ts` — `HookEvent` (6 events: PreToolUse, PostToolUse, PostCompact, SessionStart, UserPromptSubmit, FileChanged), `HookStatus` (active/draft), 5 action types (`CommandHookAction`, `PromptHookAction`, `AgentHookAction`, `HttpHookAction`, `SystemPromptHookAction`), `HookAction` union, `CustomHook` schema. The first 4 action types mirror the Claude Agent SDK's native hook types. `SystemPromptHookAction` is t3code-specific — injects content into the dynamic section of the system prompt.
+- `packages/contracts/src/settingsHooks.ts` — `HookEvent` (6 events: PreToolUse, PostToolUse, PostCompact, SessionStart, UserPromptSubmit, FileChanged), `HookStatus` (active/draft), 4 action types (`CommandHookAction`, `PromptHookAction`, `AgentHookAction`, `HttpHookAction`), `HookAction` union, `CustomHook` schema. All action types mirror the Claude Agent SDK's native hook types — we stay within what Claude Code supports natively.
 - `packages/contracts/src/settings.ts` — `customHooks` array on `ServerSettings` (defaults `[]`) and `ServerSettingsPatch`.
 
 **Vitest reporter + Turbo output noise reduction:**
@@ -538,7 +538,7 @@
 
 **UI adapter — display semantics and assembled invocations:**
 
-- `packages/contracts/src/ui-adapter.ts` — `CanonicalDisplayKind`: `"file-change"` split into `"edit"` | `"write"`, `"approval-file-change"` → `"approval-edit"`, added `"web-fetch"`. `AssembledFileSearch` gained `toolName: string` field. Added `AssembledToolInvocation` discriminated union (`AssembledCommand`, `AssembledEdit`, `AssembledWrite`, `AssembledFileRead`, `AssembledFileSearch`, `AssembledWebSearch`, `AssembledSubAgent`, `AssembledMcpTool`, `AssembledToolCall`) with `AssembledToolBase` shared fields and `AssembledToolState`.
+- `packages/contracts/src/ui-adapter.ts` — `CanonicalDisplayKind`: `"file-change"` split into `"edit"` | `"write"`, `"approval-file-change"` → `"approval-edit"`, added `"web-fetch"`. `AssembledFileSearch` gained `toolName: string` field. Added `AssembledToolInvocation` discriminated union (`AssembledCommand`, `AssembledEdit`, `AssembledWrite`, `AssembledFileRead`, `AssembledFileSearch`, `AssembledWebSearch`, `AssembledSubAgent`, `AssembledMcpTool`, `AssembledToolCall`) with `AssembledToolBase` shared fields and `AssembledToolState`. `AssembledToolState` includes `"interrupted"` for tools that were in-flight when the server crashed or the user cancelled a turn.
 - `apps/web/src/ui-adapter/display.ts` — `displayKindFromTool` now returns `"edit"` or `"write"` for `file_change` based on toolName. WebFetch split to `"web-fetch"` display kind. Capabilities split: `edit` has `hasInlineDiffs`, `write` does not; `web-fetch` added. Headings: "Edit", "Write", "Read", "Grep", "Glob", "Fetch", "Search", "Tool call" etc.
 - `apps/web/src/components/chat/workEntryDisplay.ts` — `file-read` icon changed from `EyeIcon` to `SearchIcon`. `"file-change"` cases replaced with `"edit"` | `"write"` both using `PencilIcon`. Added `"web-fetch"` → `LinkIcon`.
 - `apps/web/src/ui-adapter/helpers.ts` — new shared file: `isRecord()`, `asString()` deduplicated from claude.ts, codex.ts, assembly.ts.
@@ -593,3 +593,26 @@
 - `apps/web/src/components/chat/MessagesTimeline.logic.ts` — `assembled-tool-group` row now carries `workEntries: WorkLogEntry[]`. Both grouping entry points (starting from work or assembled-tool) absorb consecutive entries of either kind into one card, fixing the two-cards regression from sub-agent step.
 - `apps/web/src/components/chat/MessagesTimeline.tsx` — passes `row.workEntries` to `AssembledWorkGroup`.
 - `apps/web/src/session-logic.test.ts` — 13 tests commented out (tested legacy work-log with Codex/Cursor-shaped payloads through claudeAgent provider name; predated UI adapter).
+
+**Interrupted tool state — stuck spinner prevention:**
+
+- `packages/contracts/src/ui-adapter.ts` — `"interrupted"` added to `AssembledToolState` union.
+- `apps/web/src/components/ChatView.tsx` — post-processing `useMemo` converts any `"starting"` or `"in-progress"` assembled tools to `"interrupted"` when `phase === "disconnected"` (server crash) OR `activeLatestTurn?.state === "interrupted"` (user cancellation). Same post-processing pattern as `derivePendingApprovals`.
+- `apps/web/src/components/chat/messages-timeline/ToolRowIcon.tsx` — new shared component. `ToolRowIcon` renders state-dependent icon (spinning `LoaderIcon` for in-flight, `CircleAlertIcon` for interrupted, `XCircleIcon` for failed, caller's `restIcon` for completed/starting). `toolHeadingClass()` returns `"text-destructive"` for interrupted/failed. `toolHeadingSuffix()` appends " — interrupted" or " — failed".
+- `apps/web/src/components/chat/messages-timeline/AssembledCommandRow.tsx` — uses `ToolRowIcon`/`toolHeadingClass`/`toolHeadingSuffix`.
+- `apps/web/src/components/chat/messages-timeline/AssembledEditRow.tsx` — both `AssembledEditRow` and `AssembledWriteRow` use shared helpers.
+- `apps/web/src/components/chat/messages-timeline/AssembledFileReadRow.tsx` — uses `ToolRowIcon` with `SearchIcon`.
+- `apps/web/src/components/chat/messages-timeline/AssembledFileSearchRow.tsx` — uses `ToolRowIcon` with `SearchIcon`.
+- `apps/web/src/components/chat/messages-timeline/AssembledWebSearchRow.tsx` — uses `ToolRowIcon` with `GlobeIcon`.
+- `apps/web/src/components/chat/messages-timeline/AssembledWebFetchRow.tsx` — uses `ToolRowIcon` with `LinkIcon`.
+- `apps/web/src/components/chat/messages-timeline/AssembledToolCallRow.tsx` — uses `ToolRowIcon`, removed local `XCircleIcon`/`LoaderIcon` handling.
+- `apps/web/src/components/chat/messages-timeline/AssembledSubAgentRow.tsx` — bespoke layout preserved (primary-colored icons). Added `CircleAlertIcon` with `text-destructive` for interrupted state in both pinned entry and detail dialog.
+
+**Assembly turnId-aware FIFO matching (cross-turn contamination fix):**
+
+- `apps/web/src/ui-adapter/claude/assembly/shared.ts` — `shiftMatchingTurnId()` helper replaces blind `queue.shift()`. Finds first queue entry whose `turnId` matches the incoming activity, splices it out. Prevents orphaned `tool.started` from an interrupted turn stealing events from the next turn.
+- `apps/web/src/ui-adapter/claude/assembly/sub-agent.ts` — `SubAgentInvocation` gained `turnId`. Uses `shiftMatchingTurnId` instead of `shift()`.
+- `apps/web/src/ui-adapter/claude/assembly/command.ts` — `CommandInvocation` gained `turnId`. Uses `shiftMatchingTurnId` instead of `shift()`.
+- `apps/web/src/ui-adapter/claude/assembly/web.ts` — `WebSearchInvocation` gained `turnId`. Uses `shiftMatchingTurnId` instead of `shift()`.
+- `apps/web/src/ui-adapter/claude/assembly/file.ts` — `FileChangeInvocation` gained `turnId`. Uses `shiftMatchingTurnId` instead of `shift()`.
+- `apps/web/src/ui-adapter/claude/assembly/generic.ts` — `GenericToolInvocation` gained `turnId`. MCP `find()` calls and dynamic tool completed matching both check `inv.turnId === activity.turnId`.

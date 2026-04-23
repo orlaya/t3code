@@ -74,13 +74,14 @@ export const WorkGroupSection = memo(function WorkGroupSection({
               "rounded-lg border border-border/45 bg-card/25",
               showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5",
             ),
-        hasOverflow && "group/wl cursor-pointer",
       )}
-      onClick={hasOverflow ? () => setIsExpanded((v) => !v) : undefined}
     >
       {showHeader &&
         (hasOverflow ? (
-          <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+          <div
+            className="group/wl mb-1.5 flex cursor-pointer items-center justify-between gap-2 px-0.5"
+            onClick={() => setIsExpanded((v) => !v)}
+          >
             <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
               {groupLabel} ({regularEntries.length + pinnedSubAgents.length})
             </p>

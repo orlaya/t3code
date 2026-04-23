@@ -19,7 +19,7 @@ import {
   extractClaudeApprovalDecision,
   extractClaudeInlineDiffs,
 } from "./claude/extraction.ts";
-import { extractCodexInlineDiffs, extractCodexToolData } from "./codex.ts";
+import { extractCodexInlineDiffs, extractCodexToolData } from "./codex/index.ts";
 import { extractOpenCodeToolData } from "./opencode.ts";
 import { extractCursorToolData } from "./cursor.ts";
 
@@ -30,6 +30,7 @@ export {
   type CanonicalToolDisplayPresentation,
 } from "./display.ts";
 export { assembleClaudeTools, type ClaudeAssemblyResult } from "./claude/index.ts";
+export { assembleCodexTools, type CodexAssemblyResult } from "./codex/index.ts";
 export { buildSubAgentTaskLinks, type SubAgentTaskLinks } from "./task-linking.ts";
 
 type Extractor = (payload: unknown) => CanonicalToolData | null;

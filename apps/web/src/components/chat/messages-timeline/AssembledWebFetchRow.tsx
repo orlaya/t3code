@@ -1,6 +1,7 @@
 import { memo, useCallback, useState } from "react";
-import { LinkIcon, LoaderIcon } from "lucide-react";
+import { LinkIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { ToolRowIcon, toolHeadingClass, toolHeadingSuffix } from "./ToolRowIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../../ui/tooltip";
 import { ToolResultDialog } from "../TerminalHighlight";
 import type { AssembledWebFetch } from "@t3tools/contracts";
@@ -12,9 +13,8 @@ export const AssembledWebFetchRow = memo(function AssembledWebFetchRow({
 }) {
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const hasResult = !!tool.resultContent;
-  const isInProgress = tool.state === "starting" || tool.state === "in-progress";
-
-  const heading = tool.heading;
+  const heading = tool.heading + toolHeadingSuffix(tool.state);
+  const headingCls = toolHeadingClass(tool.state);
   const displayUrl = tool.url ?? null;
   const displayText = displayUrl ? `${heading} - ${displayUrl}` : heading;
 
@@ -28,26 +28,18 @@ export const AssembledWebFetchRow = memo(function AssembledWebFetchRow({
         onClick={handleResultClick}
       >
         <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-          <span className="flex size-5 shrink-0 items-center justify-center text-foreground/60">
-            {isInProgress ? (
-              <LoaderIcon className="size-3 animate-spin [animation-duration:4s]" />
-            ) : (
-              <LinkIcon className="size-3" />
-            )}
-          </span>
+          <ToolRowIcon state={tool.state} restIcon={LinkIcon} />
           <div className="min-w-0 flex-1 overflow-hidden">
             <Tooltip>
               <TooltipTrigger className="block min-w-0 w-full text-left" aria-label={displayText}>
                 <p
                   className={cn(
                     "truncate text-[11px] leading-5",
-                    "text-muted-foreground/90",
+                    headingCls,
                     displayUrl ? "text-muted-foreground/80" : "",
                   )}
                 >
-                  <span className={cn("text-foreground/80", "text-muted-foreground/90")}>
-                    {heading}
-                  </span>
+                  <span className={cn("text-foreground/80", headingCls)}>{heading}</span>
                   {displayUrl && (
                     <span className="text-muted-foreground/85">
                       {" "}

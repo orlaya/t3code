@@ -1,6 +1,7 @@
 import { memo, useCallback, useState } from "react";
-import { CircleChevronRightIcon, LoaderIcon, WrenchIcon, XCircleIcon } from "lucide-react";
+import { CircleChevronRightIcon, WrenchIcon } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { ToolRowIcon, toolHeadingClass, toolHeadingSuffix } from "./ToolRowIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../../ui/tooltip";
 import { ToolResultDialog } from "../TerminalHighlight";
 import type { AssembledMcpTool, AssembledToolCall } from "@t3tools/contracts";
@@ -18,10 +19,8 @@ export const AssembledToolCallRow = memo(function AssembledToolCallRow({
 }) {
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const hasResult = !!tool.resultContent;
-  const isInProgress = tool.state === "starting" || tool.state === "in-progress";
-  const isFailed = tool.state === "failed";
-
-  const heading = tool.heading;
+  const heading = tool.heading + toolHeadingSuffix(tool.state);
+  const headingCls = toolHeadingClass(tool.state);
   const preview = tool.detail ?? null;
   const displayText = preview ? `${heading} - ${preview}` : heading;
 
@@ -37,38 +36,18 @@ export const AssembledToolCallRow = memo(function AssembledToolCallRow({
         onClick={handleResultClick}
       >
         <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-          <span
-            className={cn(
-              "flex size-5 shrink-0 items-center justify-center",
-              isFailed ? "text-rose-400/70" : "text-foreground/60",
-            )}
-          >
-            {isInProgress ? (
-              <LoaderIcon className="size-3 animate-spin [animation-duration:4s]" />
-            ) : isFailed ? (
-              <XCircleIcon className="size-3" />
-            ) : (
-              <RestIcon className="size-3" />
-            )}
-          </span>
+          <ToolRowIcon state={tool.state} restIcon={RestIcon} />
           <div className="min-w-0 flex-1 overflow-hidden">
             <Tooltip>
               <TooltipTrigger className="block min-w-0 w-full text-left" aria-label={displayText}>
                 <p
                   className={cn(
                     "truncate text-[11px] leading-5",
-                    "text-muted-foreground/90",
+                    headingCls,
                     preview ? "text-muted-foreground/80" : "",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "text-foreground/80",
-                      isFailed ? "text-rose-400/70" : "text-muted-foreground/90",
-                    )}
-                  >
-                    {heading}
-                  </span>
+                  <span className={cn("text-foreground/80", headingCls)}>{heading}</span>
                   {preview && <span className="text-muted-foreground/85"> - {preview}</span>}
                 </p>
               </TooltipTrigger>

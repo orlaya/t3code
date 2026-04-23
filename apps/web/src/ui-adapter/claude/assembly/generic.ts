@@ -27,6 +27,7 @@ const CLAIMED_DYNAMIC_TOOL_NAMES = new Set(["Read", "Grep", "Glob", "WebFetch"])
 interface GenericToolInvocation {
   toolName: string | undefined;
   itemType: string;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasStarted: boolean;
   hasCompleted: boolean;
@@ -155,6 +156,7 @@ export function groupGenericToolActivities(
         const inv: GenericToolInvocation = {
           toolName: extractToolName(activity.payload),
           itemType,
+          turnId: activity.turnId,
           activities: [activity],
           hasStarted: true,
           hasCompleted: false,
@@ -167,9 +169,9 @@ export function groupGenericToolActivities(
       const toolName = extractToolName(activity.payload);
 
       if (activity.kind === "tool.updated") {
-        // Try to marry to earliest unmatched MCP started with same toolName
+        // Try to marry to earliest unmatched MCP started with same toolName and turn
         const pending = mcpStartedQueue.find(
-          (inv) => !inv.hasCompleted && inv.toolName === toolName,
+          (inv) => !inv.hasCompleted && inv.toolName === toolName && inv.turnId === activity.turnId,
         );
         if (pending) {
           pending.activities.push(activity);
@@ -178,6 +180,7 @@ export function groupGenericToolActivities(
           const inv: GenericToolInvocation = {
             toolName,
             itemType,
+            turnId: activity.turnId,
             activities: [activity],
             hasStarted: false,
             hasCompleted: false,
@@ -198,18 +201,20 @@ export function groupGenericToolActivities(
 
       // tool.completed for MCP
       if (activity.kind === "tool.completed") {
-        // Try started queue first
+        // Try started queue first — same turn only
         const pending = mcpStartedQueue.find(
-          (inv) => !inv.hasCompleted && inv.toolName === toolName,
+          (inv) => !inv.hasCompleted && inv.toolName === toolName && inv.turnId === activity.turnId,
         );
         if (pending) {
           pending.activities.push(activity);
           pending.hasCompleted = true;
           if (toolName) pending.toolName = toolName;
         } else {
-          // Try byToolName (from orphan updated)
+          // Try byToolName (from orphan updated) — same turn only
           const bucket = toolName ? byToolName.get(toolName) : undefined;
-          const existing = bucket?.find((inv) => !inv.hasCompleted);
+          const existing = bucket?.find(
+            (inv) => !inv.hasCompleted && inv.turnId === activity.turnId,
+          );
           if (existing) {
             existing.activities.push(activity);
             existing.hasCompleted = true;
@@ -217,6 +222,7 @@ export function groupGenericToolActivities(
             const inv: GenericToolInvocation = {
               toolName,
               itemType,
+              turnId: activity.turnId,
               activities: [activity],
               hasStarted: false,
               hasCompleted: true,
@@ -243,6 +249,7 @@ export function groupGenericToolActivities(
       const inv: GenericToolInvocation = {
         toolName,
         itemType,
+        turnId: activity.turnId,
         activities: [activity],
         hasStarted: false,
         hasCompleted: false,
@@ -264,7 +271,7 @@ export function groupGenericToolActivities(
       let matched = false;
       if (toolName) {
         const bucket = byToolName.get(toolName);
-        const existing = bucket?.find((inv) => !inv.hasCompleted);
+        const existing = bucket?.find((inv) => !inv.hasCompleted && inv.turnId === activity.turnId);
         if (existing) {
           existing.activities.push(activity);
           existing.hasCompleted = true;
@@ -275,6 +282,7 @@ export function groupGenericToolActivities(
         const inv: GenericToolInvocation = {
           toolName,
           itemType,
+          turnId: activity.turnId,
           activities: [activity],
           hasStarted: false,
           hasCompleted: true,

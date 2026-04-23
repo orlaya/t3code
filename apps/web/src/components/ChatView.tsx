@@ -60,7 +60,7 @@ import {
   isLatestTurnSettled,
   formatElapsed,
 } from "../session-logic/index";
-import { assembleClaudeTools } from "../ui-adapter";
+import { assembleClaudeTools, assembleCodexTools } from "../ui-adapter";
 import { type LegendListRef } from "@legendapp/list/react";
 import {
   buildPendingUserInputAnswers,
@@ -1109,11 +1109,29 @@ export default function ChatView(props: ChatViewProps) {
     const count = Number(workLogHistory);
     return new Set(ordered.slice(-count));
   }, [activeLatestTurn?.turnId, threadActivities, workLogHistory]);
-  const assemblyResult = useMemo(
-    () => (providerName === "claudeAgent" ? assembleClaudeTools(threadActivities) : null),
-    [providerName, threadActivities],
-  );
-  const assembledTools = useMemo(() => assemblyResult?.tools ?? [], [assemblyResult]);
+  const assemblyResult = useMemo(() => {
+    if (providerName === "claudeAgent") return assembleClaudeTools(threadActivities);
+    if (providerName === "codex") return assembleCodexTools(threadActivities);
+    return null;
+  }, [providerName, threadActivities]);
+  const assembledTools = useMemo(() => {
+    const tools = assemblyResult?.tools ?? [];
+    // When we know no more tool events will arrive, any tool still in
+    // "starting" or "in-progress" is stale. Two triggers:
+    //   1. Session disconnected — server crashed, provider died
+    //   2. Turn interrupted — user cancelled the turn
+    // In both cases the completing event is never coming. Mark them
+    // interrupted so the UI stops spinning.
+    const toolsAreStale = phase === "disconnected" || activeLatestTurn?.state === "interrupted";
+    if (toolsAreStale && tools.length > 0) {
+      return tools.map((t) =>
+        t.state === "starting" || t.state === "in-progress"
+          ? { ...t, state: "interrupted" as const }
+          : t,
+      );
+    }
+    return tools;
+  }, [assemblyResult, phase, activeLatestTurn?.state]);
   const workLogEntries = useMemo(
     () =>
       deriveWorkLogEntries(

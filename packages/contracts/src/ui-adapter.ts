@@ -211,7 +211,12 @@ export type CanonicalApprovalData = {
  * Providers resolve this from the lifecycle events they receive — the work log
  * never has to figure out whether an invocation is still running.
  */
-export type AssembledToolState = "starting" | "in-progress" | "completed" | "failed";
+export type AssembledToolState =
+  | "starting"
+  | "in-progress"
+  | "completed"
+  | "failed"
+  | "interrupted";
 
 /**
  * Shared fields present on every assembled tool invocation regardless of kind.

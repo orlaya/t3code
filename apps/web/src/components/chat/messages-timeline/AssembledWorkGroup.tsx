@@ -20,13 +20,15 @@ import { SimpleWorkEntryRow } from "./SimpleWorkEntryRow";
 function AssembledToolRow({
   tool,
   workspaceRoot,
+  suppressAlertBg,
 }: {
   tool: AssembledToolInvocation;
   workspaceRoot: string | undefined;
+  suppressAlertBg?: boolean;
 }) {
   switch (tool.kind) {
     case "command":
-      return <AssembledCommandRow tool={tool} />;
+      return <AssembledCommandRow tool={tool} {...(suppressAlertBg && { suppressAlertBg })} />;
     case "file-read":
       return <AssembledFileReadRow tool={tool} workspaceRoot={workspaceRoot} />;
     case "file-search":
@@ -87,17 +89,29 @@ export const AssembledWorkGroup = memo(function AssembledWorkGroup({
   const showHeader = !isSingleEntry && (hasOverflow || pinnedSubAgents.length > 0);
   const groupLabel = "Work log";
 
+  // Single errored/interrupted tool → tint the card itself instead of nesting a bg inside it.
+  const singleTool = isSingleEntry ? regularTools[0] : undefined;
+  const singleAlert = !!(
+    singleTool &&
+    (singleTool.state === "failed" || singleTool.state === "interrupted")
+  );
+
   return (
     <div
       className={cn(
-        "rounded-lg border border-border/45 bg-card/25",
+        "rounded-lg border border-border/45",
+        singleAlert ? "bg-destructive/5" : "bg-card/25",
         showHeader || pinnedSubAgents.length > 0 ? "px-2 py-1.5" : "px-0.5 py-0.5",
-        hasOverflow && "group/wl cursor-pointer",
       )}
-      onClick={hasOverflow ? () => setIsExpanded((v) => !v) : undefined}
     >
       {showHeader && (
-        <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
+        <div
+          className={cn(
+            "mb-1.5 flex items-center justify-between gap-2 px-0.5",
+            hasOverflow && "group/wl cursor-pointer",
+          )}
+          onClick={hasOverflow ? () => setIsExpanded((v) => !v) : undefined}
+        >
           <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
             {groupLabel} ({totalAll})
           </p>
@@ -139,7 +153,12 @@ export const AssembledWorkGroup = memo(function AssembledWorkGroup({
         <div className="space-y-0 [&>*]:py-0.25">
           {visibleItems.map((item) =>
             item.type === "tool" ? (
-              <AssembledToolRow key={item.tool.id} tool={item.tool} workspaceRoot={workspaceRoot} />
+              <AssembledToolRow
+                key={item.tool.id}
+                tool={item.tool}
+                workspaceRoot={workspaceRoot}
+                suppressAlertBg={singleAlert}
+              />
             ) : (
               <SimpleWorkEntryRow
                 key={item.entry.id}
