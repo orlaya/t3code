@@ -67,6 +67,7 @@ export function deriveTimelineEntries(
 ): TimelineEntry[] {
   const visibleMessages = messages.filter((message) => {
     if (message.role !== "thinking") return true;
+    if (message.text.trim().length === 0) return false;
     if (visibleTurnIds === undefined) return true;
     if (visibleTurnIds instanceof Set)
       return message.turnId != null && visibleTurnIds.has(message.turnId);

@@ -1441,6 +1441,40 @@ describe("deriveTimelineEntries", () => {
     });
   });
 
+  it("filters empty thinking messages from the derived timeline", () => {
+    const entries = deriveTimelineEntries(
+      [
+        {
+          id: MessageId.make("thinking-empty"),
+          role: "thinking",
+          text: "   ",
+          createdAt: "2026-02-23T00:00:01.000Z",
+          streaming: false,
+        },
+        {
+          id: MessageId.make("thinking-filled"),
+          role: "thinking",
+          text: "Need to inspect the diff first.",
+          createdAt: "2026-02-23T00:00:02.000Z",
+          streaming: false,
+        },
+      ],
+      [],
+      [],
+      [],
+    );
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      kind: "message",
+      message: {
+        id: "thinking-filled",
+        role: "thinking",
+        text: "Need to inspect the diff first.",
+      },
+    });
+  });
+
   it("anchors the completion divider to latestTurn.assistantMessageId before timestamp fallback", () => {
     const entries = deriveTimelineEntries(
       [

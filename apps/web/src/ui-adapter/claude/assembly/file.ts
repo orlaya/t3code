@@ -36,7 +36,9 @@ interface FileChangeInvocation {
   hasCompleted: boolean;
 }
 
-export function finalizeFileChange(inv: FileChangeInvocation): AssembledEdit | AssembledWrite | null {
+export function finalizeFileChange(
+  inv: FileChangeInvocation,
+): AssembledEdit | AssembledWrite | null {
   // Find the most informative activity — completed > updated > started
   let bestCanonical = null;
   let bestKind: string | null = null;

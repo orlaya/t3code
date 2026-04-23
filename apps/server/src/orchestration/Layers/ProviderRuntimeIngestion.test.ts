@@ -727,6 +727,95 @@ describe("ProviderRuntimeIngestion", () => {
     expect(message?.streaming).toBe(false);
   });
 
+  it("projects reasoning summary deltas into visible thinking messages", async () => {
+    const harness = await createHarness();
+    const now = new Date().toISOString();
+
+    harness.emit({
+      type: "content.delta",
+      eventId: asEventId("evt-reasoning-summary-delta"),
+      provider: "codex",
+      createdAt: now,
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-thinking-summary"),
+      itemId: asItemId("item-thinking-summary"),
+      payload: {
+        streamKind: "reasoning_summary_text",
+        delta: "Summarized thinking",
+        summaryIndex: 0,
+      },
+    });
+
+    harness.emit({
+      type: "item.completed",
+      eventId: asEventId("evt-reasoning-item-completed"),
+      provider: "codex",
+      createdAt: now,
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-thinking-summary"),
+      itemId: asItemId("item-thinking-summary"),
+      payload: {
+        itemType: "reasoning",
+        status: "completed",
+      },
+    });
+
+    const thread = await waitForThread(harness.engine, (entry) =>
+      entry.messages.some(
+        (message: ProviderRuntimeTestMessage) =>
+          message.id === "thinking:item-thinking-summary" && !message.streaming,
+      ),
+    );
+    const message = thread.messages.find(
+      (entry: ProviderRuntimeTestMessage) => entry.id === "thinking:item-thinking-summary",
+    );
+    expect(message?.role).toBe("thinking");
+    expect(message?.text).toBe("Summarized thinking");
+    expect(message?.streaming).toBe(false);
+  });
+
+  it("does not persist empty thinking messages when reasoning completes without deltas", async () => {
+    const harness = await createHarness();
+    const now = new Date().toISOString();
+
+    harness.emit({
+      type: "item.completed",
+      eventId: asEventId("evt-reasoning-complete-no-delta"),
+      provider: "codex",
+      createdAt: now,
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-thinking-empty"),
+      itemId: asItemId("item-thinking-empty"),
+      payload: {
+        itemType: "reasoning",
+        status: "completed",
+      },
+    });
+
+    await harness.drain();
+
+    const readModel = await Effect.runPromise(harness.engine.getReadModel());
+    const thread = readModel.threads.find((entry) => entry.id === ThreadId.make("thread-1"));
+    expect(
+      thread?.messages.some(
+        (message: ProviderRuntimeTestMessage) => message.id === "thinking:item-thinking-empty",
+      ),
+    ).toBe(false);
+
+    const events = await Effect.runPromise(
+      Stream.runCollect(harness.engine.readEvents(0)).pipe(
+        Effect.map((chunk) => Array.from(chunk)),
+      ),
+    );
+    expect(
+      events.some(
+        (event) =>
+          event.type === "thread.message-sent" &&
+          event.payload.messageId === "thinking:item-thinking-empty",
+      ),
+    ).toBe(false);
+  });
+
   it("preserves completed tool metadata on projected tool activities", async () => {
     const harness = await createHarness();
     const now = new Date().toISOString();

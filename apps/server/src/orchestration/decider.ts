@@ -55,6 +55,10 @@ type DecideOrchestrationCommandResult =
   | PlannedOrchestrationEvent
   | ReadonlyArray<PlannedOrchestrationEvent>;
 
+function hasRenderableMessageText(text: string): boolean {
+  return text.trim().length > 0;
+}
+
 const decideCommandSequence = Effect.fn("decideCommandSequence")(function* ({
   commands,
   readModel,
@@ -620,11 +624,19 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     }
 
     case "thread.message.assistant.complete": {
-      yield* requireThread({
+      const thread = yield* requireThread({
         readModel,
         command,
         threadId: command.threadId,
       });
+      const role = command.role ?? "assistant";
+      const existingMessage = thread.messages.find((entry) => entry.id === command.messageId);
+      const hasRenderableExistingText =
+        existingMessage !== undefined && hasRenderableMessageText(existingMessage.text);
+      if (role === "thinking" && !hasRenderableExistingText) {
+        return [];
+      }
+
       return {
         ...withEventBase({
           aggregateKind: "thread",
@@ -636,7 +648,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           threadId: command.threadId,
           messageId: command.messageId,
-          role: command.role ?? "assistant",
+          role,
           ...(command.agentKind ? { agentKind: command.agentKind } : {}),
           text: "",
           turnId: command.turnId ?? null,

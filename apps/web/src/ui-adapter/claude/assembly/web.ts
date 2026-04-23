@@ -11,7 +11,13 @@ import type {
 } from "@t3tools/contracts";
 
 import { extractClaudeToolData } from "../extraction";
-import { extractItemType, extractToolName, extractQuery, extractUrl, extractResultContent } from "./shared";
+import {
+  extractItemType,
+  extractToolName,
+  extractQuery,
+  extractUrl,
+  extractResultContent,
+} from "./shared";
 
 // =========================================================================
 // Web search
