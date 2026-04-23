@@ -5,20 +5,20 @@ import {
   extractClaudeApprovalData,
   extractClaudeApprovalDecision,
   extractClaudeInlineDiffs,
-} from "./claude.ts";
+} from "./extraction.ts";
 
-import bashFixture from "./fixtures/claude-bash.json";
-import editFixture from "./fixtures/claude-edit.json";
-import subagentFixture from "./fixtures/claude-subagent.json";
-import webSearchFixture from "./fixtures/claude-web-search.json";
-import webFetchFixture from "./fixtures/claude-web-fetch.json";
-import readFixture from "./fixtures/claude-read.json";
-import writeFixture from "./fixtures/claude-write.json";
-import grepFixture from "./fixtures/claude-grep.json";
-import globFixture from "./fixtures/claude-glob.json";
-import editReplaceAllFixture from "./fixtures/claude-edit-replace-all.json";
-import nonToolFixture from "./fixtures/claude-non-tool.json";
-import approvalFixture from "./fixtures/claude-approval.json";
+import bashFixture from "../fixtures/claude-bash.json";
+import editFixture from "../fixtures/claude-edit.json";
+import subagentFixture from "../fixtures/claude-subagent.json";
+import webSearchFixture from "../fixtures/claude-web-search.json";
+import webFetchFixture from "../fixtures/claude-web-fetch.json";
+import readFixture from "../fixtures/claude-read.json";
+import writeFixture from "../fixtures/claude-write.json";
+import grepFixture from "../fixtures/claude-grep.json";
+import globFixture from "../fixtures/claude-glob.json";
+import editReplaceAllFixture from "../fixtures/claude-edit-replace-all.json";
+import nonToolFixture from "../fixtures/claude-non-tool.json";
+import approvalFixture from "../fixtures/claude-approval.json";
 
 // ---------------------------------------------------------------------------
 // Bash (command_execution)

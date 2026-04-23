@@ -11,6 +11,6 @@ export {
   extractClaudeApprovalData,
   extractClaudeApprovalDecision,
   extractClaudeApprovalInlineDiffs,
-} from "../claude";
+} from "./extraction";
 
 export { assembleClaudeTools, type ClaudeAssemblyResult } from "./assembly";

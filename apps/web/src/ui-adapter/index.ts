@@ -18,7 +18,7 @@ import {
   extractClaudeApprovalData,
   extractClaudeApprovalDecision,
   extractClaudeInlineDiffs,
-} from "./claude.ts";
+} from "./claude/extraction.ts";
 import { extractCodexInlineDiffs, extractCodexToolData } from "./codex.ts";
 import { extractOpenCodeToolData } from "./opencode.ts";
 import { extractCursorToolData } from "./cursor.ts";

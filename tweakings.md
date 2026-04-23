@@ -530,24 +530,24 @@
 
 - `packages/contracts/src/ui-adapter.ts` — canonical types: `CanonicalToolData`, `CanonicalToolInput`, `CanonicalToolResult`, `CanonicalApprovalData`, lifecycle registry types (`ToolLifecycleKind`, `ToolLifecycleDeclaration`, `ProviderLifecycleMap`). Exported from `index.ts`.
 - `apps/web/src/ui-adapter/index.ts` — dispatcher: `extractToolData(payload, providerName)`, `extractApprovalData(payload, providerName)`, `extractApprovalDecision(payload, providerName)`.
-- `apps/web/src/ui-adapter/claude.ts` — Claude extraction functions (near pass-through).
+- `apps/web/src/ui-adapter/claude/extraction.ts` — Claude extraction functions (near pass-through). Moved from `ui-adapter/claude.ts`.
 - `apps/web/src/ui-adapter/codex.ts`, `opencode.ts`, `cursor.ts` — stubs returning null.
 - `apps/web/src/ui-adapter/lifecycle.ts` — per-provider lifecycle declarations, `getLifecycleMap(providerName)`.
 - `apps/web/src/ui-adapter/fixtures/*.json` — 12 JSON fixture files with real Claude payloads.
-- `apps/web/src/ui-adapter/claude.test.ts`, `index.test.ts` — 34 tests.
+- `apps/web/src/ui-adapter/claude/extraction.test.ts`, `ui-adapter/index.test.ts` — 34 tests. Extraction test moved from `ui-adapter/claude.test.ts`.
 
-**UI adapter — display semantics and assembled invocations (2026-04-22):**
+**UI adapter — display semantics and assembled invocations:**
 
 - `packages/contracts/src/ui-adapter.ts` — `CanonicalDisplayKind`: `"file-change"` split into `"edit"` | `"write"`, `"approval-file-change"` → `"approval-edit"`, added `"web-fetch"`. `AssembledFileSearch` gained `toolName: string` field. Added `AssembledToolInvocation` discriminated union (`AssembledCommand`, `AssembledEdit`, `AssembledWrite`, `AssembledFileRead`, `AssembledFileSearch`, `AssembledWebSearch`, `AssembledSubAgent`, `AssembledMcpTool`, `AssembledToolCall`) with `AssembledToolBase` shared fields and `AssembledToolState`.
 - `apps/web/src/ui-adapter/display.ts` — `displayKindFromTool` now returns `"edit"` or `"write"` for `file_change` based on toolName. WebFetch split to `"web-fetch"` display kind. Capabilities split: `edit` has `hasInlineDiffs`, `write` does not; `web-fetch` added. Headings: "Edit", "Write", "Read", "Grep", "Glob", "Fetch", "Search", "Tool call" etc.
 - `apps/web/src/components/chat/workEntryDisplay.ts` — `file-read` icon changed from `EyeIcon` to `SearchIcon`. `"file-change"` cases replaced with `"edit"` | `"write"` both using `PencilIcon`. Added `"web-fetch"` → `LinkIcon`.
 - `apps/web/src/ui-adapter/helpers.ts` — new shared file: `isRecord()`, `asString()` deduplicated from claude.ts, codex.ts, assembly.ts.
-- `apps/web/src/ui-adapter/claude.ts` — imports `isRecord`/`asString` from helpers instead of local copies.
+- `apps/web/src/ui-adapter/claude/extraction.ts` — imports `isRecord`/`asString` from helpers instead of local copies.
 - `apps/web/src/ui-adapter/codex.ts` — imports `isRecord`/`asString` from helpers instead of local copies.
-- `apps/web/src/ui-adapter/claude/` — new provider folder. `index.ts` re-exports extraction + assembly. `assembly.ts` groups Claude lifecycle events into `AssembledToolInvocation` — command_execution, file_change (edit/write), file-read (Read), file-search (Grep/Glob) all implemented. `assembly.test.ts` — 21 tests.
+- `apps/web/src/ui-adapter/claude/` — provider folder. `index.ts` re-exports extraction + assembly. `assembly/` folder splits lifecycle grouping by tool type: `shared.ts` (payload helpers), `command.ts`, `file.ts` (edit/write/read/search), `web.ts`, `sub-agent.ts`, `generic.ts`, `index.ts` (orchestrator). `assembly.test.ts` — 30 tests.
 - `apps/web/src/session-logic.display.test.ts` — updated Codex patch test expectations from `"file-change"`/`"File change"` to `"edit"`/`"Edit"`.
 
-**MessagesTimeline breakup (2026-04-22):**
+**MessagesTimeline breakup:**
 
 - `apps/web/src/components/chat/MessagesTimeline.tsx` — reduced from ~1940 to ~535 lines. All sub-components extracted to `messages-timeline/` folder. Contexts, helpers, and search utilities moved to shared modules. Remaining: list owner, row dispatcher, props.
 - `apps/web/src/components/chat/messages-timeline/shared.ts` — `TimelineRowCtx`, `SearchQueryCtx` contexts, `hasMatchOutsideVisibleBounds`, `formatMessageMeta`, `useStableRows` hook, type aliases.
@@ -567,12 +567,12 @@
 - `apps/web/src/components/chat/MessagesTimeline.logic.ts` — added `assembled-tool-group` row kind, `isGroupableAssembledTool()` helper, grouping logic for consecutive lightweight assembled tools.
 - `apps/web/src/session-logic/work-log.ts` — all Claude-specific filtering removed. Now accepts generic `excludeActivityIds?: ReadonlySet<string>` parameter from assembly's `claimedActivityIds`. Deprecation notice added — file remains only for non-Claude providers pending their own assembly migration.
 
-**Sub-agent assembly + UI (2026-04-23):**
+**Sub-agent assembly + UI:**
 
 - `packages/contracts/src/ui-adapter.ts` — `AssembledSubAgent` gained `taskId?: string` field linking to task.started/task.progress/task.completed activities.
 - `apps/web/src/ui-adapter/task-linking.ts` — new shared helper: `buildSubAgentTaskLinks()` maps `task.started` descriptions to taskIds for sub-agent grafting (reusable for generic tool-call step).
 - `apps/web/src/ui-adapter/task-linking.test.ts` — 4 tests for the linking helper.
-- `apps/web/src/ui-adapter/claude/assembly.ts` — added sub-agent grouping (`groupSubAgentActivities`, `finalizeSubAgent`). Extended `extractResultContent()` to handle content block arrays. Import `buildSubAgentTaskLinks`.
+- `apps/web/src/ui-adapter/claude/assembly/sub-agent.ts` — sub-agent grouping (`groupSubAgentActivities`, `finalizeSubAgent`). `assembly/shared.ts` has `extractResultContent()` handling content block arrays. `assembly/index.ts` imports `buildSubAgentTaskLinks`.
 - `apps/web/src/ui-adapter/claude/assembly.test.ts` — 8 new sub-agent tests (full lifecycle, concurrent agents, taskId grafting, duplicate absorption).
 - `apps/web/src/ui-adapter/fixtures/claude-two-subagents.json` — new fixture: two concurrent sub-agents with task.\* activities.
 - `apps/web/src/ui-adapter/index.ts` — exports `buildSubAgentTaskLinks` and `SubAgentTaskLinks` type.
@@ -581,9 +581,9 @@
 - `apps/web/src/components/chat/messages-timeline/AssembledSubAgentRow.tsx` — new: `AssembledPinnedSubAgentEntry` + `AssembledSubAgentDetailDialog` consuming `AssembledSubAgent` directly.
 - `apps/web/src/components/chat/messages-timeline/AssembledWorkGroup.tsx` — pins sub-agents to top (same pattern as `WorkGroupSection`), lifted dialog state for navigation. Header label changed from "Tool calls" to "Work log".
 
-**Generic tool-call + MCP assembly, unified grouping, local_bash dedup (2026-04-23):**
+**Generic tool-call + MCP assembly, unified grouping, local_bash dedup:**
 
-- `apps/web/src/ui-adapter/claude/assembly.ts` — added generic tool-call grouping (`groupGenericToolActivities`, `finalizeGenericTool`). `CLAIMED_DYNAMIC_TOOL_NAMES` set prevents double-handling tools already covered by specific groupers. MCP tools (`mcp_tool_call`) use startedQueue (own itemType). Remaining `dynamic_tool_call` skip tool.started. `collectLocalBashActivityIds()` claims `task.started`/`task.completed` for `local_bash` tasks (redundant with assembled command rows). `assembleClaudeTools()` now returns `ClaudeAssemblyResult: { tools, claimedActivityIds }` instead of bare array — claims ALL activity IDs from all grouping functions.
+- `apps/web/src/ui-adapter/claude/assembly/generic.ts` — generic tool-call grouping (`groupGenericToolActivities`, `finalizeGenericTool`). `CLAIMED_DYNAMIC_TOOL_NAMES` set prevents double-handling. MCP tools use startedQueue, remaining `dynamic_tool_call` skip tool.started. `assembly/index.ts` — `collectLocalBashActivityIds()` claims redundant `local_bash` task activities. `assembleClaudeTools()` returns `ClaudeAssemblyResult: { tools, claimedActivityIds }` — claims ALL activity IDs from all grouping functions.
 - `apps/web/src/ui-adapter/claude/assembly.test.ts` — all `assembleClaudeTools()` call sites updated to destructure `{ tools: result }`.
 - `apps/web/src/ui-adapter/claude/index.ts` — added `ClaudeAssemblyResult` type export.
 - `apps/web/src/ui-adapter/index.ts` — added `ClaudeAssemblyResult` type re-export.

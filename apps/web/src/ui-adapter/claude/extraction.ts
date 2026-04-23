@@ -19,7 +19,7 @@ import type {
 } from "@t3tools/contracts";
 import { isToolLifecycleItemType } from "@t3tools/contracts";
 
-import { asString, isRecord } from "./helpers";
+import { asString, isRecord } from "../helpers";
 
 function extractToolCallId(data: Record<string, unknown>): string | undefined {
   const direct = asString(data.toolCallId);
