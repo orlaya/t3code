@@ -56,9 +56,16 @@ export function ToolRowIcon({
 // Text class helpers
 // ---------------------------------------------------------------------------
 
-/** Returns the appropriate text colour class for the tool heading. */
+/**
+ * Returns the text colour class for the tool heading.
+ *
+ * Heading text stays the same colour regardless of state — only the icon
+ * changes colour to signal failure/interruption (via ToolRowIcon above).
+ * Failed/interrupted rows get a fractionally brighter value to compensate
+ * for the `bg-destructive/5` tint eating into perceived contrast.
+ */
 export function toolHeadingClass(state: AssembledToolState): string {
-  if (state === "interrupted" || state === "failed") return "text-destructive/60";
+  if (state === "failed" || state === "interrupted") return "text-muted-foreground/95";
   return "text-muted-foreground/90";
 }
 

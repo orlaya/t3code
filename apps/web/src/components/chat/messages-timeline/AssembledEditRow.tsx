@@ -56,33 +56,55 @@ export const AssembledEditRow = memo(function AssembledEditRow({
     return entry;
   }, [tool]);
 
+  const isFailed = tool.state === "failed";
+  const showInlineDiff = hasInlineDiff && editEntry && !isFailed;
+
   return (
-    <div className="overflow-hidden rounded-lg border border-border/45 bg-card/25">
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border border-border/45",
+        isFailed ? "bg-destructive/5" : "bg-card/25",
+      )}
+    >
       <div className="px-0.5">
         <div
           className="group/file cursor-pointer rounded-lg px-0.25 py-1"
           onClick={handleOpenInEditor}
         >
-          <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
+          <div className="flex items-start gap-1 transition-[opacity,translate] duration-200">
             <ToolRowIcon state={tool.state} restIcon={PenLine} />
             <div className="min-w-0 flex-1 overflow-hidden">
-              <p className={cn("truncate text-[11px] leading-5", headingCls)}>
-                <span className={headingCls}>{heading}</span>
-                {tool.filePath && (
-                  <span className="text-muted-foreground/85">
-                    {" "}
-                    -{" "}
-                    <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
+              {isFailed && tool.errorMessage ? (
+                <>
+                  <p className={cn("truncate text-[11px] leading-5", headingCls)}>
+                    <span className={headingCls}>{heading} failed</span>
+                    <span className={headingCls}> – {tool.errorMessage}</span>
+                  </p>
+                  {tool.filePath && (
+                    <p className="truncate text-[11px] leading-4 italic text-muted-foreground/80">
                       {displayPath}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className={cn("truncate text-[11px] leading-5", headingCls)}>
+                  <span className={headingCls}>{heading}</span>
+                  {tool.filePath && (
+                    <span className="text-muted-foreground/85">
+                      {" "}
+                      -{" "}
+                      <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
+                        {displayPath}
+                      </span>
                     </span>
-                  </span>
-                )}
-              </p>
+                  )}
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
-      {hasInlineDiff && editEntry && (
+      {showInlineDiff && (
         <InlineEditDiff
           editEntry={editEntry}
           workspaceRoot={workspaceRoot}
@@ -137,33 +159,55 @@ export const AssembledWriteRow = memo(function AssembledWriteRow({
     return entry;
   }, [tool]);
 
+  const isFailed = tool.state === "failed";
+  const showInlineDiff = editEntry && !isFailed;
+
   return (
-    <div className="overflow-hidden rounded-lg border border-border/45 bg-card/25">
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border border-border/45",
+        isFailed ? "bg-destructive/5" : "bg-card/25",
+      )}
+    >
       <div className="px-0.5">
         <div
           className="group/file cursor-pointer rounded-lg px-0.25 py-1"
           onClick={handleOpenInEditor}
         >
-          <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
+          <div className="flex items-start gap-1 transition-[opacity,translate] duration-200">
             <ToolRowIcon state={tool.state} restIcon={PenLine} />
             <div className="min-w-0 flex-1 overflow-hidden">
-              <p className={cn("truncate text-[11px] leading-5", headingCls)}>
-                <span className={headingCls}>{heading}</span>
-                {tool.filePath && (
-                  <span className="text-muted-foreground/85">
-                    {" "}
-                    -{" "}
-                    <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
+              {isFailed && tool.errorMessage ? (
+                <>
+                  <p className={cn("truncate text-[11px] leading-5", headingCls)}>
+                    <span className={headingCls}>{heading} failed</span>
+                    <span className={headingCls}> – {tool.errorMessage}</span>
+                  </p>
+                  {tool.filePath && (
+                    <p className="truncate text-[11px] leading-4 italic text-muted-foreground/80">
                       {displayPath}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className={cn("truncate text-[11px] leading-5", headingCls)}>
+                  <span className={headingCls}>{heading}</span>
+                  {tool.filePath && (
+                    <span className="text-muted-foreground/85">
+                      {" "}
+                      -{" "}
+                      <span className="transition-colors duration-150 group-hover/file:text-foreground/70">
+                        {displayPath}
+                      </span>
                     </span>
-                  </span>
-                )}
-              </p>
+                  )}
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
-      {editEntry && (
+      {showInlineDiff && (
         <InlineEditDiff
           editEntry={editEntry}
           workspaceRoot={workspaceRoot}

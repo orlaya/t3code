@@ -26,6 +26,55 @@ import {
 } from "./shared";
 
 // =========================================================================
+// Helpers
+// =========================================================================
+
+/**
+ * Clean up a Claude tool error into a human-readable message.
+ *
+ * Claude's error strings are formatted for the AI — they include the full
+ * input string and remediation instructions. We strip those down to just
+ * the first meaningful sentence.
+ *
+ * Known patterns:
+ * - "String to replace not found in file.\nString: <dump>"
+ * - "Found 2 matches of the string to replace, but replace_all is false. To replace... String: <dump>"
+ * - "File has not been read yet. Read it first before writing to it."
+ */
+function humaniseEditError(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+
+  // Strip <tool_use_error> wrapper tags
+  let msg = raw
+    .replace(/^<tool_use_error>\s*/s, "")
+    .replace(/\s*<\/tool_use_error>$/s, "")
+    .trim();
+
+  // Chop everything after "String:" — that's the raw input dump
+  const stringIdx = msg.indexOf("\nString:");
+  if (stringIdx === -1) {
+    // Also check for inline " String:" (no newline) after a sentence
+    const inlineIdx = msg.search(/\.\s+String:/);
+    if (inlineIdx !== -1) {
+      msg = msg.slice(0, inlineIdx + 1).trim();
+    }
+  } else {
+    msg = msg.slice(0, stringIdx).trim();
+  }
+
+  // Drop AI-directed remediation sentences:
+  // "To replace all occurrences, set replace_all to true. To replace only one..."
+  // "Read it first before writing to it."
+  msg = msg
+    .replace(/\s*To replace all occurrences[^.]*\./g, "")
+    .replace(/\s*To replace only one[^.]*\./g, "")
+    .replace(/\s*Read it first before writing to it\./g, "")
+    .trim();
+
+  return msg.length > 0 ? msg : undefined;
+}
+
+// =========================================================================
 // File change (Edit / Write)
 // =========================================================================
 
@@ -94,10 +143,13 @@ export function finalizeFileChange(
   const filePath = bestCanonical.input.file_path;
   const toolName = bestCanonical.toolName;
 
-  // Extract inline diffs from the best payload
-  const inlineDiffs: CanonicalInlineDiff[] = bestPayload
-    ? extractClaudeInlineDiffs(bestPayload)
-    : [];
+  // Failed edits/writes: extract error message, skip inline diffs
+  const isFailed = state === "failed";
+  const errorMessage = isFailed ? humaniseEditError(bestCanonical.result?.error) : undefined;
+
+  // Extract inline diffs from the best payload (skip for failed — the edit didn't happen)
+  const inlineDiffs: CanonicalInlineDiff[] =
+    !isFailed && bestPayload ? extractClaudeInlineDiffs(bestPayload) : [];
 
   if (toolName === "Write") {
     const assembled: AssembledWrite = {
@@ -112,6 +164,7 @@ export function finalizeFileChange(
     if (typeof bestCanonical.input.content === "string") {
       assembled.content = bestCanonical.input.content;
     }
+    if (errorMessage) assembled.errorMessage = errorMessage;
     return assembled;
   }
 
@@ -126,6 +179,7 @@ export function finalizeFileChange(
     inlineDiffs,
   };
   if (bestCanonical.toolCallId) assembled.toolCallId = bestCanonical.toolCallId;
+  if (errorMessage) assembled.errorMessage = errorMessage;
   return assembled;
 }
 

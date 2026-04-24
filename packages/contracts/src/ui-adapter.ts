@@ -251,6 +251,8 @@ export interface AssembledEdit extends AssembledToolBase {
   kind: "edit";
   filePath: string;
   inlineDiffs: ReadonlyArray<CanonicalInlineDiff>;
+  /** Error reason when the edit failed (e.g. "String to replace not found"). */
+  errorMessage?: string;
 }
 
 /**
@@ -261,6 +263,8 @@ export interface AssembledWrite extends AssembledToolBase {
   filePath: string;
   /** Full file content when available. */
   content?: string;
+  /** Error reason when the write failed. */
+  errorMessage?: string;
 }
 
 /**
