@@ -282,14 +282,13 @@ function requestKindFromRequestType(requestType: unknown): WorkLogEntry["request
   switch (requestType) {
     case "command_execution_approval":
     case "exec_command_approval":
+    case "dynamic_tool_call":
       return "command";
     case "file_read_approval":
       return "file-read";
     case "file_change_approval":
     case "apply_patch_approval":
       return "file-change";
-    case "dynamic_tool_call":
-      return "tool-call";
     default:
       return null;
   }
