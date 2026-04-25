@@ -3281,10 +3281,6 @@ export default function Sidebar() {
 
   useEffect(() => {
     const onWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (!event.isTrusted) return;
-      if (shouldIgnoreThreadJumpHintUpdate(event)) {
-        return;
-      }
       const shortcutContext = getCurrentSidebarShortcutContext();
 
       if (event.defaultPrevented || event.repeat) {
@@ -3335,44 +3331,10 @@ export default function Sidebar() {
       navigateToThread(scopeThreadRef(targetThread.environmentId, targetThread.id));
     };
 
-    const onWindowKeyUp = (event: globalThis.KeyboardEvent) => {
-      if (!event.isTrusted) return;
-      if (shouldIgnoreThreadJumpHintUpdate(event)) {
-        return;
-      }
-      const shortcutContext = getCurrentSidebarShortcutContext();
-      const shouldShowHints = shouldShowThreadJumpHints(event, keybindings, {
-        platform,
-        context: shortcutContext,
-      });
-      if (!shouldShowHints) {
-        clearThreadJumpHints();
-        return;
-      }
-      setThreadJumpLabelByKey((current) => {
-        const nextLabelMap = buildThreadJumpLabelMap({
-          keybindings,
-          platform,
-          terminalOpen: shortcutContext.terminalOpen,
-          threadJumpCommandByKey,
-        });
-        return threadJumpLabelMapsEqual(current, nextLabelMap) ? current : nextLabelMap;
-      });
-      updateThreadJumpHintsVisibility(true);
-    };
-
-    const onWindowBlur = () => {
-      clearThreadJumpHints();
-    };
-
     window.addEventListener("keydown", onWindowKeyDown);
-    window.addEventListener("keyup", onWindowKeyUp);
-    window.addEventListener("blur", onWindowBlur);
 
     return () => {
       window.removeEventListener("keydown", onWindowKeyDown);
-      window.removeEventListener("keyup", onWindowKeyUp);
-      window.removeEventListener("blur", onWindowBlur);
     };
   }, [
     getCurrentSidebarShortcutContext,

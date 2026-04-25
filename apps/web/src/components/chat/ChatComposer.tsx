@@ -6,7 +6,6 @@ import type {
   ProviderApprovalDecision,
   ProviderInteractionMode,
   ProviderKind,
-  ResolvedKeybindingsConfig,
   RuntimeMode,
   ScopedThreadRef,
   ServerProvider,
@@ -297,9 +296,6 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
 export interface ChatComposerHandle {
   focusAtEnd: () => void;
   focusAt: (cursor: number) => void;
-  openModelPicker: () => void;
-  toggleModelPicker: () => void;
-  isModelPickerOpen: () => boolean;
   readSnapshot: () => {
     value: string;
     cursor: number;
@@ -389,8 +385,6 @@ export interface ChatComposerProps {
   // Misc
   resolvedTheme: "light" | "dark";
   settings: UnifiedSettings;
-  keybindings: ResolvedKeybindingsConfig;
-  terminalOpen: boolean;
   gitCwd: string | null;
   workspaceRoot: string | undefined;
 
@@ -425,7 +419,6 @@ export interface ChatComposerProps {
   onProviderModelSelect: (provider: ProviderKind, model: string) => void;
   toggleInteractionMode: () => void;
   handleRuntimeModeChange: (mode: RuntimeMode) => void;
-  handleInteractionModeChange: (mode: ProviderInteractionMode) => void;
 
   focusComposer: () => void;
   scheduleComposerFocus: () => void;
@@ -474,8 +467,6 @@ export const ChatComposer = memo(
       activeThreadActivities,
       resolvedTheme,
       settings,
-      keybindings,
-      terminalOpen,
       gitCwd,
       workspaceRoot,
       promptRef,
@@ -494,7 +485,6 @@ export const ChatComposer = memo(
       onProviderModelSelect,
       toggleInteractionMode,
       handleRuntimeModeChange,
-      handleInteractionModeChange,
       focusComposer,
       scheduleComposerFocus,
       setThreadError,
@@ -633,7 +623,6 @@ export const ChatComposer = memo(
     const [isComposerFooterSemiCompact, setIsComposerFooterSemiCompact] = useState(false);
     const [isComposerFooterUltraCompact, setIsComposerFooterUltraCompact] = useState(false);
     const [isComposerPrimaryActionsCompact, setIsComposerPrimaryActionsCompact] = useState(false);
-    const [isComposerModelPickerOpen, setIsComposerModelPickerOpen] = useState(false);
 
     // ------------------------------------------------------------------
     // Refs
@@ -696,29 +685,6 @@ export const ChatComposer = memo(
         }));
       }
       if (composerTrigger.kind === "slash-command") {
-        const builtInSlashCommandItems = [
-          {
-            id: "slash:model",
-            type: "slash-command",
-            command: "model",
-            label: "/model",
-            description: "Switch response model for this thread",
-          },
-          {
-            id: "slash:plan",
-            type: "slash-command",
-            command: "plan",
-            label: "/plan",
-            description: "Switch this thread into plan mode",
-          },
-          {
-            id: "slash:default",
-            type: "slash-command",
-            command: "default",
-            label: "/default",
-            description: "Switch this thread back to normal build mode",
-          },
-        ] satisfies ReadonlyArray<Extract<ComposerCommandItem, { type: "slash-command" }>>;
         const customSlashCommandItems = (settings.customSlashCommands ?? []).map((command) => ({
           id: `custom-slash-command:${command.name}`,
           type: "custom-slash-command" as const,
@@ -737,11 +703,7 @@ export const ChatComposer = memo(
           }),
         );
         const query = composerTrigger.query.trim().toLowerCase();
-        const slashCommandItems = [
-          ...customSlashCommandItems,
-          ...providerSlashCommandItems,
-          ...builtInSlashCommandItems,
-        ];
+        const slashCommandItems = [...customSlashCommandItems, ...providerSlashCommandItems];
         if (!query) {
           return slashCommandItems;
         }
@@ -885,7 +847,7 @@ export const ChatComposer = memo(
       modelOptions: composerModelOptions?.[selectedProvider],
       prompt,
       onPromptChange: setPromptFromTraits,
-      ultraCompact: isComposerFooterUltraCompact,
+      // ultraCompact: isComposerFooterUltraCompact, // TODO: restore via post-merge-restorations.md (TraitsPicker section) — needs ultraCompact prop added to TraitsRenderInput
     });
     const pendingPrimaryAction = useMemo(
       () =>
@@ -1355,27 +1317,6 @@ export const ChatComposer = memo(
           }
           return;
         }
-        if (item.type === "slash-command") {
-          if (item.command === "model") {
-            const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
-              expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
-              focusEditorAfterReplace: false,
-            });
-            if (applied) {
-              setComposerHighlightedItemId(null);
-              setIsComposerModelPickerOpen(true);
-            }
-            return;
-          }
-          void handleInteractionModeChange(item.command === "plan" ? "plan" : "default");
-          const applied = applyPromptReplacement(trigger.rangeStart, trigger.rangeEnd, "", {
-            expectedText: snapshot.value.slice(trigger.rangeStart, trigger.rangeEnd),
-          });
-          if (applied) {
-            setComposerHighlightedItemId(null);
-          }
-          return;
-        }
         if (item.type === "custom-slash-command") {
           const replacement = `/${item.command.name} `;
           const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
@@ -1431,7 +1372,7 @@ export const ChatComposer = memo(
           return;
         }
       },
-      [applyPromptReplacement, handleInteractionModeChange, resolveActiveComposerTrigger],
+      [applyPromptReplacement, resolveActiveComposerTrigger],
     );
 
     const onComposerMenuItemHighlighted = useCallback(
@@ -1612,13 +1553,6 @@ export const ChatComposer = memo(
         focusAt: (cursor: number) => {
           composerEditorRef.current?.focusAt(cursor);
         },
-        openModelPicker: () => {
-          setIsComposerModelPickerOpen(true);
-        },
-        toggleModelPicker: () => {
-          setIsComposerModelPickerOpen((open) => !open);
-        },
-        isModelPickerOpen: () => isComposerModelPickerOpen,
         readSnapshot: () => {
           return readComposerSnapshot();
         },
@@ -1696,7 +1630,6 @@ export const ChatComposer = memo(
         promptRef,
         composerImagesRef,
         composerTerminalContextsRef,
-        isComposerModelPickerOpen,
         readComposerSnapshot,
         selectedModel,
         selectedModelOptionsForDispatch,
@@ -1926,19 +1859,13 @@ export const ChatComposer = memo(
                     model={selectedModelForPickerWithCustomFallback}
                     lockedProvider={lockedProvider}
                     providers={providerStatuses}
-                    keybindings={keybindings}
                     modelOptionsByProvider={modelOptionsByProvider}
-                    terminalOpen={terminalOpen}
-                    open={isComposerModelPickerOpen}
                     {...(composerProviderState.modelPickerIconClassName
                       ? {
                           activeProviderIconClassName:
                             composerProviderState.modelPickerIconClassName,
                         }
                       : {})}
-                    onOpenChange={(open) => {
-                      setIsComposerModelPickerOpen(open);
-                    }}
                     onProviderModelChange={onProviderModelSelect}
                   />
 
