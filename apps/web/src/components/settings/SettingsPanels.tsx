@@ -6,6 +6,7 @@ import {
   LoaderIcon,
   PlusIcon,
   RefreshCwIcon,
+  RotateCcwIcon,
   XIcon,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1710,7 +1711,30 @@ export function GeneralSettingsPanel() {
           }
         />
       </SettingsSection>
+
+      {/* ── Restore defaults ──────────────────────────────── */}
+      <RestoreDefaultsFooter />
     </SettingsPageContainer>
+  );
+}
+
+function RestoreDefaultsFooter() {
+  const { changedSettingLabels, restoreDefaults } = useSettingsRestore();
+
+  if (changedSettingLabels.length === 0) return null;
+
+  return (
+    <div className="flex justify-end px-1 pb-2">
+      <Button
+        size="xs"
+        variant="ghost"
+        className="text-muted-foreground"
+        onClick={() => void restoreDefaults()}
+      >
+        <RotateCcwIcon className="size-3" />
+        Restore defaults
+      </Button>
+    </div>
   );
 }
 

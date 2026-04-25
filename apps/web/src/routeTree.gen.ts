@@ -13,10 +13,18 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PairRouteImport } from './routes/pair'
 import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
+import { Route as SettingsHooksRouteImport } from './routes/settings.hooks'
 import { Route as SettingsGeneralRouteImport } from './routes/settings.general'
 import { Route as SettingsConnectionsRouteImport } from './routes/settings.connections'
 import { Route as SettingsCommandsRouteImport } from './routes/settings.commands'
 import { Route as SettingsArchivedRouteImport } from './routes/settings.archived'
+import { Route as SettingsHooksIndexRouteImport } from './routes/settings.hooks.index'
+import { Route as SettingsCommandsIndexRouteImport } from './routes/settings.commands.index'
+import { Route as SettingsHooksNewRouteImport } from './routes/settings.hooks.new'
+import { Route as SettingsHooksAdoptRouteImport } from './routes/settings.hooks.adopt'
+import { Route as SettingsHooksHookIdRouteImport } from './routes/settings.hooks.$hookId'
+import { Route as SettingsCommandsNewRouteImport } from './routes/settings.commands.new'
+import { Route as SettingsCommandsCommandNameRouteImport } from './routes/settings.commands.$commandName'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
 
@@ -39,6 +47,11 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ChatRoute,
 } as any)
+const SettingsHooksRoute = SettingsHooksRouteImport.update({
+  id: '/hooks',
+  path: '/hooks',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsGeneralRoute = SettingsGeneralRouteImport.update({
   id: '/general',
   path: '/general',
@@ -59,6 +72,42 @@ const SettingsArchivedRoute = SettingsArchivedRouteImport.update({
   path: '/archived',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsHooksIndexRoute = SettingsHooksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsHooksRoute,
+} as any)
+const SettingsCommandsIndexRoute = SettingsCommandsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsCommandsRoute,
+} as any)
+const SettingsHooksNewRoute = SettingsHooksNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => SettingsHooksRoute,
+} as any)
+const SettingsHooksAdoptRoute = SettingsHooksAdoptRouteImport.update({
+  id: '/adopt',
+  path: '/adopt',
+  getParentRoute: () => SettingsHooksRoute,
+} as any)
+const SettingsHooksHookIdRoute = SettingsHooksHookIdRouteImport.update({
+  id: '/$hookId',
+  path: '/$hookId',
+  getParentRoute: () => SettingsHooksRoute,
+} as any)
+const SettingsCommandsNewRoute = SettingsCommandsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => SettingsCommandsRoute,
+} as any)
+const SettingsCommandsCommandNameRoute =
+  SettingsCommandsCommandNameRouteImport.update({
+    id: '/$commandName',
+    path: '/$commandName',
+    getParentRoute: () => SettingsCommandsRoute,
+  } as any)
 const ChatDraftDraftIdRoute = ChatDraftDraftIdRouteImport.update({
   id: '/draft/$draftId',
   path: '/draft/$draftId',
@@ -76,22 +125,36 @@ export interface FileRoutesByFullPath {
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/settings/archived': typeof SettingsArchivedRoute
-  '/settings/commands': typeof SettingsCommandsRoute
+  '/settings/commands': typeof SettingsCommandsRouteWithChildren
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/general': typeof SettingsGeneralRoute
+  '/settings/hooks': typeof SettingsHooksRouteWithChildren
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/settings/commands/$commandName': typeof SettingsCommandsCommandNameRoute
+  '/settings/commands/new': typeof SettingsCommandsNewRoute
+  '/settings/hooks/$hookId': typeof SettingsHooksHookIdRoute
+  '/settings/hooks/adopt': typeof SettingsHooksAdoptRoute
+  '/settings/hooks/new': typeof SettingsHooksNewRoute
+  '/settings/commands/': typeof SettingsCommandsIndexRoute
+  '/settings/hooks/': typeof SettingsHooksIndexRoute
 }
 export interface FileRoutesByTo {
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/settings/archived': typeof SettingsArchivedRoute
-  '/settings/commands': typeof SettingsCommandsRoute
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/general': typeof SettingsGeneralRoute
   '/': typeof ChatIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/settings/commands/$commandName': typeof SettingsCommandsCommandNameRoute
+  '/settings/commands/new': typeof SettingsCommandsNewRoute
+  '/settings/hooks/$hookId': typeof SettingsHooksHookIdRoute
+  '/settings/hooks/adopt': typeof SettingsHooksAdoptRoute
+  '/settings/hooks/new': typeof SettingsHooksNewRoute
+  '/settings/commands': typeof SettingsCommandsIndexRoute
+  '/settings/hooks': typeof SettingsHooksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -99,12 +162,20 @@ export interface FileRoutesById {
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/settings/archived': typeof SettingsArchivedRoute
-  '/settings/commands': typeof SettingsCommandsRoute
+  '/settings/commands': typeof SettingsCommandsRouteWithChildren
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/general': typeof SettingsGeneralRoute
+  '/settings/hooks': typeof SettingsHooksRouteWithChildren
   '/_chat/': typeof ChatIndexRoute
   '/_chat/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/_chat/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/settings/commands/$commandName': typeof SettingsCommandsCommandNameRoute
+  '/settings/commands/new': typeof SettingsCommandsNewRoute
+  '/settings/hooks/$hookId': typeof SettingsHooksHookIdRoute
+  '/settings/hooks/adopt': typeof SettingsHooksAdoptRoute
+  '/settings/hooks/new': typeof SettingsHooksNewRoute
+  '/settings/commands/': typeof SettingsCommandsIndexRoute
+  '/settings/hooks/': typeof SettingsHooksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -116,19 +187,33 @@ export interface FileRouteTypes {
     | '/settings/commands'
     | '/settings/connections'
     | '/settings/general'
+    | '/settings/hooks'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
+    | '/settings/commands/$commandName'
+    | '/settings/commands/new'
+    | '/settings/hooks/$hookId'
+    | '/settings/hooks/adopt'
+    | '/settings/hooks/new'
+    | '/settings/commands/'
+    | '/settings/hooks/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/pair'
     | '/settings'
     | '/settings/archived'
-    | '/settings/commands'
     | '/settings/connections'
     | '/settings/general'
     | '/'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
+    | '/settings/commands/$commandName'
+    | '/settings/commands/new'
+    | '/settings/hooks/$hookId'
+    | '/settings/hooks/adopt'
+    | '/settings/hooks/new'
+    | '/settings/commands'
+    | '/settings/hooks'
   id:
     | '__root__'
     | '/_chat'
@@ -138,9 +223,17 @@ export interface FileRouteTypes {
     | '/settings/commands'
     | '/settings/connections'
     | '/settings/general'
+    | '/settings/hooks'
     | '/_chat/'
     | '/_chat/$environmentId/$threadId'
     | '/_chat/draft/$draftId'
+    | '/settings/commands/$commandName'
+    | '/settings/commands/new'
+    | '/settings/hooks/$hookId'
+    | '/settings/hooks/adopt'
+    | '/settings/hooks/new'
+    | '/settings/commands/'
+    | '/settings/hooks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -179,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/settings/hooks': {
+      id: '/settings/hooks'
+      path: '/hooks'
+      fullPath: '/settings/hooks'
+      preLoaderRoute: typeof SettingsHooksRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/settings/general': {
       id: '/settings/general'
       path: '/general'
@@ -206,6 +306,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/archived'
       preLoaderRoute: typeof SettingsArchivedRouteImport
       parentRoute: typeof SettingsRoute
+    }
+    '/settings/hooks/': {
+      id: '/settings/hooks/'
+      path: '/'
+      fullPath: '/settings/hooks/'
+      preLoaderRoute: typeof SettingsHooksIndexRouteImport
+      parentRoute: typeof SettingsHooksRoute
+    }
+    '/settings/commands/': {
+      id: '/settings/commands/'
+      path: '/'
+      fullPath: '/settings/commands/'
+      preLoaderRoute: typeof SettingsCommandsIndexRouteImport
+      parentRoute: typeof SettingsCommandsRoute
+    }
+    '/settings/hooks/new': {
+      id: '/settings/hooks/new'
+      path: '/new'
+      fullPath: '/settings/hooks/new'
+      preLoaderRoute: typeof SettingsHooksNewRouteImport
+      parentRoute: typeof SettingsHooksRoute
+    }
+    '/settings/hooks/adopt': {
+      id: '/settings/hooks/adopt'
+      path: '/adopt'
+      fullPath: '/settings/hooks/adopt'
+      preLoaderRoute: typeof SettingsHooksAdoptRouteImport
+      parentRoute: typeof SettingsHooksRoute
+    }
+    '/settings/hooks/$hookId': {
+      id: '/settings/hooks/$hookId'
+      path: '/$hookId'
+      fullPath: '/settings/hooks/$hookId'
+      preLoaderRoute: typeof SettingsHooksHookIdRouteImport
+      parentRoute: typeof SettingsHooksRoute
+    }
+    '/settings/commands/new': {
+      id: '/settings/commands/new'
+      path: '/new'
+      fullPath: '/settings/commands/new'
+      preLoaderRoute: typeof SettingsCommandsNewRouteImport
+      parentRoute: typeof SettingsCommandsRoute
+    }
+    '/settings/commands/$commandName': {
+      id: '/settings/commands/$commandName'
+      path: '/$commandName'
+      fullPath: '/settings/commands/$commandName'
+      preLoaderRoute: typeof SettingsCommandsCommandNameRouteImport
+      parentRoute: typeof SettingsCommandsRoute
     }
     '/_chat/draft/$draftId': {
       id: '/_chat/draft/$draftId'
@@ -238,18 +387,53 @@ const ChatRouteChildren: ChatRouteChildren = {
 
 const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)
 
+interface SettingsCommandsRouteChildren {
+  SettingsCommandsCommandNameRoute: typeof SettingsCommandsCommandNameRoute
+  SettingsCommandsNewRoute: typeof SettingsCommandsNewRoute
+  SettingsCommandsIndexRoute: typeof SettingsCommandsIndexRoute
+}
+
+const SettingsCommandsRouteChildren: SettingsCommandsRouteChildren = {
+  SettingsCommandsCommandNameRoute: SettingsCommandsCommandNameRoute,
+  SettingsCommandsNewRoute: SettingsCommandsNewRoute,
+  SettingsCommandsIndexRoute: SettingsCommandsIndexRoute,
+}
+
+const SettingsCommandsRouteWithChildren =
+  SettingsCommandsRoute._addFileChildren(SettingsCommandsRouteChildren)
+
+interface SettingsHooksRouteChildren {
+  SettingsHooksHookIdRoute: typeof SettingsHooksHookIdRoute
+  SettingsHooksAdoptRoute: typeof SettingsHooksAdoptRoute
+  SettingsHooksNewRoute: typeof SettingsHooksNewRoute
+  SettingsHooksIndexRoute: typeof SettingsHooksIndexRoute
+}
+
+const SettingsHooksRouteChildren: SettingsHooksRouteChildren = {
+  SettingsHooksHookIdRoute: SettingsHooksHookIdRoute,
+  SettingsHooksAdoptRoute: SettingsHooksAdoptRoute,
+  SettingsHooksNewRoute: SettingsHooksNewRoute,
+  SettingsHooksIndexRoute: SettingsHooksIndexRoute,
+}
+
+const SettingsHooksRouteWithChildren = SettingsHooksRoute._addFileChildren(
+  SettingsHooksRouteChildren,
+)
+
 interface SettingsRouteChildren {
   SettingsArchivedRoute: typeof SettingsArchivedRoute
-  SettingsCommandsRoute: typeof SettingsCommandsRoute
+  SettingsCommandsRoute: typeof SettingsCommandsRouteWithChildren
   SettingsConnectionsRoute: typeof SettingsConnectionsRoute
   SettingsGeneralRoute: typeof SettingsGeneralRoute
+  SettingsHooksRoute: typeof SettingsHooksRouteWithChildren
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
   SettingsArchivedRoute: SettingsArchivedRoute,
-  SettingsCommandsRoute: SettingsCommandsRoute,
+  SettingsCommandsRoute: SettingsCommandsRouteWithChildren,
   SettingsConnectionsRoute: SettingsConnectionsRoute,
   SettingsGeneralRoute: SettingsGeneralRoute,
+  SettingsHooksRoute: SettingsHooksRouteWithChildren,
 }
 
 const SettingsRouteWithChildren = SettingsRoute._addFileChildren(

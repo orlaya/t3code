@@ -1,5 +1,5 @@
 import * as NodeHttp from "node:http";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -259,7 +259,7 @@ it.layer(NodeServices.layer)("cli log-level parsing", (it) => {
   it.effect("adds, renames, and removes projects offline through the orchestration engine", () =>
     Effect.gen(function* () {
       const baseDir = mkdtempSync(join(tmpdir(), "t3-cli-projects-offline-test-"));
-      const workspaceRoot = mkdtempSync(join(tmpdir(), "t3-cli-projects-workspace-"));
+      const workspaceRoot = realpathSync(mkdtempSync(join(tmpdir(), "t3-cli-projects-workspace-")));
 
       yield* runCliWithRuntime([
         "project",
@@ -303,7 +303,9 @@ it.layer(NodeServices.layer)("cli log-level parsing", (it) => {
   it.effect("routes project commands through a running server when runtime state is present", () =>
     Effect.gen(function* () {
       const baseDir = mkdtempSync(join(tmpdir(), "t3-cli-projects-live-test-"));
-      const workspaceRoot = mkdtempSync(join(tmpdir(), "t3-cli-projects-live-workspace-"));
+      const workspaceRoot = realpathSync(
+        mkdtempSync(join(tmpdir(), "t3-cli-projects-live-workspace-")),
+      );
 
       yield* withLiveProjectCliServer(baseDir, () =>
         Effect.gen(function* () {

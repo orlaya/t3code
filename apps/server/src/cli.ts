@@ -284,8 +284,9 @@ export const resolveServerConfig = (
       ),
     );
     const rawCwd = Option.getOrElse(normalizedFlags.cwd, () => process.cwd());
-    const cwd = path.resolve(yield* expandHomePath(rawCwd.trim()));
-    yield* fs.makeDirectory(cwd, { recursive: true });
+    const resolvedCwd = path.resolve(yield* expandHomePath(rawCwd.trim()));
+    yield* fs.makeDirectory(resolvedCwd, { recursive: true });
+    const cwd = yield* fs.realPath(resolvedCwd).pipe(Effect.orElseSucceed(() => resolvedCwd));
     const derivedPaths = yield* deriveServerPaths(baseDir, devUrl);
     yield* ensureServerDirectories(derivedPaths);
     const persistedObservabilitySettings = yield* loadPersistedObservabilitySettings(

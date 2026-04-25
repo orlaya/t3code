@@ -329,7 +329,8 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
       ]) {
         expect(yield* fs.exists(directory)).toBe(true);
       }
-      expect(resolved.cwd).toBe(path.resolve(customCwd));
+      const realCwd = yield* fs.realPath(path.resolve(customCwd));
+      expect(resolved.cwd).toBe(realCwd);
     }),
   );
 

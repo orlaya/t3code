@@ -61,7 +61,9 @@ export const makeWorkspacePaths = Effect.gen(function* () {
         normalizedWorkspaceRoot,
       });
     }
-    return normalizedWorkspaceRoot;
+    return yield* fileSystem
+      .realPath(normalizedWorkspaceRoot)
+      .pipe(Effect.orElseSucceed(() => normalizedWorkspaceRoot));
   });
 
   const resolveRelativePathWithinRoot: WorkspacePathsShape["resolveRelativePathWithinRoot"] =

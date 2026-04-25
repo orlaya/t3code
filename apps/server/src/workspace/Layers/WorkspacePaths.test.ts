@@ -36,11 +36,13 @@ it.layer(TestLayer)("WorkspacePathsLive", (it) => {
     it.effect("resolves an existing directory", () =>
       Effect.gen(function* () {
         const workspacePaths = yield* WorkspacePaths;
+        const fileSystem = yield* FileSystem.FileSystem;
         const cwd = yield* makeTempDir();
+        const realCwd = yield* fileSystem.realPath(cwd);
 
         const resolved = yield* workspacePaths.normalizeWorkspaceRoot(cwd);
 
-        expect(resolved).toBe(cwd);
+        expect(resolved).toBe(realCwd);
       }),
     );
 
@@ -64,11 +66,13 @@ it.layer(TestLayer)("WorkspacePathsLive", (it) => {
         const fileSystem = yield* FileSystem.FileSystem;
         const cwd = yield* makeTempDir();
         const path = yield* Path.Path;
-        const missingPath = path.join(cwd, "nested", "new-project");
+        const realCwd = yield* fileSystem.realPath(cwd);
+        const missingPath = path.join(realCwd, "nested", "new-project");
 
-        const resolved = yield* workspacePaths.normalizeWorkspaceRoot(missingPath, {
-          createIfMissing: true,
-        });
+        const resolved = yield* workspacePaths.normalizeWorkspaceRoot(
+          path.join(cwd, "nested", "new-project"),
+          { createIfMissing: true },
+        );
         const stat = yield* fileSystem.stat(resolved);
 
         expect(resolved).toBe(missingPath);

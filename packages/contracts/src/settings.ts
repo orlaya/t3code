@@ -10,7 +10,7 @@ import {
   OpenCodeModelOptions,
 } from "./model.ts";
 import { ModelSelection } from "./orchestration.ts";
-import { CustomHook, CustomSlashCommand } from "./settingsHooks.ts";
+import { CustomSlashCommand } from "./settingsHooks.ts";
 
 // ── Client Settings (local-only) ───────────────────────────────
 
@@ -145,9 +145,6 @@ export const ServerSettings = Schema.Struct({
   customSlashCommands: Schema.Array(CustomSlashCommand).pipe(
     Schema.withDecodingDefault(Effect.succeed([])),
   ),
-
-  // Custom hooks (event-driven automation)
-  customHooks: Schema.Array(CustomHook).pipe(Schema.withDecodingDefault(Effect.succeed([]))),
 });
 export type ServerSettings = typeof ServerSettings.Type;
 
@@ -272,6 +269,5 @@ export const ServerSettingsPatch = Schema.Struct({
     }),
   ),
   customSlashCommands: Schema.optionalKey(Schema.Array(CustomSlashCommand)),
-  customHooks: Schema.optionalKey(Schema.Array(CustomHook)),
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;

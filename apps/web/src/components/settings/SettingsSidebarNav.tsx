@@ -5,8 +5,9 @@ import {
   Link2Icon,
   Settings2Icon,
   TerminalSquareIcon,
+  WebhookIcon,
 } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import {
   SidebarContent,
@@ -22,6 +23,7 @@ export type SettingsSectionPath =
   | "/settings/general"
   | "/settings/connections"
   | "/settings/commands"
+  | "/settings/hooks"
   | "/settings/archived";
 
 export const SETTINGS_NAV_ITEMS: ReadonlyArray<{
@@ -32,11 +34,23 @@ export const SETTINGS_NAV_ITEMS: ReadonlyArray<{
   { label: "General", to: "/settings/general", icon: Settings2Icon },
   { label: "Connections", to: "/settings/connections", icon: Link2Icon },
   { label: "Commands", to: "/settings/commands", icon: TerminalSquareIcon },
+  { label: "Hooks", to: "/settings/hooks", icon: WebhookIcon },
   { label: "Archive", to: "/settings/archived", icon: ArchiveIcon },
 ];
 
+function useNavigateUp(): () => void {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const segments = location.pathname.replace(/^\//, "").split("/");
+  // Sub-pages (e.g. /settings/hooks/new) → go up to /settings/hooks
+  // Top-level settings pages → exit settings
+  const upPath = segments.length > 2 ? `/settings/${segments[1]}` : "/";
+  return () => void navigate({ to: upPath, replace: true });
+}
+
 export function SettingsSidebarNav({ pathname }: { pathname: string }) {
   const navigate = useNavigate();
+  const handleBack = useNavigateUp();
 
   return (
     <>
@@ -81,7 +95,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
             <SidebarMenuButton
               size="sm"
               className="gap-2 px-2 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={() => window.history.back()}
+              onClick={handleBack}
             >
               <ArrowLeftIcon className="size-4" />
               <span>Back</span>

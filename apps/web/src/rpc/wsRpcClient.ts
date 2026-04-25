@@ -119,6 +119,13 @@ export interface WsRpcClient {
     readonly subscribeShell: RpcStreamMethod<typeof ORCHESTRATION_WS_METHODS.subscribeShell>;
     readonly subscribeThread: RpcInputStreamMethod<typeof ORCHESTRATION_WS_METHODS.subscribeThread>;
   };
+  readonly claudeHooks: {
+    readonly get: RpcUnaryMethod<typeof WS_METHODS.claudeHooksGet>;
+    readonly write: RpcUnaryMethod<typeof WS_METHODS.claudeHooksWrite>;
+    readonly delete: RpcUnaryMethod<typeof WS_METHODS.claudeHooksDelete>;
+    readonly pullIn: RpcUnaryMethod<typeof WS_METHODS.claudeHooksPullIn>;
+    readonly subscribe: RpcInputStreamMethod<typeof WS_METHODS.subscribeClaudeHooks>;
+  };
 }
 
 export function createWsRpcClient(transport: WsTransport): WsRpcClient {
@@ -248,6 +255,18 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
       subscribeThread: (input, listener, options) =>
         transport.subscribe(
           (client) => client[ORCHESTRATION_WS_METHODS.subscribeThread](input),
+          listener,
+          options,
+        ),
+    },
+    claudeHooks: {
+      get: (input) => transport.request((client) => client[WS_METHODS.claudeHooksGet](input)),
+      write: (input) => transport.request((client) => client[WS_METHODS.claudeHooksWrite](input)),
+      delete: (input) => transport.request((client) => client[WS_METHODS.claudeHooksDelete](input)),
+      pullIn: (input) => transport.request((client) => client[WS_METHODS.claudeHooksPullIn](input)),
+      subscribe: (input, listener, options) =>
+        transport.subscribe(
+          (client) => client[WS_METHODS.subscribeClaudeHooks](input),
           listener,
           options,
         ),

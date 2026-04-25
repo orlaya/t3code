@@ -47,6 +47,14 @@ import { ProviderSessionReaper } from "./provider/Services/ProviderSessionReaper
 import { ServerLifecycleEvents } from "./serverLifecycleEvents.ts";
 import { ServerRuntimeStartup } from "./serverRuntimeStartup.ts";
 import { ServerSettingsService } from "./serverSettings.ts";
+import { ClaudeHooksBroadcaster } from "./claudeHooksBroadcaster.ts";
+import {
+  deleteClaudeHook,
+  getAllClaudeHooks,
+  getClaudeHooks,
+  pullInHook,
+  writeClaudeHook,
+} from "./claudeHooks.ts";
 import { TerminalManager } from "./terminal/Services/Manager.ts";
 import { WorkspaceEntries } from "./workspace/Services/WorkspaceEntries.ts";
 import { WorkspaceFileSystem } from "./workspace/Services/WorkspaceFileSystem.ts";
@@ -151,6 +159,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const config = yield* ServerConfig;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const serverSettings = yield* ServerSettingsService;
+      const claudeHooksBroadcaster = yield* ClaudeHooksBroadcaster;
       const startup = yield* ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries;
       const workspaceFileSystem = yield* WorkspaceFileSystem;
@@ -790,6 +799,22 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           observeRpcEffect(WS_METHODS.serverUpdateSettings, serverSettings.updateSettings(patch), {
             "rpc.aggregate": "server",
           }),
+        [WS_METHODS.claudeHooksGet]: (input) =>
+          observeRpcEffect(WS_METHODS.claudeHooksGet, getClaudeHooks(input.cwd), {
+            "rpc.aggregate": "hooks",
+          }),
+        [WS_METHODS.claudeHooksWrite]: (input) =>
+          observeRpcEffect(WS_METHODS.claudeHooksWrite, writeClaudeHook(input), {
+            "rpc.aggregate": "hooks",
+          }),
+        [WS_METHODS.claudeHooksDelete]: (input) =>
+          observeRpcEffect(WS_METHODS.claudeHooksDelete, deleteClaudeHook(input), {
+            "rpc.aggregate": "hooks",
+          }),
+        [WS_METHODS.claudeHooksPullIn]: (input) =>
+          observeRpcEffect(WS_METHODS.claudeHooksPullIn, pullInHook(input), {
+            "rpc.aggregate": "hooks",
+          }),
         [WS_METHODS.projectsSearchEntries]: (input) =>
           observeRpcEffect(
             WS_METHODS.projectsSearchEntries,
@@ -1090,6 +1115,31 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
               );
             }),
             { "rpc.aggregate": "auth" },
+          ),
+        [WS_METHODS.subscribeClaudeHooks]: () =>
+          observeRpcStreamEffect(
+            WS_METHODS.subscribeClaudeHooks,
+            Effect.gen(function* () {
+              const initial = yield* getAllClaudeHooks;
+              const liveEvents = claudeHooksBroadcaster.streamChanges.pipe(
+                Stream.debounce(Duration.millis(50)),
+                Stream.mapEffect(() => getAllClaudeHooks),
+                Stream.map((payload) => ({
+                  version: 1 as const,
+                  type: "updated" as const,
+                  payload,
+                })),
+              );
+              return Stream.concat(
+                Stream.make({
+                  version: 1 as const,
+                  type: "snapshot" as const,
+                  payload: initial,
+                }),
+                liveEvents,
+              );
+            }),
+            { "rpc.aggregate": "hooks" },
           ),
       });
     }),

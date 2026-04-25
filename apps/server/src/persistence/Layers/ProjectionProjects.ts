@@ -1,6 +1,6 @@
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as SqlSchema from "effect/unstable/sql/SqlSchema";
-import { Effect, Layer, Schema, Struct } from "effect";
+import { Effect, FileSystem, Layer, Schema, Struct } from "effect";
 
 import { ModelSelection, ProjectScript } from "@t3tools/contracts";
 import { toPersistenceSqlError } from "../Errors.ts";
@@ -138,3 +138,41 @@ export const ProjectionProjectRepositoryLive = Layer.effect(
   ProjectionProjectRepository,
   makeProjectionProjectRepository,
 );
+
+/**
+ * Realpath every `workspace_root` in `projection_projects` to correct for
+ * case/symlink drift on case-insensitive filesystems. Only touches rows whose
+ * realpath differs from the stored value. Idempotent.
+ *
+ * Rows whose `workspace_root` no longer exists on disk are left alone so the
+ * user can still see them (and fix/delete them) in the UI.
+ */
+export const normalizeProjectionProjectWorkspaceRoots = Effect.gen(function* () {
+  const sql = yield* SqlClient.SqlClient;
+  const fs = yield* FileSystem.FileSystem;
+
+  const rows = yield* sql<{
+    readonly project_id: string;
+    readonly workspace_root: string;
+  }>`SELECT project_id, workspace_root FROM projection_projects`.pipe(
+    Effect.mapError(
+      toPersistenceSqlError("ProjectionProjectRepository.normalizeWorkspaceRoots:query"),
+    ),
+  );
+
+  for (const row of rows) {
+    const real = yield* fs
+      .realPath(row.workspace_root)
+      .pipe(Effect.orElseSucceed(() => row.workspace_root));
+    if (real === row.workspace_root) continue;
+    yield* sql`
+      UPDATE projection_projects
+      SET workspace_root = ${real}
+      WHERE project_id = ${row.project_id}
+    `.pipe(
+      Effect.mapError(
+        toPersistenceSqlError("ProjectionProjectRepository.normalizeWorkspaceRoots:update"),
+      ),
+    );
+  }
+});

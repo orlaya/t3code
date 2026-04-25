@@ -219,13 +219,15 @@ it.layer(TestLayer)("WorkspaceEntriesLive", (it) => {
       Effect.gen(function* () {
         const cwd = yield* makeTempDir({ prefix: "t3code-workspace-concurrent-build-" });
         yield* writeTextFile(cwd, "src/components/Composer.tsx");
+        const fileSystem = yield* FileSystem.FileSystem;
+        const realCwd = yield* fileSystem.realPath(cwd);
 
         let rootReadCount = 0;
         const originalReaddir = fsPromises.readdir.bind(fsPromises);
         vi.spyOn(fsPromises, "readdir").mockImplementation((async (
           ...args: Parameters<typeof fsPromises.readdir>
         ) => {
-          if (args[0] === cwd) {
+          if (args[0] === realCwd) {
             rootReadCount += 1;
             await new Promise((resolve) => setTimeout(resolve, 20));
           }

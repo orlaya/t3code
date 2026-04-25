@@ -76,6 +76,19 @@ import {
   ServerUpsertKeybindingResult,
 } from "./server.ts";
 import { ServerSettings, ServerSettingsError, ServerSettingsPatch } from "./settings.ts";
+import {
+  ClaudeHooksError,
+  ClaudeHooksGetInput,
+  ClaudeHooksGetResult,
+  ClaudeHooksWriteInput,
+  ClaudeHooksWriteResult,
+  ClaudeHooksDeleteInput,
+  ClaudeHooksDeleteResult,
+  ClaudeHooksPullInInput,
+  ClaudeHooksPullInResult,
+  ClaudeHooksStreamEvent,
+  ClaudeHooksSubscribeInput,
+} from "./settingsHooks.ts";
 
 export const WS_METHODS = {
   // Project registry methods
@@ -119,12 +132,19 @@ export const WS_METHODS = {
   serverGetSettings: "server.getSettings",
   serverUpdateSettings: "server.updateSettings",
 
+  // Claude hooks (managed via hooks-claude.json metadata layer)
+  claudeHooksGet: "claudeHooks.get",
+  claudeHooksWrite: "claudeHooks.write",
+  claudeHooksDelete: "claudeHooks.delete",
+  claudeHooksPullIn: "claudeHooks.pullIn",
+
   // Streaming subscriptions
   subscribeGitStatus: "subscribeGitStatus",
   subscribeTerminalEvents: "subscribeTerminalEvents",
   subscribeServerConfig: "subscribeServerConfig",
   subscribeServerLifecycle: "subscribeServerLifecycle",
   subscribeAuthAccess: "subscribeAuthAccess",
+  subscribeClaudeHooks: "subscribeClaudeHooks",
 } as const;
 
 export const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybinding, {
@@ -154,6 +174,30 @@ export const WsServerUpdateSettingsRpc = Rpc.make(WS_METHODS.serverUpdateSetting
   payload: Schema.Struct({ patch: ServerSettingsPatch }),
   success: ServerSettings,
   error: ServerSettingsError,
+});
+
+export const WsClaudeHooksGetRpc = Rpc.make(WS_METHODS.claudeHooksGet, {
+  payload: ClaudeHooksGetInput,
+  success: ClaudeHooksGetResult,
+  error: ClaudeHooksError,
+});
+
+export const WsClaudeHooksWriteRpc = Rpc.make(WS_METHODS.claudeHooksWrite, {
+  payload: ClaudeHooksWriteInput,
+  success: ClaudeHooksWriteResult,
+  error: ClaudeHooksError,
+});
+
+export const WsClaudeHooksDeleteRpc = Rpc.make(WS_METHODS.claudeHooksDelete, {
+  payload: ClaudeHooksDeleteInput,
+  success: ClaudeHooksDeleteResult,
+  error: ClaudeHooksError,
+});
+
+export const WsClaudeHooksPullInRpc = Rpc.make(WS_METHODS.claudeHooksPullIn, {
+  payload: ClaudeHooksPullInInput,
+  success: ClaudeHooksPullInResult,
+  error: ClaudeHooksError,
 });
 
 export const WsProjectsSearchEntriesRpc = Rpc.make(WS_METHODS.projectsSearchEntries, {
@@ -355,12 +399,23 @@ export const WsSubscribeAuthAccessRpc = Rpc.make(WS_METHODS.subscribeAuthAccess,
   stream: true,
 });
 
+export const WsSubscribeClaudeHooksRpc = Rpc.make(WS_METHODS.subscribeClaudeHooks, {
+  payload: ClaudeHooksSubscribeInput,
+  success: ClaudeHooksStreamEvent,
+  error: ClaudeHooksError,
+  stream: true,
+});
+
 export const WsRpcGroup = RpcGroup.make(
   WsServerGetConfigRpc,
   WsServerRefreshProvidersRpc,
   WsServerUpsertKeybindingRpc,
   WsServerGetSettingsRpc,
   WsServerUpdateSettingsRpc,
+  WsClaudeHooksGetRpc,
+  WsClaudeHooksWriteRpc,
+  WsClaudeHooksDeleteRpc,
+  WsClaudeHooksPullInRpc,
   WsProjectsSearchEntriesRpc,
   WsProjectsWriteFileRpc,
   WsShellOpenInEditorRpc,
@@ -387,6 +442,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsSubscribeServerConfigRpc,
   WsSubscribeServerLifecycleRpc,
   WsSubscribeAuthAccessRpc,
+  WsSubscribeClaudeHooksRpc,
   WsOrchestrationDispatchCommandRpc,
   WsOrchestrationGetTurnDiffRpc,
   WsOrchestrationGetFullThreadDiffRpc,

@@ -440,10 +440,30 @@
 - `apps/web/src/components/chat/MessagesTimeline.tsx` — user messages starting with `/{command}` get styled: primary-coloured `/`, bold command name, tinted bubble (`bg-primary/5`, `border-primary/20`). Applies to all slash commands (custom, built-in, provider).
 - `apps/web/src/components/ui/textarea.tsx` — added `placeholder:text-muted-foreground/72` to match Input placeholder opacity.
 
-**Custom hooks (NEW feature — WIP, schema only so far):**
+**Claude hooks managed UI (NEW feature — full CRUD, draft/active toggle, adopt pre-existing, diagnostics):**
 
-- `packages/contracts/src/settingsHooks.ts` — `HookEvent` (6 events: PreToolUse, PostToolUse, PostCompact, SessionStart, UserPromptSubmit, FileChanged), `HookStatus` (active/draft), 4 action types (`CommandHookAction`, `PromptHookAction`, `AgentHookAction`, `HttpHookAction`), `HookAction` union, `CustomHook` schema. All action types mirror the Claude Agent SDK's native hook types — we stay within what Claude Code supports natively.
+- `packages/contracts/src/settingsHooks.ts` — hook event/action schemas, managed hook entry schema, RPC input/output schemas (get/write/delete/pullIn), fingerprinting types. `cwd` is optional on all RPC inputs (global hooks don't need one).
 - `packages/contracts/src/settings.ts` — `customHooks` array on `ServerSettings` (defaults `[]`) and `ServerSettingsPatch`.
+- `apps/server/src/claudeHooksStore.ts` — **new file**. Read/write `hooks-claude.json`, settings file sync, fingerprinting, reconciliation.
+- `apps/server/src/claudeHooks.ts` — **new file**. RPC handlers (get/write/delete/pullIn).
+- `apps/server/src/claudeHooksBroadcaster.ts` — **new file**. File watchers + PubSub for live hook changes.
+- `apps/server/src/ws.ts` — RPC handler registrations + subscription wiring for hooks.
+- `apps/server/src/server.ts`, `apps/server/src/cli.ts`, `apps/server/src/config.ts`, `apps/server/src/serverRuntimeStartup.ts` — hooks broadcaster wired into server startup, `stateDir` added to config.
+- `apps/server/src/persistence/Layers/ProjectionProjects.ts` — `listAll()` method added for hooks broadcaster to query live projects.
+- `apps/server/src/workspace/Layers/WorkspacePaths.ts` — `realpathCwd` helper used by hooks store.
+- `apps/web/src/rpc/wsRpcClient.ts` — `claudeHooks` namespace added (get/write/delete/pullIn/subscribe).
+- `packages/contracts/src/rpc.ts` — hooks RPC method definitions + WS method constants.
+- `packages/shared/src/claudeHooksFingerprint.ts` — **new file**. Shared fingerprinting for hook actions.
+- `packages/shared/package.json` — added `claudeHooksFingerprint` subpath export.
+- `apps/web/src/components/settings/HooksSettings.tsx` — **new file**. Hooks list page.
+- `apps/web/src/components/settings/HookEditForm.tsx` — **new file**. Create/edit/adopt/delete form.
+- `apps/web/src/routes/settings.hooks.tsx`, `settings.hooks.index.tsx`, `settings.hooks.new.tsx`, `settings.hooks.$hookId.tsx`, `settings.hooks.adopt.tsx` — **new route files**.
+- `apps/web/src/components/settings/SettingsSidebarNav.tsx` — added "Hooks" nav entry. Back button uses navigate-up instead of `window.history.back()`.
+
+**Settings breadcrumbs + navigate-up (Escape / Back):**
+
+- `apps/web/src/routes/settings.tsx` — header shows breadcrumbs derived from pathname (e.g. Settings › Hooks › Edit). Escape navigates up one level instead of `window.history.back()`.
+- `apps/web/src/components/settings/SettingsSidebarNav.tsx` — sidebar Back button matches Escape behaviour (navigate up, not history back).
 
 **Vitest reporter + Turbo output noise reduction:**
 
@@ -616,3 +636,10 @@
 - `apps/web/src/ui-adapter/claude/assembly/web.ts` — `WebSearchInvocation` gained `turnId`. Uses `shiftMatchingTurnId` instead of `shift()`.
 - `apps/web/src/ui-adapter/claude/assembly/file.ts` — `FileChangeInvocation` gained `turnId`. Uses `shiftMatchingTurnId` instead of `shift()`.
 - `apps/web/src/ui-adapter/claude/assembly/generic.ts` — `GenericToolInvocation` gained `turnId`. MCP `find()` calls and dynamic tool completed matching both check `inv.turnId === activity.turnId`.
+
+**File outline condensation module (new, not yet wired in):**
+
+- `packages/shared/src/fileOutline.ts` — new module. Uses `web-tree-sitter` (WASM) to parse large files (>16KB) into structural outlines (symbol names + line ranges). Falls back to first 1KB preview for unknown grammars. Outline queries for TypeScript, TSX, JavaScript. Provider-agnostic.
+- `packages/shared/src/fileOutline.test.ts` — 8 tests covering small files, large TS files, markdown fallback, unknown extensions.
+- `packages/shared/package.json` — added `web-tree-sitter@0.20.8` and `tree-sitter-wasms@^0.1.13` as dependencies. Added `"./fileOutline"` subpath export.
+- Not wired into the provider layer yet. Will become a PostToolUse hook preset on the Read tool once the hooks metadata layer (see `__notes/PLAN.hooks-metadata-layer.md`) reaches that stage.

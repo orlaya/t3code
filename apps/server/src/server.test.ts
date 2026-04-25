@@ -63,6 +63,10 @@ import {
   GitStatusBroadcaster,
   type GitStatusBroadcasterShape,
 } from "./git/Services/GitStatusBroadcaster.ts";
+import {
+  ClaudeHooksBroadcaster,
+  type ClaudeHooksBroadcasterShape,
+} from "./claudeHooksBroadcaster.ts";
 import { Keybindings, type KeybindingsShape } from "./keybindings.ts";
 import { Open, type OpenShape } from "./open.ts";
 import {
@@ -74,6 +78,10 @@ import {
   ProjectionSnapshotQuery,
   type ProjectionSnapshotQueryShape,
 } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
+import {
+  ProjectionProjectRepository,
+  type ProjectionProjectRepositoryShape,
+} from "./persistence/Services/ProjectionProjects.ts";
 import { SqlitePersistenceMemory } from "./persistence/Layers/Sqlite.ts";
 import {
   ProviderRegistry,
@@ -316,10 +324,12 @@ const buildAppUnderTest = (options?: {
     gitCore?: Partial<GitCoreShape>;
     gitManager?: Partial<GitManagerShape>;
     gitStatusBroadcaster?: Partial<GitStatusBroadcasterShape>;
+    claudeHooksBroadcaster?: Partial<ClaudeHooksBroadcasterShape>;
     projectSetupScriptRunner?: Partial<ProjectSetupScriptRunnerShape>;
     terminalManager?: Partial<TerminalManagerShape>;
     orchestrationEngine?: Partial<OrchestrationEngineShape>;
     projectionSnapshotQuery?: Partial<ProjectionSnapshotQueryShape>;
+    projectionProjectRepository?: Partial<ProjectionProjectRepositoryShape>;
     checkpointDiffQuery?: Partial<CheckpointDiffQueryShape>;
     browserTraceCollector?: Partial<BrowserTraceCollectorShape>;
     serverLifecycleEvents?: Partial<ServerLifecycleEventsShape>;
@@ -440,6 +450,14 @@ const buildAppUnderTest = (options?: {
       Layer.provide(gitManagerLayer),
       Layer.provideMerge(gitStatusBroadcasterLayer),
       Layer.provide(
+        Layer.mock(ClaudeHooksBroadcaster)({
+          start: Effect.void,
+          ready: Effect.void,
+          streamChanges: Stream.empty,
+          ...options?.layers?.claudeHooksBroadcaster,
+        }),
+      ),
+      Layer.provide(
         Layer.mock(ProjectSetupScriptRunner)({
           runForThread: () => Effect.succeed({ status: "no-script" as const }),
           ...options?.layers?.projectSetupScriptRunner,
@@ -477,6 +495,15 @@ const buildAppUnderTest = (options?: {
           getFirstActiveThreadIdByProjectId: () => Effect.succeed(Option.none()),
           getThreadCheckpointContext: () => Effect.succeed(Option.none()),
           ...options?.layers?.projectionSnapshotQuery,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(ProjectionProjectRepository)({
+          upsert: () => Effect.void,
+          getById: () => Effect.succeed(Option.none()),
+          listAll: () => Effect.succeed([]),
+          deleteById: () => Effect.void,
+          ...options?.layers?.projectionProjectRepository,
         }),
       ),
       Layer.provide(

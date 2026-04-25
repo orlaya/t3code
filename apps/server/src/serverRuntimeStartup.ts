@@ -22,11 +22,14 @@ import {
 } from "effect";
 
 import { ServerConfig } from "./config.ts";
+import { ClaudeHooksBroadcaster } from "./claudeHooksBroadcaster.ts";
+import { migrateHooksClaudeProjectKeys } from "./claudeHooksStore.ts";
 import { Keybindings } from "./keybindings.ts";
 import { Open } from "./open.ts";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine.ts";
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import { OrchestrationReactor } from "./orchestration/Services/OrchestrationReactor.ts";
+import { normalizeProjectionProjectWorkspaceRoots } from "./persistence/Layers/ProjectionProjects.ts";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents.ts";
 import { ServerSettingsService } from "./serverSettings.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
@@ -281,6 +284,7 @@ const runStartupPhase = <A, E, R>(phase: string, effect: Effect.Effect<A, E, R>)
 export const makeServerRuntimeStartup = Effect.gen(function* () {
   const serverConfig = yield* ServerConfig;
   const keybindings = yield* Keybindings;
+  const claudeHooksBroadcaster = yield* ClaudeHooksBroadcaster;
   const orchestrationReactor = yield* OrchestrationReactor;
   const providerSessionReaper = yield* ProviderSessionReaper;
   const lifecycleEvents = yield* ServerLifecycleEvents;
@@ -294,6 +298,27 @@ export const makeServerRuntimeStartup = Effect.gen(function* () {
   yield* Effect.addFinalizer(() => Scope.close(reactorScope, Exit.void));
 
   const startup = Effect.gen(function* () {
+    yield* Effect.logDebug("startup phase: realpath-normalising persisted workspace roots");
+    yield* runStartupPhase(
+      "normalize.realpath",
+      Effect.gen(function* () {
+        yield* migrateHooksClaudeProjectKeys(serverConfig.stateDir).pipe(
+          Effect.catch((cause) =>
+            Effect.logWarning("hooks-claude.json project key realpath migration failed", {
+              cause,
+            }),
+          ),
+        );
+        yield* normalizeProjectionProjectWorkspaceRoots.pipe(
+          Effect.catch((cause) =>
+            Effect.logWarning("projection_projects workspace_root realpath migration failed", {
+              cause,
+            }),
+          ),
+        );
+      }),
+    );
+
     yield* Effect.logDebug("startup phase: starting keybindings runtime");
     yield* runStartupPhase(
       "keybindings.start",
@@ -301,6 +326,21 @@ export const makeServerRuntimeStartup = Effect.gen(function* () {
         Effect.catch((error) =>
           Effect.logWarning("failed to start keybindings runtime", {
             path: error.configPath,
+            detail: error.detail,
+            cause: error.cause,
+          }),
+        ),
+        Effect.forkScoped,
+      ),
+    );
+
+    yield* Effect.logDebug("startup phase: starting claude hooks broadcaster");
+    yield* runStartupPhase(
+      "claudeHooksBroadcaster.start",
+      claudeHooksBroadcaster.start.pipe(
+        Effect.catch((error) =>
+          Effect.logWarning("failed to start claude hooks broadcaster", {
+            path: error.filePath,
             detail: error.detail,
             cause: error.cause,
           }),

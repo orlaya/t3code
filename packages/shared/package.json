@@ -75,6 +75,10 @@
     "./fileOutline": {
       "types": "./src/fileOutline.ts",
       "import": "./src/fileOutline.ts"
+    },
+    "./claudeHooksFingerprint": {
+      "types": "./src/claudeHooksFingerprint.ts",
+      "import": "./src/claudeHooksFingerprint.ts"
     }
   },
   "scripts": {

@@ -659,10 +659,10 @@ const make = Effect.gen(function* () {
         return;
       }
 
-      const parts: string[] = [];
+      const promptParts: string[] = [];
       if (cmdEntry.promptFile) {
         try {
-          parts.push(readFileSync(cmdEntry.promptFile, "utf-8").trim());
+          promptParts.push(readFileSync(cmdEntry.promptFile, "utf-8").trim());
         } catch {
           yield* appendProviderFailureActivity({
             threadId: event.payload.threadId,
@@ -676,10 +676,17 @@ const make = Effect.gen(function* () {
         }
       }
       if (cmdEntry.promptMessage) {
-        parts.push(cmdEntry.promptMessage.trim());
+        promptParts.push(cmdEntry.promptMessage.trim());
       }
-      if (cmdRef.extraText?.trim()) {
-        parts.push(cmdRef.extraText.trim());
+
+      const parts: string[] = [];
+      const extraText = cmdRef.extraText?.trim();
+      if (extraText && cmdEntry.extraTextPosition === "before") {
+        parts.push(extraText);
+      }
+      parts.push(...promptParts);
+      if (extraText && cmdEntry.extraTextPosition !== "before") {
+        parts.push(extraText);
       }
 
       const resolved = parts.join("\n\n");

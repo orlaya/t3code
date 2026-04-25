@@ -1,5 +1,5 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/settings/commands")({
+export const Route = createFileRoute("/settings/hooks")({
   component: () => <Outlet />,
 });
