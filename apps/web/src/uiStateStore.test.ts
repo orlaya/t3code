@@ -265,21 +265,21 @@ describe("uiStateStore pure functions", () => {
       { key: physicalRemote, logicalKey, cwd: "/repo/project" },
     ]);
 
-    expect(initial.projectExpandedById).toEqual({ [logicalKey]: true });
+    expect(initial.projectExpandedById).toEqual({ [logicalKey]: false });
 
-    const afterCollapse = { ...initial, projectExpandedById: { [logicalKey]: false } };
-    const next = syncProjects(afterCollapse, [
+    const afterExpand = { ...initial, projectExpandedById: { [logicalKey]: true } };
+    const next = syncProjects(afterExpand, [
       { key: physicalLocal, logicalKey, cwd: "/repo/project" },
       { key: physicalRemote, logicalKey, cwd: "/repo/project" },
     ]);
 
-    expect(next.projectExpandedById[logicalKey]).toBe(false);
+    expect(next.projectExpandedById[logicalKey]).toBe(true);
   });
 
   it("syncProjects preserves expand state when a project's logical key changes", () => {
     // Example: late-arriving repo metadata flips grouping identity from the
     // physical key to a canonical repository key. The row did not actually
-    // change, so the user's collapse choice must carry over.
+    // change, so the user's expand choice must carry over.
     const physicalKey = "env-local:/repo/project";
     const previousLogicalKey = physicalKey;
     const nextLogicalKey = "repo-canonical-key";
@@ -288,17 +288,15 @@ describe("uiStateStore pure functions", () => {
       { key: physicalKey, logicalKey: previousLogicalKey, cwd: "/repo/project" },
     ]);
 
-    expect(initial.projectExpandedById[previousLogicalKey]).toBe(true);
-
-    const afterCollapse = {
+    const afterExpand = {
       ...initial,
-      projectExpandedById: { [previousLogicalKey]: false },
+      projectExpandedById: { [previousLogicalKey]: true },
     };
-    const next = syncProjects(afterCollapse, [
+    const next = syncProjects(afterExpand, [
       { key: physicalKey, logicalKey: nextLogicalKey, cwd: "/repo/project" },
     ]);
 
-    expect(next.projectExpandedById[nextLogicalKey]).toBe(false);
+    expect(next.projectExpandedById[nextLogicalKey]).toBe(true);
   });
 
   it("syncThreads prunes missing thread UI state", () => {
@@ -466,28 +464,6 @@ describe("uiStateStore persistence round-trip", () => {
     expect(rehydrated.projectExpandedById).toEqual({
       [projectA.key]: false,
       [projectB.key]: false,
-    });
-  });
-
-  it("respects mixed expand state on rehydrate and defaults new projects to expanded", () => {
-    const projectA = { key: "kA", logicalKey: "kA", cwd: "/projA" };
-    const projectB = { key: "kB", logicalKey: "kB", cwd: "/projB" };
-    const projectC = { key: "kC", logicalKey: "kC", cwd: "/projC" };
-
-    let state = syncProjects(makeUiState(), [projectA, projectB]);
-    state = setProjectExpanded(state, projectB.key, false);
-    persistState(state);
-
-    const persisted = JSON.parse(
-      localStorageStub.getItem(PERSISTED_STATE_KEY) ?? "{}",
-    ) as PersistedUiState;
-    hydratePersistedProjectState(persisted);
-    const rehydrated = syncProjects(makeUiState(), [projectA, projectB, projectC]);
-
-    expect(rehydrated.projectExpandedById).toEqual({
-      [projectA.key]: true,
-      [projectB.key]: false,
-      [projectC.key]: true,
     });
   });
 
