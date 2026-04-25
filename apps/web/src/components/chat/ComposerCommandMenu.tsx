@@ -5,10 +5,10 @@ import {
   type ServerProviderSkill,
   type ServerProviderSlashCommand,
 } from "@t3tools/contracts";
-import { BotIcon, TerminalSquareIcon } from "lucide-react";
+import { TerminalSquareIcon } from "lucide-react";
 import { memo, useLayoutEffect, useMemo, useRef } from "react";
 
-import { type ComposerSlashCommand, type ComposerTriggerKind } from "../../composer-logic";
+import { type ComposerTriggerKind } from "../../composer-logic";
 import { formatProviderSkillInstallSource } from "~/providerSkillPresentation";
 import { cn } from "~/lib/utils";
 import {
@@ -27,13 +27,6 @@ export type ComposerCommandItem =
       type: "path";
       path: string;
       pathKind: ProjectEntry["kind"];
-      label: string;
-      description: string;
-    }
-  | {
-      id: string;
-      type: "slash-command";
-      command: ComposerSlashCommand;
       label: string;
       description: string;
     }
@@ -100,7 +93,6 @@ function groupCommandItems(
 
   const customItems = items.filter((item) => item.type === "custom-slash-command");
   const providerItems = items.filter((item) => item.type === "provider-slash-command");
-  const builtInItems = items.filter((item) => item.type === "slash-command");
 
   const groups: ComposerCommandGroup[] = [];
   if (customItems.length > 0) {
@@ -108,9 +100,6 @@ function groupCommandItems(
   }
   if (providerItems.length > 0) {
     groups.push({ id: "provider", label: "Provider", items: providerItems });
-  }
-  if (builtInItems.length > 0) {
-    groups.push({ id: "built-in", label: "Built-in", items: builtInItems });
   }
   return groups;
 }
@@ -247,9 +236,6 @@ const ComposerCommandMenuItem = memo(function ComposerCommandMenuItem(props: {
       ) : null}
       {props.item.type === "custom-slash-command" ? (
         <TerminalSquareIcon className="size-4 shrink-0 text-muted-foreground/80" />
-      ) : null}
-      {props.item.type === "slash-command" ? (
-        <BotIcon className="size-4 shrink-0 text-muted-foreground/80" />
       ) : null}
       {props.item.type === "provider-slash-command" ? (
         <span className="inline-flex size-4 shrink-0 items-center justify-center text-muted-foreground/80">

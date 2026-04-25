@@ -63,20 +63,24 @@ export function finalizeWebSearch(inv: WebSearchInvocation): AssembledWebSearch 
 
   if (!firstId || !firstCreatedAt) return null;
 
-  // tool.started only — no data yet, emit a "starting" placeholder
+  // tool.started only — no data yet, emit a "starting" placeholder.
+  // If tool.completed arrived with status "failed" (interrupted mid-stream),
+  // mark as interrupted instead of leaving it stuck as starting.
   if (!bestCanonical) {
+    const wasInterrupted = bestKind === "tool.completed";
     return {
       kind: "web-search",
       id: firstId,
       createdAt: firstCreatedAt,
-      state: "starting",
+      turnId: inv.turnId,
+      state: wasInterrupted ? "interrupted" : "starting",
       heading: "Search",
     };
   }
 
   const state =
     bestKind === "tool.completed"
-      ? bestCanonical.result?.isError
+      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
         ? "failed"
         : "completed"
       : bestKind === "tool.updated"
@@ -87,6 +91,7 @@ export function finalizeWebSearch(inv: WebSearchInvocation): AssembledWebSearch 
     kind: "web-search",
     id: firstId,
     createdAt: firstCreatedAt,
+    turnId: inv.turnId,
     state: state as AssembledWebSearch["state"],
     heading: "Search",
   };
@@ -194,6 +199,16 @@ export function groupWebSearchActivities(
           matched = true;
         }
       }
+      // Fallback: match by turnId against the startedQueue (handles interrupted
+      // tools where tool.completed arrives with empty input/no query).
+      if (!matched) {
+        const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
+        if (pendingStarted) {
+          pendingStarted.activities.push(activity);
+          pendingStarted.hasCompleted = true;
+          matched = true;
+        }
+      }
       if (!matched) {
         const inv: WebSearchInvocation = {
           query,
@@ -229,6 +244,7 @@ export function groupWebSearchActivities(
 interface WebFetchInvocation {
   /** Grouping key — URL from input. */
   url: string | undefined;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasCompleted: boolean;
 }
@@ -262,7 +278,7 @@ export function finalizeWebFetch(inv: WebFetchInvocation): AssembledWebFetch | n
 
   const state =
     bestKind === "tool.completed"
-      ? bestCanonical.result?.isError
+      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
         ? "failed"
         : "completed"
       : bestKind === "tool.updated"
@@ -273,6 +289,7 @@ export function finalizeWebFetch(inv: WebFetchInvocation): AssembledWebFetch | n
     kind: "web-fetch",
     id: firstId,
     createdAt: firstCreatedAt,
+    turnId: inv.turnId,
     state: state as AssembledWebFetch["state"],
     heading: "Fetch",
   };
@@ -320,6 +337,7 @@ export function groupWebFetchActivities(
       if (!matched) {
         const inv: WebFetchInvocation = {
           url,
+          turnId: activity.turnId,
           activities: [activity],
           hasCompleted: false,
         };
@@ -351,6 +369,7 @@ export function groupWebFetchActivities(
       if (!matched) {
         const inv: WebFetchInvocation = {
           url,
+          turnId: activity.turnId,
           activities: [activity],
           hasCompleted: true,
         };

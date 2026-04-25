@@ -42,10 +42,7 @@ import { readEnvironmentApi } from "../environmentApi";
 import { isElectron } from "../env";
 import { readLocalApi } from "../localApi";
 import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch";
-import {
-  collapseExpandedComposerCursor,
-  parseStandaloneComposerSlashCommand,
-} from "../composer-logic";
+import { collapseExpandedComposerCursor } from "../composer-logic";
 import {
   deriveCompletionDividerBeforeEntryId,
   derivePendingApprovals,
@@ -1116,24 +1113,11 @@ export default function ChatView(props: ChatViewProps) {
     if (providerName === "codex") return assembleCodexTools(threadActivities);
     return null;
   }, [providerName, threadActivities]);
-  const assembledTools = useMemo(() => {
-    const tools = assemblyResult?.tools ?? [];
-    // When we know no more tool events will arrive, any tool still in
-    // "starting" or "in-progress" is stale. Two triggers:
-    //   1. Session disconnected — server crashed, provider died
-    //   2. Turn interrupted — user cancelled the turn
-    // In both cases the completing event is never coming. Mark them
-    // interrupted so the UI stops spinning.
-    const toolsAreStale = phase === "disconnected" || activeLatestTurn?.state === "interrupted";
-    if (toolsAreStale && tools.length > 0) {
-      return tools.map((t) =>
-        t.state === "starting" || t.state === "in-progress"
-          ? { ...t, state: "interrupted" as const }
-          : t,
-      );
-    }
-    return tools;
-  }, [assemblyResult, phase, activeLatestTurn?.state]);
+  // The assembly layer now handles interrupted state directly — when a turn is
+  // interrupted, tool.completed (with empty input) gets matched to the pending
+  // tool.started via turnId fallback, producing a terminal state in the assembly
+  // itself.  No overlay/heuristic needed here.
+  const assembledTools = useMemo(() => assemblyResult?.tools ?? [], [assemblyResult]);
   const workLogEntries = useMemo(
     () =>
       deriveWorkLogEntries(
@@ -2676,18 +2660,6 @@ export default function ChatView(props: ChatViewProps) {
       });
       return;
     }
-    const standaloneSlashCommand =
-      composerImages.length === 0 && sendableComposerTerminalContexts.length === 0
-        ? parseStandaloneComposerSlashCommand(trimmed)
-        : null;
-    if (standaloneSlashCommand) {
-      handleInteractionModeChange(standaloneSlashCommand);
-      promptRef.current = "";
-      clearComposerDraftContent(composerDraftTarget);
-      composerRef.current?.resetCursorState();
-      return;
-    }
-
     // Detect custom slash command from the composer text (e.g. "/handoff some extra text").
     // The user either selected from the menu (which inserts "/{name} ") or typed it directly.
     let customSlashCommandForSend: { name: string; extraText?: string } | null = null;

@@ -194,6 +194,17 @@ export function shouldRenderTraitsControls(input: {
   return getTraitsSectionVisibility(input).hasAnyControls;
 }
 
+function shortenTraitLabel(label: string): string {
+  const map: Record<string, string> = {
+    Medium: "Med",
+    Ultrathink: "Ultra",
+    "Extra High": "XHigh",
+    "Thinking On": "Think",
+    "Thinking Off": "No Think",
+  };
+  return map[label] ?? label;
+}
+
 export interface TraitsMenuContentProps {
   provider: ProviderKind;
   models: ReadonlyArray<ServerProviderModel>;
@@ -202,6 +213,7 @@ export interface TraitsMenuContentProps {
   onPromptChange: (prompt: string) => void;
   modelOptions?: ProviderOptions | null | undefined;
   allowPromptInjectedEffort?: boolean;
+  ultraCompact?: boolean;
   triggerVariant?: VariantProps<typeof buttonVariants>["variant"];
   triggerClassName?: string;
 }
@@ -349,6 +361,7 @@ export const TraitsPicker = memo(function TraitsPicker({
   onPromptChange,
   modelOptions,
   allowPromptInjectedEffort = true,
+  ultraCompact,
   triggerVariant,
   triggerClassName,
   ...persistence
@@ -379,16 +392,22 @@ export const TraitsPicker = memo(function TraitsPicker({
   const triggerLabel =
     descriptors
       .map((descriptor) => {
+        // Never show context window on the button — it's in the dropdown
+        if (descriptor.type === "select" && descriptor.id === "contextWindow") {
+          return null;
+        }
         if (ultrathinkPromptControlled && descriptor.id === primarySelectDescriptor?.id) {
-          return "Ultrathink";
+          return ultraCompact ? shortenTraitLabel("Ultrathink") : "Ultrathink";
         }
         if (descriptor.type === "boolean") {
           if (descriptor.id === "fastMode") {
-            return descriptor.currentValue === true ? "Fast" : "Normal";
+            // Only show "Fast" when actually fast — hide "Normal" from the button
+            return descriptor.currentValue === true ? "Fast" : null;
           }
           return `${descriptor.label} ${descriptor.currentValue === true ? "On" : "Off"}`;
         }
-        return getProviderOptionCurrentLabel(descriptor);
+        const label = getProviderOptionCurrentLabel(descriptor);
+        return ultraCompact && label ? shortenTraitLabel(label) : label;
       })
       .filter((label): label is string => typeof label === "string" && label.length > 0)
       .join(" · ") || "";
@@ -405,6 +424,7 @@ export const TraitsPicker = memo(function TraitsPicker({
       <MenuTrigger
         render={
           <Button
+            data-chat-traits-picker="true"
             size="sm"
             variant={triggerVariant ?? "ghost"}
             className={cn(

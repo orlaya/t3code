@@ -227,20 +227,17 @@ const makeClaudeHooksBroadcaster = Effect.gen(function* () {
 
   const makeProjectWatcherLoop = (normalizedCwd: string) =>
     Effect.gen(function* () {
+      const rootExists = yield* fs.exists(normalizedCwd).pipe(Effect.orElseSucceed(() => false));
+      if (!rootExists) return;
+
       const projectClaudeDir = pathService.join(normalizedCwd, ".claude");
       const watchedFiles = new Set(["settings.json", "settings.local.json"]);
 
-      yield* fs.makeDirectory(projectClaudeDir, { recursive: true }).pipe(
-        Effect.mapError(
-          (cause) =>
-            new ClaudeHooksError({
-              filePath: projectClaudeDir,
-              detail: "failed to prepare project .claude directory for watcher",
-              cause,
-            }),
-        ),
-        Effect.ignoreCause({ log: true }),
-      );
+      // Only watch if .claude/ already exists — don't create it speculatively.
+      // It gets created lazily by syncLevelSettingsFiles when there are actual
+      // managed hooks to write.
+      const dirExists = yield* fs.exists(projectClaudeDir).pipe(Effect.orElseSucceed(() => false));
+      if (!dirExists) return;
 
       const emitProjectSafely = emit({ level: "project", cwd: normalizedCwd }).pipe(
         Effect.ignoreCause({ log: true }),

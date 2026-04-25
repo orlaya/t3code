@@ -122,6 +122,7 @@ function unwrapShellCommand(value: string): string {
 
 interface ToolInvocation {
   itemType: string;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasStarted: boolean;
   hasCompleted: boolean;
@@ -143,6 +144,7 @@ function assembleCommand(inv: ToolInvocation): AssembledCommand | null {
       kind: "command",
       id: first.id,
       createdAt: first.createdAt,
+      turnId: inv.turnId,
       state: "starting",
       heading: "Command",
       command: extractDetail(first.payload) ?? "",
@@ -160,6 +162,7 @@ function assembleCommand(inv: ToolInvocation): AssembledCommand | null {
     kind: "command",
     id: first.id,
     createdAt: first.createdAt,
+    turnId: inv.turnId,
     state,
     heading: "Command",
     command: displayCommand,
@@ -191,6 +194,7 @@ function assembleFileChanges(inv: ToolInvocation): Array<AssembledEdit | Assembl
         kind: "edit",
         id: first.id,
         createdAt: first.createdAt,
+        turnId: inv.turnId,
         state: "starting",
         heading: "Edit",
         filePath: "",
@@ -207,6 +211,7 @@ function assembleFileChanges(inv: ToolInvocation): Array<AssembledEdit | Assembl
         kind: "edit",
         id: first.id,
         createdAt: first.createdAt,
+        turnId: inv.turnId,
         state: "completed",
         heading: "Edit",
         filePath: "",
@@ -230,6 +235,7 @@ function assembleFileChanges(inv: ToolInvocation): Array<AssembledEdit | Assembl
         kind: "write",
         id,
         createdAt: first.createdAt,
+        turnId: inv.turnId,
         state: "completed",
         heading: "Write",
         filePath: change.path,
@@ -245,6 +251,7 @@ function assembleFileChanges(inv: ToolInvocation): Array<AssembledEdit | Assembl
       kind: "edit",
       id,
       createdAt: first.createdAt,
+      turnId: inv.turnId,
       state: "completed",
       heading: "Edit",
       filePath: change.path,
@@ -273,6 +280,7 @@ function assembleGenericTool(inv: ToolInvocation): AssembledToolCall | null {
       kind: "tool-call",
       id: first.id,
       createdAt: first.createdAt,
+      turnId: inv.turnId,
       state: completed ? "completed" : "starting",
       heading: "Tool",
       toolName: "Tool",
@@ -285,6 +293,7 @@ function assembleGenericTool(inv: ToolInvocation): AssembledToolCall | null {
     kind: "tool-call",
     id: first.id,
     createdAt: first.createdAt,
+    turnId: inv.turnId,
     state,
     heading: canonical.toolName !== "unknown" ? canonical.toolName : "Tool",
     toolName: canonical.toolName,
@@ -331,6 +340,7 @@ export function assembleCodexTools(
     if (activity.kind === "tool.started") {
       const inv: ToolInvocation = {
         itemType,
+        turnId: activity.turnId,
         activities: [activity],
         hasStarted: true,
         hasCompleted: false,
@@ -359,6 +369,7 @@ export function assembleCodexTools(
       // Standalone updated/completed — create a new invocation
       const inv: ToolInvocation = {
         itemType,
+        turnId: activity.turnId,
         activities: [activity],
         hasStarted: false,
         hasCompleted: activity.kind === "tool.completed",

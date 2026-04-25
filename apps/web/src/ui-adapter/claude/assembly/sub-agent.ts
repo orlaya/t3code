@@ -56,13 +56,17 @@ export function finalizeSubAgent(
 
   if (!firstId || !firstCreatedAt) return null;
 
-  // tool.started only — no data yet, emit a "starting" placeholder
+  // tool.started only — no data yet, emit a "starting" placeholder.
+  // If tool.completed arrived with status "failed" (e.g. interrupted mid-stream
+  // before the input was fully delivered), mark as interrupted, not starting.
   if (!bestCanonical || !bestCanonical.input?.prompt) {
+    const wasInterrupted = bestKind === "tool.completed";
     return {
       kind: "sub-agent",
       id: firstId,
       createdAt: firstCreatedAt,
-      state: "starting",
+      turnId: inv.turnId,
+      state: wasInterrupted ? "interrupted" : "starting",
       heading: "Sub-agent",
       brief: { prompt: "", description: "" },
     };
@@ -70,7 +74,7 @@ export function finalizeSubAgent(
 
   const state =
     bestKind === "tool.completed"
-      ? bestCanonical.result?.isError
+      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
         ? "failed"
         : "completed"
       : bestKind === "tool.updated"
@@ -88,6 +92,7 @@ export function finalizeSubAgent(
     kind: "sub-agent",
     id: firstId,
     createdAt: firstCreatedAt,
+    turnId: inv.turnId,
     state: state as AssembledSubAgent["state"],
     heading,
     brief: {
@@ -200,6 +205,16 @@ export function groupSubAgentActivities(
         if (existing) {
           existing.activities.push(activity);
           existing.hasCompleted = true;
+          matched = true;
+        }
+      }
+      // Fallback: match by turnId against the startedQueue (handles interrupted
+      // tools where tool.completed arrives with empty input/no description).
+      if (!matched) {
+        const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
+        if (pendingStarted) {
+          pendingStarted.activities.push(activity);
+          pendingStarted.hasCompleted = true;
           matched = true;
         }
       }

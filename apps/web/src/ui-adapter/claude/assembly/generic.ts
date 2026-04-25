@@ -63,15 +63,19 @@ export function finalizeGenericTool(
 
   const toolName = bestCanonical?.toolName ?? inv.toolName ?? "Tool";
 
-  // tool.started only — no data yet, emit a "starting" placeholder
+  // tool.started only — no data yet, emit a "starting" placeholder.
+  // If tool.completed arrived with status "failed" (interrupted mid-stream),
+  // mark as interrupted instead of leaving it stuck as starting.
   if (!bestCanonical) {
+    const wasInterrupted = bestKind === "tool.completed";
     const isMcp = inv.itemType === "mcp_tool_call";
     if (isMcp) {
       return {
         kind: "mcp-tool",
         id: firstId,
         createdAt: firstCreatedAt,
-        state: "starting",
+        turnId: inv.turnId,
+        state: wasInterrupted ? "interrupted" : "starting",
         heading: toolName,
         toolName,
       };
@@ -80,7 +84,8 @@ export function finalizeGenericTool(
       kind: "tool-call",
       id: firstId,
       createdAt: firstCreatedAt,
-      state: "starting",
+      turnId: inv.turnId,
+      state: wasInterrupted ? "interrupted" : "starting",
       heading: toolName,
       toolName,
     };
@@ -88,7 +93,7 @@ export function finalizeGenericTool(
 
   const state =
     bestKind === "tool.completed"
-      ? bestCanonical.result?.isError
+      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
         ? "failed"
         : "completed"
       : bestKind === "tool.updated"
@@ -106,6 +111,7 @@ export function finalizeGenericTool(
       kind: "mcp-tool",
       id: firstId,
       createdAt: firstCreatedAt,
+      turnId: inv.turnId,
       state: state as AssembledMcpTool["state"],
       heading,
       toolName,
@@ -120,6 +126,7 @@ export function finalizeGenericTool(
     kind: "tool-call",
     id: firstId,
     createdAt: firstCreatedAt,
+    turnId: inv.turnId,
     state: state as AssembledToolCall["state"],
     heading,
     toolName,

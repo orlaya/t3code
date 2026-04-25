@@ -847,7 +847,7 @@ export const ChatComposer = memo(
       modelOptions: composerModelOptions?.[selectedProvider],
       prompt,
       onPromptChange: setPromptFromTraits,
-      // ultraCompact: isComposerFooterUltraCompact, // TODO: restore via post-merge-restorations.md (TraitsPicker section) — needs ultraCompact prop added to TraitsRenderInput
+      ultraCompact: isComposerFooterUltraCompact,
     });
     const pendingPrimaryAction = useMemo(
       () =>

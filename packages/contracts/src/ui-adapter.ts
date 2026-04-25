@@ -227,6 +227,8 @@ interface AssembledToolBase {
   createdAt: string;
   /** Unique per invocation — backfilled from completed event when needed. */
   toolCallId?: string;
+  /** The turn this tool belongs to — used to determine if the tool is orphaned. */
+  turnId: string | null;
   state: AssembledToolState;
   heading: string;
 }

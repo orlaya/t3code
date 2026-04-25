@@ -118,13 +118,34 @@ export function finalizeFileChange(
 
   if (!firstId || !firstCreatedAt) return null;
 
-  // tool.started only — no data yet, emit a "starting" placeholder
+  // tool.started only — no data yet, emit a "starting" placeholder.
+  // If tool.completed arrived with status "failed" (interrupted mid-stream),
+  // mark as interrupted instead of leaving it stuck as starting.
+  //
+  // The tool.started summary tells us "Write started" vs "Edit started" —
+  // use it so the spinner shows the correct heading from the start.
   if (!bestCanonical || !bestCanonical.input?.file_path) {
+    const wasInterrupted = bestKind === "tool.completed";
+    const isWrite = inv.activities.some((a) =>
+      a.kind === "tool.started" && a.summary.startsWith("Write"),
+    );
+    if (isWrite) {
+      return {
+        kind: "write",
+        id: firstId,
+        createdAt: firstCreatedAt,
+        turnId: inv.turnId,
+        state: wasInterrupted ? "interrupted" : "starting",
+        heading: "Write",
+        filePath: "",
+      };
+    }
     return {
       kind: "edit",
       id: firstId,
       createdAt: firstCreatedAt,
-      state: "starting",
+      turnId: inv.turnId,
+      state: wasInterrupted ? "interrupted" : "starting",
       heading: "Edit",
       filePath: "",
       inlineDiffs: [],
@@ -133,7 +154,7 @@ export function finalizeFileChange(
 
   const state =
     bestKind === "tool.completed"
-      ? bestCanonical.result?.isError
+      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
         ? "failed"
         : "completed"
       : bestKind === "tool.updated"
@@ -156,6 +177,7 @@ export function finalizeFileChange(
       kind: "write",
       id: firstId,
       createdAt: firstCreatedAt,
+      turnId: inv.turnId,
       state: state as AssembledWrite["state"],
       heading: "Write",
       filePath,
@@ -173,6 +195,7 @@ export function finalizeFileChange(
     kind: "edit",
     id: firstId,
     createdAt: firstCreatedAt,
+    turnId: inv.turnId,
     state: state as AssembledEdit["state"],
     heading: "Edit",
     filePath,
@@ -276,6 +299,16 @@ export function groupFileChangeActivities(
           matched = true;
         }
       }
+      // Fallback: match by turnId against the startedQueue (handles interrupted
+      // tools where tool.completed arrives with empty input/no file path).
+      if (!matched) {
+        const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
+        if (pendingStarted) {
+          pendingStarted.activities.push(activity);
+          pendingStarted.hasCompleted = true;
+          matched = true;
+        }
+      }
       if (!matched) {
         const inv: FileChangeInvocation = {
           filePath: fp,
@@ -313,6 +346,7 @@ export function groupFileChangeActivities(
 
 interface FileReadInvocation {
   filePath: string | undefined;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasStarted: boolean;
   hasCompleted: boolean;
@@ -349,7 +383,7 @@ export function finalizeFileRead(inv: FileReadInvocation): AssembledFileRead | n
 
   const state =
     bestKind === "tool.completed"
-      ? bestCanonical.result?.isError
+      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
         ? "failed"
         : "completed"
       : bestKind === "tool.updated"
@@ -360,6 +394,7 @@ export function finalizeFileRead(inv: FileReadInvocation): AssembledFileRead | n
     kind: "file-read",
     id: firstId,
     createdAt: firstCreatedAt,
+    turnId: inv.turnId,
     state: state as AssembledFileRead["state"],
     heading: "Read",
     filePath: bestCanonical.input.file_path,
@@ -406,6 +441,7 @@ export function groupFileReadActivities(
       if (!matched) {
         const inv: FileReadInvocation = {
           filePath: fp,
+          turnId: activity.turnId,
           activities: [activity],
           hasStarted: false,
           hasCompleted: false,
@@ -438,6 +474,7 @@ export function groupFileReadActivities(
       if (!matched) {
         const inv: FileReadInvocation = {
           filePath: fp,
+          turnId: activity.turnId,
           activities: [activity],
           hasStarted: false,
           hasCompleted: true,
@@ -468,6 +505,7 @@ interface FileSearchInvocation {
   toolName: string | undefined;
   /** Grouping key — pattern string from input. */
   pattern: string | undefined;
+  turnId: string | null;
   activities: OrchestrationThreadActivity[];
   hasCompleted: boolean;
 }
@@ -501,7 +539,7 @@ export function finalizeFileSearch(inv: FileSearchInvocation): AssembledFileSear
 
   const state =
     bestKind === "tool.completed"
-      ? bestCanonical.result?.isError
+      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
         ? "failed"
         : "completed"
       : bestKind === "tool.updated"
@@ -515,6 +553,7 @@ export function finalizeFileSearch(inv: FileSearchInvocation): AssembledFileSear
     kind: "file-search",
     id: firstId,
     createdAt: firstCreatedAt,
+    turnId: inv.turnId,
     state: state as AssembledFileSearch["state"],
     heading,
     toolName,
@@ -571,6 +610,7 @@ export function groupFileSearchActivities(
         const inv: FileSearchInvocation = {
           toolName,
           pattern,
+          turnId: activity.turnId,
           activities: [activity],
           hasCompleted: false,
         };
@@ -603,6 +643,7 @@ export function groupFileSearchActivities(
         const inv: FileSearchInvocation = {
           toolName,
           pattern,
+          turnId: activity.turnId,
           activities: [activity],
           hasCompleted: true,
         };

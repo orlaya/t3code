@@ -7,13 +7,6 @@ describe("searchSlashCommandItems", () => {
   it("moves exact provider command matches ahead of broader description matches", () => {
     const items = [
       {
-        id: "slash:default",
-        type: "slash-command",
-        command: "default",
-        label: "/default",
-        description: "Switch this thread back to normal build mode",
-      },
-      {
         id: "provider-slash-command:claudeAgent:ui",
         type: "provider-slash-command",
         provider: "claudeAgent",
@@ -29,13 +22,10 @@ describe("searchSlashCommandItems", () => {
         label: "/frontend-design",
         description: "Create distinctive, production-grade frontend interfaces",
       },
-    ] satisfies Array<
-      Extract<ComposerCommandItem, { type: "slash-command" | "provider-slash-command" }>
-    >;
+    ] satisfies Array<Extract<ComposerCommandItem, { type: "provider-slash-command" }>>;
 
     expect(searchSlashCommandItems(items, "ui").map((item) => item.id)).toEqual([
       "provider-slash-command:claudeAgent:ui",
-      "slash:default",
     ]);
   });
 
@@ -57,9 +47,7 @@ describe("searchSlashCommandItems", () => {
         label: "/github",
         description: "General GitHub help",
       },
-    ] satisfies Array<
-      Extract<ComposerCommandItem, { type: "slash-command" | "provider-slash-command" }>
-    >;
+    ] satisfies Array<Extract<ComposerCommandItem, { type: "provider-slash-command" }>>;
 
     expect(searchSlashCommandItems(items, "gfc").map((item) => item.id)).toEqual([
       "provider-slash-command:claudeAgent:gh-fix-ci",

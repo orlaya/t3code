@@ -1402,6 +1402,16 @@ function applyEnvironmentOrchestrationEvent(
                 event.payload.messageId,
               )
             : thread.turnDiffSummaries;
+        const resolvedTurnState =
+          // Once interrupted, stay interrupted — a late streaming message-sent
+          // must not clobber the interrupted state back to "running".
+          thread.latestTurn?.state === "interrupted"
+            ? "interrupted"
+            : event.payload.streaming
+              ? "running"
+              : thread.latestTurn?.state === "error"
+                ? "error"
+                : "completed";
         const latestTurn: Thread["latestTurn"] =
           event.payload.role === "assistant" &&
           event.payload.turnId !== null &&
@@ -1409,13 +1419,7 @@ function applyEnvironmentOrchestrationEvent(
             ? buildLatestTurn({
                 previous: thread.latestTurn,
                 turnId: event.payload.turnId,
-                state: event.payload.streaming
-                  ? "running"
-                  : thread.latestTurn?.state === "interrupted"
-                    ? "interrupted"
-                    : thread.latestTurn?.state === "error"
-                      ? "error"
-                      : "completed",
+                state: resolvedTurnState,
                 requestedAt:
                   thread.latestTurn?.turnId === event.payload.turnId
                     ? thread.latestTurn.requestedAt
@@ -1535,12 +1539,19 @@ function applyEnvironmentOrchestrationEvent(
               (right.checkpointTurnCount ?? Number.MAX_SAFE_INTEGER),
           )
           .slice(-MAX_THREAD_CHECKPOINTS);
+        // Preserve "interrupted" — the checkpoint (turn-diff-completed) often
+        // arrives after the interrupt event with status "ready", which would
+        // clobber the turn state back to "completed".
+        const checkpointTurnState =
+          thread.latestTurn?.state === "interrupted"
+            ? ("interrupted" as const)
+            : checkpointStatusToLatestTurnState(event.payload.status);
         const latestTurn =
           thread.latestTurn === null || thread.latestTurn.turnId === event.payload.turnId
             ? buildLatestTurn({
                 previous: thread.latestTurn,
                 turnId: event.payload.turnId,
-                state: checkpointStatusToLatestTurnState(event.payload.status),
+                state: checkpointTurnState,
                 requestedAt: thread.latestTurn?.requestedAt ?? event.payload.completedAt,
                 startedAt: thread.latestTurn?.startedAt ?? event.payload.completedAt,
                 completedAt: event.payload.completedAt,
