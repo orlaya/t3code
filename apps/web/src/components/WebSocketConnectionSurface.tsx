@@ -338,7 +338,7 @@ export function WebSocketConnectionCoordinator() {
         type: "success" as const,
         timeout: 0,
         data: {
-          dismissAfterVisibleMs: 8_000,
+          dismissAfterVisibleMs: 1_500,
           hideCopyButton: true,
         },
       };
@@ -352,7 +352,7 @@ export function WebSocketConnectionCoordinator() {
       toastResetTimerRef.current = window.setTimeout(() => {
         toastIdRef.current = null;
         toastResetTimerRef.current = null;
-      }, 8_250);
+      }, 1_750);
     }
 
     previousUiStateRef.current = uiState;
