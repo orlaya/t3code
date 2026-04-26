@@ -607,12 +607,10 @@ export const pullInHook = (input: ClaudeHooksPullInInput) =>
     );
     const taken = takeUnmanagedActionByFingerprint(base, input.fingerprint);
     if (taken === null) {
-      return yield* Effect.fail(
-        new ClaudeHooksError({
-          filePath: "(unmanaged)",
-          detail: `no unmanaged action matched fingerprint ${input.fingerprint}`,
-        }),
-      );
+      return yield* new ClaudeHooksError({
+        filePath: "(unmanaged)",
+        detail: `no unmanaged action matched fingerprint ${input.fingerprint}`,
+      });
     }
 
     const hookId = newHookId();

@@ -6,7 +6,13 @@
  * styling in one place instead of duplicating it across every row component.
  */
 
-import { CircleAlertIcon, LoaderIcon, XCircleIcon, type LucideIcon } from "lucide-react";
+import {
+  ChevronsRightIcon,
+  CircleAlertIcon,
+  LoaderIcon,
+  XCircleIcon,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "~/lib/utils";
 import type { AssembledToolState } from "@t3tools/contracts";
 
@@ -17,6 +23,7 @@ import type { AssembledToolState } from "@t3tools/contracts";
 /**
  * Renders the state-aware icon for a tool row.
  *
+ * - Hook-intercepted (any status) → ChevronsRightIcon (colour from state)
  * - `starting` / `in-progress` → spinning LoaderIcon
  * - `interrupted` → CircleAlertIcon in destructive
  * - `failed` → XCircleIcon in destructive
@@ -25,9 +32,11 @@ import type { AssembledToolState } from "@t3tools/contracts";
 export function ToolRowIcon({
   state,
   restIcon: RestIcon,
+  hook,
 }: {
   state: AssembledToolState;
   restIcon: LucideIcon;
+  hook?: { name: string; status: "ok" | "error" } | undefined;
 }) {
   const isInProgress = state === "starting" || state === "in-progress";
   const isAlert = state === "interrupted" || state === "failed";
@@ -39,7 +48,9 @@ export function ToolRowIcon({
         isAlert ? "text-destructive/60" : "text-foreground/60",
       )}
     >
-      {isInProgress ? (
+      {hook ? (
+        <ChevronsRightIcon className="size-3" />
+      ) : isInProgress ? (
         <LoaderIcon className="size-3 animate-spin [animation-duration:4s]" />
       ) : state === "interrupted" ? (
         <CircleAlertIcon className="size-3" />

@@ -37,7 +37,7 @@ export const AssembledFileSearchRow = memo(function AssembledFileSearchRow({
         onClick={handleResultClick}
       >
         <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-          <ToolRowIcon state={tool.state} restIcon={SearchIcon} />
+          <ToolRowIcon state={tool.state} restIcon={SearchIcon} hook={tool.hook} />
           <div className="min-w-0 flex-1 overflow-hidden">
             <Tooltip>
               <TooltipTrigger className="block min-w-0 w-full text-left" aria-label={displayText}>

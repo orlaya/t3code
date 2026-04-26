@@ -459,6 +459,72 @@ function runtimeEventToActivities(
       ];
     }
 
+    case "hook.started": {
+      return [
+        {
+          id: event.eventId,
+          createdAt: event.createdAt,
+          tone: "tool",
+          kind: "hook.started",
+          summary: `Hook ${event.payload.hookName} started`,
+          payload: {
+            hookId: event.payload.hookId,
+            hookName: event.payload.hookName,
+            hookEvent: event.payload.hookEvent,
+          },
+          turnId: toTurnId(event.turnId) ?? null,
+          ...maybeSequence,
+        },
+      ];
+    }
+
+    case "hook.progress": {
+      return [
+        {
+          id: event.eventId,
+          createdAt: event.createdAt,
+          tone: "tool",
+          kind: "hook.progress",
+          summary: "Hook progress",
+          payload: {
+            hookId: event.payload.hookId,
+            ...(event.payload.output ? { output: truncateDetail(event.payload.output) } : {}),
+            ...(event.payload.stdout ? { stdout: truncateDetail(event.payload.stdout) } : {}),
+            ...(event.payload.stderr ? { stderr: truncateDetail(event.payload.stderr) } : {}),
+          },
+          turnId: toTurnId(event.turnId) ?? null,
+          ...maybeSequence,
+        },
+      ];
+    }
+
+    case "hook.completed": {
+      return [
+        {
+          id: event.eventId,
+          createdAt: event.createdAt,
+          tone: event.payload.outcome === "error" ? "error" : "tool",
+          kind: "hook.completed",
+          summary:
+            event.payload.outcome === "error"
+              ? "Hook failed"
+              : event.payload.outcome === "cancelled"
+                ? "Hook cancelled"
+                : "Hook completed",
+          payload: {
+            hookId: event.payload.hookId,
+            outcome: event.payload.outcome,
+            ...(event.payload.output ? { output: truncateDetail(event.payload.output) } : {}),
+            ...(event.payload.stdout ? { stdout: truncateDetail(event.payload.stdout) } : {}),
+            ...(event.payload.stderr ? { stderr: truncateDetail(event.payload.stderr) } : {}),
+            ...(event.payload.exitCode !== undefined ? { exitCode: event.payload.exitCode } : {}),
+          },
+          turnId: toTurnId(event.turnId) ?? null,
+          ...maybeSequence,
+        },
+      ];
+    }
+
     case "item.updated": {
       if (!isToolLifecycleItemType(event.payload.itemType)) {
         return [];

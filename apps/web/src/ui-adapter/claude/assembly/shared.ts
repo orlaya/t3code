@@ -97,6 +97,22 @@ export function shiftMatchingTurnId<T extends { turnId: string | null }>(
 }
 
 // ---------------------------------------------------------------------------
+// Hook prefix parsing
+// ---------------------------------------------------------------------------
+
+const HOOK_PREFIX_RE = /^::hook::([^:]+)::(ok|error)::\s*/;
+
+/**
+ * Check if result content starts with a `::hook::{name}::{status}::` prefix.
+ * Returns the parsed hook metadata, or null if no prefix found.
+ */
+export function parseHookPrefix(content: string): { name: string; status: "ok" | "error" } | null {
+  const match = HOOK_PREFIX_RE.exec(content);
+  if (!match) return null;
+  return { name: match[1]!, status: match[2]! as "ok" | "error" };
+}
+
+// ---------------------------------------------------------------------------
 // Result content extraction
 // ---------------------------------------------------------------------------
 

@@ -28,7 +28,7 @@ export const AssembledWebFetchRow = memo(function AssembledWebFetchRow({
         onClick={handleResultClick}
       >
         <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-          <ToolRowIcon state={tool.state} restIcon={LinkIcon} />
+          <ToolRowIcon state={tool.state} restIcon={LinkIcon} hook={tool.hook} />
           <div className="min-w-0 flex-1 overflow-hidden">
             <Tooltip>
               <TooltipTrigger className="block min-w-0 w-full text-left" aria-label={displayText}>

@@ -72,7 +72,7 @@ export const AssembledEditRow = memo(function AssembledEditRow({
           onClick={handleOpenInEditor}
         >
           <div className="flex items-start gap-1 transition-[opacity,translate] duration-200">
-            <ToolRowIcon state={tool.state} restIcon={PenLine} />
+            <ToolRowIcon state={tool.state} restIcon={PenLine} hook={tool.hook} />
             <div className="min-w-0 flex-1 overflow-hidden">
               {isFailed && tool.errorMessage ? (
                 <>
@@ -175,7 +175,7 @@ export const AssembledWriteRow = memo(function AssembledWriteRow({
           onClick={handleOpenInEditor}
         >
           <div className="flex items-start gap-1 transition-[opacity,translate] duration-200">
-            <ToolRowIcon state={tool.state} restIcon={PenLine} />
+            <ToolRowIcon state={tool.state} restIcon={PenLine} hook={tool.hook} />
             <div className="min-w-0 flex-1 overflow-hidden">
               {isFailed && tool.errorMessage ? (
                 <>

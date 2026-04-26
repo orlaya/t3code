@@ -37,7 +37,7 @@ export const AssembledCommandRow = memo(function AssembledCommandRow({
         onClick={handleClick}
       >
         <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
-          <ToolRowIcon state={tool.state} restIcon={TerminalIcon} />
+          <ToolRowIcon state={tool.state} restIcon={TerminalIcon} hook={tool.hook} />
           <div className="min-w-0 flex-1 overflow-hidden">
             {tool.rawCommand ? (
               <div className="max-w-full">

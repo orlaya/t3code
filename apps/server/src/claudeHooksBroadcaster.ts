@@ -22,7 +22,7 @@
  *
  * @module claudeHooksBroadcaster
  */
-import { ClaudeHooksError } from "@t3tools/contracts";
+import { ClaudeHooksError, type HooksConfig, type ManagedHookEntry } from "@t3tools/contracts";
 import {
   Context,
   Deferred,
@@ -42,9 +42,12 @@ import {
 import { homedir } from "node:os";
 import { ServerConfig } from "./config.ts";
 import {
+  fingerprintManagedHooks,
   hooksClaudeFilePath,
   normalizeProjectKey,
   readHooksClaudeFile,
+  reconcileUnmanaged,
+  settingsFilePath,
   syncLevelSettingsFiles,
 } from "./claudeHooksStore.ts";
 import { OrchestrationEngineService } from "./orchestration/Services/OrchestrationEngine.ts";
@@ -85,6 +88,62 @@ export class ClaudeHooksBroadcaster extends Context.Service<
 const WATCHER_DEBOUNCE = Duration.millis(100);
 const RECONCILE_DEBOUNCE = Duration.millis(200);
 
+/**
+ * Read just the `hooks` key from a settings file. Returns empty config on
+ * missing/unreadable/malformed files — mirrors the resilience of
+ * `readHooksFromFile` in `claudeHooks.ts` without the diagnostic machinery
+ * (the broadcaster only needs the raw config to re-derive unmanaged state).
+ */
+const readHooksKeyFromSettingsFile = (filePath: string) =>
+  Effect.gen(function* () {
+    const fsService = yield* FileSystem.FileSystem;
+    const exists = yield* fsService.exists(filePath).pipe(Effect.orElseSucceed(() => false));
+    if (!exists) return {} as HooksConfig;
+    const raw = yield* fsService.readFileString(filePath).pipe(Effect.orElseSucceed(() => ""));
+    if (raw.trim() === "") return {} as HooksConfig;
+    const parsed = yield* Effect.try({
+      try: () => JSON.parse(raw) as Record<string, unknown>,
+      catch: () => null,
+    }).pipe(Effect.orElseSucceed(() => null));
+    if (parsed === null) return {} as HooksConfig;
+    const hooks = parsed["hooks"];
+    if (
+      hooks === undefined ||
+      hooks === null ||
+      typeof hooks !== "object" ||
+      Array.isArray(hooks)
+    ) {
+      return {} as HooksConfig;
+    }
+    return hooks as HooksConfig;
+  });
+
+/**
+ * Read both settings files for a level and derive fresh unmanaged hooks by
+ * reconciling against managed fingerprints. This ensures pre-existing hooks
+ * on disk are never lost just because `hooks-claude.json` hadn't ingested them.
+ */
+const freshUnmanagedFromDisk = (
+  level: "global" | "project",
+  managed: Record<string, ManagedHookEntry>,
+  cwd: string,
+) =>
+  Effect.gen(function* () {
+    const p = yield* Path.Path;
+    const [committed, local] = yield* Effect.all(
+      [
+        readHooksKeyFromSettingsFile(settingsFilePath(p, level, "committed", cwd)),
+        readHooksKeyFromSettingsFile(settingsFilePath(p, level, "local", cwd)),
+      ],
+      { concurrency: "unbounded" },
+    );
+    const fps = fingerprintManagedHooks(managed);
+    return {
+      committed: reconcileUnmanaged(committed, fps),
+      local: reconcileUnmanaged(local, fps),
+    };
+  });
+
 const makeClaudeHooksBroadcaster = Effect.gen(function* () {
   const config = yield* ServerConfig;
   const fs = yield* FileSystem.FileSystem;
@@ -116,11 +175,20 @@ const makeClaudeHooksBroadcaster = Effect.gen(function* () {
   const handleHooksClaudeChange = Effect.gen(function* () {
     const hooksClaude = yield* readHooksClaudeFile(config.stateDir);
 
-    // Sync the global level — cwd is ignored for level === "global".
+    // Re-derive unmanaged from the actual on-disk settings files rather than
+    // trusting the stored snapshot in hooks-claude.json. The stored unmanaged
+    // for a level may be empty/stale if no write operation ever targeted that
+    // level through T3 — blindly syncing with stale data nukes pre-existing
+    // hooks the user wrote by hand or via Claude Code directly.
+    const globalUnmanaged = yield* freshUnmanagedFromDisk(
+      "global",
+      hooksClaude.global.managed,
+      config.cwd,
+    );
     yield* syncLevelSettingsFiles(
       "global",
       hooksClaude.global.managed,
-      hooksClaude.global.unmanaged,
+      globalUnmanaged,
       config.cwd,
     );
     yield* emit({ level: "global", cwd: null });
@@ -131,10 +199,15 @@ const makeClaudeHooksBroadcaster = Effect.gen(function* () {
 
     for (const [projectKey, projectLevel] of Object.entries(hooksClaude.projects)) {
       if (activeCwds.has(projectKey)) {
+        const projectUnmanaged = yield* freshUnmanagedFromDisk(
+          "project",
+          projectLevel.managed,
+          projectKey,
+        );
         yield* syncLevelSettingsFiles(
           "project",
           projectLevel.managed,
-          projectLevel.unmanaged,
+          projectUnmanaged,
           projectKey,
         );
       }

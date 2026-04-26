@@ -9,7 +9,7 @@ import type { OrchestrationThreadActivity, AssembledToolInvocation } from "@t3to
 
 import { isRecord } from "../../helpers";
 import { buildSubAgentTaskLinks } from "../../task-linking";
-import { extractItemType } from "./shared";
+import { extractItemType, parseHookPrefix } from "./shared";
 import { groupCommandActivities, finalizeCommand } from "./command";
 import { groupFileChangeActivities, finalizeFileChange } from "./file";
 import { groupFileReadActivities, finalizeFileRead } from "./file";
@@ -174,6 +174,21 @@ export function assembleClaudeTools(
   for (const inv of genericToolInvocations) {
     const result = finalizeGenericTool(inv);
     if (result) assembled.push(result);
+  }
+
+  // Post-processing: detect hook-intercepted tool results via ::hook:: prefix.
+  // Any tool whose resultContent starts with ::hook::{name}::{status}:: gets
+  // hook metadata attached. When status is "ok", override state from "failed"
+  // to "completed" — the hook succeeded, it's not an error.
+  for (const tool of assembled) {
+    if (!("resultContent" in tool) || !tool.resultContent) continue;
+    const hookMeta = parseHookPrefix(tool.resultContent);
+    if (!hookMeta) continue;
+    tool.hook = hookMeta;
+    tool.heading = `${tool.heading} · ${hookMeta.name}`;
+    if (hookMeta.status === "ok" && tool.state === "failed") {
+      tool.state = "completed";
+    }
   }
 
   return { tools: assembled, claimedActivityIds };

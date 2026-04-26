@@ -231,6 +231,8 @@ interface AssembledToolBase {
   turnId: string | null;
   state: AssembledToolState;
   heading: string;
+  /** Present when a hook intercepted this tool call (detected via `::hook::` prefix). */
+  hook?: { name: string; status: "ok" | "error" };
 }
 
 /**
