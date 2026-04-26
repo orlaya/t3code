@@ -1012,7 +1012,7 @@ function resolveIconPath(ext: "ico" | "icns" | "png"): string | null {
       ROOT_DIR,
       "assets",
       "dev",
-      "blueprint-macos-1024.png",
+      "t3-tweaks-dev-mac.png",
     );
     if (FS.existsSync(developmentDockIconPath)) {
       return developmentDockIconPath;

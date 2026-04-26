@@ -24,3 +24,4 @@ __screenshots__/
 squashfs-root/
 __notes
 **/*CLAUDE.local.md
+.claude/

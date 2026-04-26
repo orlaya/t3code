@@ -2544,7 +2544,7 @@ const SidebarChromeHeader = memo(function SidebarChromeHeader({
               <span className="truncate text-sm font-medium tracking-tight text-muted-foreground">
                 Code
               </span>
-              <span className="rounded-full bg-muted/50 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60">
+              <span className={`rounded-full px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] ${APP_STAGE_LABEL === "Dev" ? "bg-primary/15 text-primary/80" : "bg-muted/50 text-muted-foreground/60"}`}>
                 {APP_STAGE_LABEL}
               </span>
             </Link>

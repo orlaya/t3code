@@ -513,7 +513,7 @@ function resolveGitHubPublishConfig(updateChannel: "latest" | "nightly"):
   const rawRepo =
     process.env.T3CODE_DESKTOP_UPDATE_REPOSITORY?.trim() ||
     process.env.GITHUB_REPOSITORY?.trim() ||
-    "";
+    "orlaya/t3code";
   if (!rawRepo) return undefined;
 
   const [owner, repo, ...rest] = rawRepo.split("/");
