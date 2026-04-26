@@ -3,11 +3,17 @@ import { createPatch } from "diff";
 import { parsePatchFiles } from "@pierre/diffs";
 import { FileDiff } from "@pierre/diffs/react";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { DEFAULT_DIFF_THEME } from "@t3tools/contracts";
 import { type EditDiffEntry } from "../../session-logic/index";
-import { resolveDiffThemeName, buildPatchCacheKey } from "../../lib/diffRendering";
+import {
+  resolveDiffThemeName,
+  buildPatchCacheKey,
+  buildDiffThemeCSS,
+} from "../../lib/diffRendering";
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";
 import { readLocalApi } from "~/localApi";
 import { openInPreferredEditor } from "../../editorPreferences";
+import { useSyntaxThemes } from "../../rpc/serverState";
 
 const INLINE_DIFF_STYLE = {
   "--diffs-font-size": "11px",
@@ -43,6 +49,16 @@ export const InlineEditDiff = memo(function InlineEditDiff({
   /** When true, the header row (label + file path) is hidden — useful when the parent already shows the file path. */
   hideHeader?: boolean;
 }) {
+  const syntaxThemes = useSyntaxThemes();
+  const hasCustomTheme =
+    resolvedTheme === "dark"
+      ? syntaxThemes?.syntaxThemeDark != null
+      : syntaxThemes?.syntaxThemeLight != null;
+  const diffThemeCSS = useMemo(() => {
+    const theme = syntaxThemes?.diffTheme ?? DEFAULT_DIFF_THEME;
+    const colors = resolvedTheme === "dark" ? theme.dark : theme.light;
+    return buildDiffThemeCSS(colors);
+  }, [syntaxThemes?.diffTheme, resolvedTheme]);
   const editorTargetPath =
     editEntry.anchorLine !== undefined
       ? `${editEntry.filePath}:${editEntry.anchorLine}`
@@ -169,8 +185,9 @@ export const InlineEditDiff = memo(function InlineEditDiff({
             hunkSeparators: "simple",
             lineDiffType: "none",
             overflow: "wrap",
-            theme: resolveDiffThemeName(resolvedTheme),
+            theme: resolveDiffThemeName(resolvedTheme, hasCustomTheme),
             themeType: resolvedTheme,
+            unsafeCSS: diffThemeCSS,
           }}
         />
         {!showExpanded && isOverflowing && (

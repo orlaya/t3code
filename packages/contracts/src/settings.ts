@@ -145,6 +145,11 @@ export const ServerSettings = Schema.Struct({
   }).pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   observability: ObservabilitySettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
 
+  // Syntax theme file paths (empty = use defaults)
+  syntaxThemeDarkPath: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  syntaxThemeLightPath: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  diffThemePath: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+
   // Custom slash commands (saved prompt shortcuts)
   customSlashCommands: Schema.Array(CustomSlashCommand).pipe(
     Schema.withDecodingDefault(Effect.succeed([])),
@@ -249,6 +254,9 @@ export const ServerSettingsPatch = Schema.Struct({
       opencode: Schema.optionalKey(OpenCodeSettingsPatch),
     }),
   ),
+  syntaxThemeDarkPath: Schema.optionalKey(Schema.String),
+  syntaxThemeLightPath: Schema.optionalKey(Schema.String),
+  diffThemePath: Schema.optionalKey(Schema.String),
   customSlashCommands: Schema.optionalKey(Schema.Array(CustomSlashCommand)),
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;

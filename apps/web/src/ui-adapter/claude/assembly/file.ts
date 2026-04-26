@@ -126,8 +126,8 @@ export function finalizeFileChange(
   // use it so the spinner shows the correct heading from the start.
   if (!bestCanonical || !bestCanonical.input?.file_path) {
     const wasInterrupted = bestKind === "tool.completed";
-    const isWrite = inv.activities.some((a) =>
-      a.kind === "tool.started" && a.summary.startsWith("Write"),
+    const isWrite = inv.activities.some(
+      (a) => a.kind === "tool.started" && a.summary.startsWith("Write"),
     );
     if (isWrite) {
       return {

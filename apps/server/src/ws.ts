@@ -47,6 +47,7 @@ import { ProviderSessionReaper } from "./provider/Services/ProviderSessionReaper
 import { ServerLifecycleEvents } from "./serverLifecycleEvents.ts";
 import { ServerRuntimeStartup } from "./serverRuntimeStartup.ts";
 import { ServerSettingsService } from "./serverSettings.ts";
+import { SyntaxThemes } from "./syntaxThemes.ts";
 import { ClaudeHooksBroadcaster } from "./claudeHooksBroadcaster.ts";
 import {
   deleteClaudeHook,
@@ -159,6 +160,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
       const config = yield* ServerConfig;
       const lifecycleEvents = yield* ServerLifecycleEvents;
       const serverSettings = yield* ServerSettingsService;
+      const syntaxThemes = yield* SyntaxThemes;
       const claudeHooksBroadcaster = yield* ClaudeHooksBroadcaster;
       const startup = yield* ServerRuntimeStartup;
       const workspaceEntries = yield* WorkspaceEntries;
@@ -532,6 +534,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
         const settings = yield* serverSettings.getSettings;
         const environment = yield* serverEnvironment.getDescriptor;
         const auth = yield* serverAuth.getDescriptor();
+        const themesState = yield* syntaxThemes.getSnapshot;
 
         return {
           environment,
@@ -553,6 +556,12 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             otlpMetricsEnabled: config.otlpMetricsUrl !== undefined,
           },
           settings,
+          syntaxThemes: {
+            diffTheme: themesState.diffTheme,
+            syntaxThemeDark: themesState.syntaxThemeDark,
+            syntaxThemeLight: themesState.syntaxThemeLight,
+            issues: themesState.issues,
+          },
         };
       });
 
@@ -1044,6 +1053,18 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
                   payload: { settings },
                 })),
               );
+              const syntaxThemesUpdates = syntaxThemes.streamChanges.pipe(
+                Stream.map((state) => ({
+                  version: 1 as const,
+                  type: "syntaxThemesUpdated" as const,
+                  payload: {
+                    diffTheme: state.diffTheme,
+                    syntaxThemeDark: state.syntaxThemeDark,
+                    syntaxThemeLight: state.syntaxThemeLight,
+                    issues: state.issues,
+                  },
+                })),
+              );
 
               yield* Effect.all(
                 [providerRegistry.refresh("codex"), providerRegistry.refresh("claudeAgent")],
@@ -1055,7 +1076,7 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
 
               const liveUpdates = Stream.merge(
                 keybindingsUpdates,
-                Stream.merge(providerStatuses, settingsUpdates),
+                Stream.merge(Stream.merge(providerStatuses, settingsUpdates), syntaxThemesUpdates),
               );
 
               return Stream.concat(

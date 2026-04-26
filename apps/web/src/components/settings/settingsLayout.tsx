@@ -50,6 +50,7 @@ export function SettingsRow({
   resetAction,
   control,
   children,
+  wideControl,
 }: {
   title: ReactNode;
   description: string;
@@ -57,6 +58,8 @@ export function SettingsRow({
   resetAction?: ReactNode;
   control?: ReactNode;
   children?: ReactNode;
+  /** When true the control stacks below the label until `lg` (1024px) instead of `sm` (640px). Use for wide inputs like file paths or model pickers. */
+  wideControl?: boolean;
 }) {
   return (
     <div
@@ -65,7 +68,14 @@ export function SettingsRow({
         children ? "pt-4 pb-0" : "py-3",
       )}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        className={cn(
+          "flex flex-col",
+          wideControl
+            ? "gap-1.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3"
+            : "gap-3 sm:flex-row sm:items-center sm:justify-between",
+        )}
+      >
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex min-h-5 items-center gap-1.25">
             <h3 className="text-[13px] font-semibold tracking-[-0.01em] text-foreground">
@@ -79,7 +89,14 @@ export function SettingsRow({
           {status ? <div className="pt-0.5 text-[11px] text-muted-foreground">{status}</div> : null}
         </div>
         {control ? (
-          <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:justify-end">
+          <div
+            className={cn(
+              "flex shrink-0 items-center gap-2",
+              wideControl
+                ? "w-full pb-1 lg:w-auto lg:justify-end lg:pb-0"
+                : "w-full sm:w-auto sm:justify-end",
+            )}
+          >
             {control}
           </div>
         ) : null}

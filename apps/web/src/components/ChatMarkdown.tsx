@@ -26,6 +26,7 @@ import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
 import { fnv1a32 } from "../lib/diffRendering";
 import { LRUCache } from "../lib/lruCache";
 import { useTheme } from "../hooks/useTheme";
+import { useSyntaxThemes } from "../rpc/serverState";
 import { resolveMarkdownFileLinkMeta, rewriteMarkdownFileUriHref } from "../markdown-links";
 import { readLocalApi } from "../localApi";
 import { cn } from "../lib/utils";
@@ -479,7 +480,12 @@ function areMarkdownFileLinkPropsEqual(
 
 function ChatMarkdown({ text, cwd, isStreaming = false, className }: ChatMarkdownProps) {
   const { resolvedTheme } = useTheme();
-  const diffThemeName = resolveDiffThemeName(resolvedTheme);
+  const syntaxThemes = useSyntaxThemes();
+  const hasCustomTheme =
+    resolvedTheme === "dark"
+      ? syntaxThemes?.syntaxThemeDark != null
+      : syntaxThemes?.syntaxThemeLight != null;
+  const diffThemeName = resolveDiffThemeName(resolvedTheme, hasCustomTheme);
   const markdownFileLinkMetaByHref = useMemo(() => {
     const metaByHref = new Map<
       string,

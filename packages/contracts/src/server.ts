@@ -9,6 +9,7 @@ import {
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
 import { KeybindingRule, ResolvedKeybindingsConfig } from "./keybindings.ts";
+import { DiffTheme } from "./syntaxThemes.ts";
 import { EditorId } from "./editor.ts";
 import { ModelCapabilities } from "./model.ts";
 import { ProviderKind } from "./orchestration.ts";
@@ -25,9 +26,16 @@ const KeybindingsInvalidEntryIssue = Schema.Struct({
   index: Schema.Number,
 });
 
+const SyntaxThemesMalformedConfigIssue = Schema.Struct({
+  kind: Schema.Literal("syntaxThemes.malformed-config"),
+  message: TrimmedNonEmptyString,
+  path: TrimmedNonEmptyString,
+});
+
 export const ServerConfigIssue = Schema.Union([
   KeybindingsMalformedConfigIssue,
   KeybindingsInvalidEntryIssue,
+  SyntaxThemesMalformedConfigIssue,
 ]);
 export type ServerConfigIssue = typeof ServerConfigIssue.Type;
 
@@ -116,6 +124,14 @@ export const ServerObservability = Schema.Struct({
 });
 export type ServerObservability = typeof ServerObservability.Type;
 
+export const SyntaxThemesSnapshot = Schema.Struct({
+  diffTheme: Schema.NullOr(DiffTheme),
+  syntaxThemeDark: Schema.NullOr(Schema.Unknown),
+  syntaxThemeLight: Schema.NullOr(Schema.Unknown),
+  issues: ServerConfigIssues,
+});
+export type SyntaxThemesSnapshot = typeof SyntaxThemesSnapshot.Type;
+
 export const ServerConfig = Schema.Struct({
   environment: ExecutionEnvironmentDescriptor,
   auth: ServerAuthDescriptor,
@@ -127,6 +143,7 @@ export const ServerConfig = Schema.Struct({
   availableEditors: Schema.Array(EditorId),
   observability: ServerObservability,
   settings: ServerSettings,
+  syntaxThemes: Schema.optional(SyntaxThemesSnapshot),
 });
 export type ServerConfig = typeof ServerConfig.Type;
 
@@ -193,11 +210,23 @@ export const ServerConfigStreamSettingsUpdatedEvent = Schema.Struct({
 export type ServerConfigStreamSettingsUpdatedEvent =
   typeof ServerConfigStreamSettingsUpdatedEvent.Type;
 
+export const ServerConfigStreamSyntaxThemesUpdatedPayload = SyntaxThemesSnapshot;
+export type ServerConfigStreamSyntaxThemesUpdatedPayload = SyntaxThemesSnapshot;
+
+export const ServerConfigStreamSyntaxThemesUpdatedEvent = Schema.Struct({
+  version: Schema.Literal(1),
+  type: Schema.Literal("syntaxThemesUpdated"),
+  payload: ServerConfigStreamSyntaxThemesUpdatedPayload,
+});
+export type ServerConfigStreamSyntaxThemesUpdatedEvent =
+  typeof ServerConfigStreamSyntaxThemesUpdatedEvent.Type;
+
 export const ServerConfigStreamEvent = Schema.Union([
   ServerConfigStreamSnapshotEvent,
   ServerConfigStreamKeybindingsUpdatedEvent,
   ServerConfigStreamProviderStatusesEvent,
   ServerConfigStreamSettingsUpdatedEvent,
+  ServerConfigStreamSyntaxThemesUpdatedEvent,
 ]);
 export type ServerConfigStreamEvent = typeof ServerConfigStreamEvent.Type;
 

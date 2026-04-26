@@ -60,6 +60,8 @@ function sectionLabelFor(segment: string | undefined): string {
   switch (segment) {
     case "general":
       return "General";
+    case "appearance":
+      return "Appearance";
     case "connections":
       return "Connections";
     case "commands":

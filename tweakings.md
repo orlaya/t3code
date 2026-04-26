@@ -643,3 +643,12 @@
 - `packages/shared/src/fileOutline.test.ts` — 8 tests covering small files, large TS files, markdown fallback, unknown extensions.
 - `packages/shared/package.json` — added `web-tree-sitter@0.20.8` and `tree-sitter-wasms@^0.1.13` as dependencies. Added `"./fileOutline"` subpath export.
 - Not wired into the provider layer yet. Will become a PostToolUse hook preset on the Read tool once the hooks metadata layer (see `__notes/PLAN.hooks-metadata-layer.md`) reaches that stage.
+
+**Appearance settings page (new):**
+
+- `apps/web/src/routes/settings.appearance.tsx` — new route, renders `AppearanceSettingsPanel`.
+- `apps/web/src/components/settings/AppearanceSettingsPanel.tsx` — new panel. Moved Theme, Time format, Diff line wrapping, Assistant output, Work log history, Task sidebar from General. Added three disabled placeholder path inputs for syntax theme (dark/light) and diff theme — will be wired to server in a later step.
+- `apps/web/src/components/settings/SettingsSidebarNav.tsx` — added "Appearance" nav item with `PaletteIcon`, between General and Connections. Added `/settings/appearance` to `SettingsSectionPath` type.
+- `apps/web/src/routes/settings.tsx` — `sectionLabelFor` handles `"appearance"` → `"Appearance"`.
+- `apps/web/src/components/settings/SettingsPanels.tsx` — removed the six moved settings rows and their constants (`THEME_OPTIONS`, `TIMESTAMP_FORMAT_LABELS`) from `GeneralSettingsPanel`.
+- `apps/web/src/components/settings/settingsLayout.tsx` — `SettingsRow` gained `wideControl?: boolean` prop. When set, row stays stacked until `lg` (1024px) instead of `sm` (640px), with tighter gap (`gap-1.5`) and bottom padding (`pb-1`) when stacked. Applied to path inputs, "Add project starts in", "Text generation model".

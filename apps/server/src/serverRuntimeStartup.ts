@@ -32,6 +32,7 @@ import { OrchestrationReactor } from "./orchestration/Services/OrchestrationReac
 import { normalizeProjectionProjectWorkspaceRoots } from "./persistence/Layers/ProjectionProjects.ts";
 import { ServerLifecycleEvents } from "./serverLifecycleEvents.ts";
 import { ServerSettingsService } from "./serverSettings.ts";
+import { SyntaxThemes } from "./syntaxThemes.ts";
 import { ServerEnvironment } from "./environment/Services/ServerEnvironment.ts";
 import { AnalyticsService } from "./telemetry/Services/AnalyticsService.ts";
 import { ServerAuth } from "./auth/Services/ServerAuth.ts";
@@ -289,6 +290,7 @@ export const makeServerRuntimeStartup = Effect.gen(function* () {
   const providerSessionReaper = yield* ProviderSessionReaper;
   const lifecycleEvents = yield* ServerLifecycleEvents;
   const serverSettings = yield* ServerSettingsService;
+  const syntaxThemes = yield* SyntaxThemes;
   const serverEnvironment = yield* ServerEnvironment;
 
   const commandGate = yield* makeCommandGate;
@@ -356,6 +358,21 @@ export const makeServerRuntimeStartup = Effect.gen(function* () {
         Effect.catch((error) =>
           Effect.logWarning("failed to start server settings runtime", {
             path: error.settingsPath,
+            detail: error.detail,
+            cause: error.cause,
+          }),
+        ),
+        Effect.forkScoped,
+      ),
+    );
+
+    yield* Effect.logDebug("startup phase: starting syntax themes runtime");
+    yield* runStartupPhase(
+      "syntaxThemes.start",
+      syntaxThemes.start.pipe(
+        Effect.catch((error) =>
+          Effect.logWarning("failed to start syntax themes runtime", {
+            path: error.configPath,
             detail: error.detail,
             cause: error.cause,
           }),

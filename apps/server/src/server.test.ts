@@ -91,6 +91,7 @@ import { ProviderSessionReaper } from "./provider/Services/ProviderSessionReaper
 import { ServerLifecycleEvents, type ServerLifecycleEventsShape } from "./serverLifecycleEvents.ts";
 import { ServerRuntimeStartup, type ServerRuntimeStartupShape } from "./serverRuntimeStartup.ts";
 import { ServerSettingsService, type ServerSettingsShape } from "./serverSettings.ts";
+import { SyntaxThemes } from "./syntaxThemes.ts";
 import { TerminalManager, type TerminalManagerShape } from "./terminal/Services/Manager.ts";
 import {
   BrowserTraceCollector,
@@ -439,6 +440,19 @@ const buildAppUnderTest = (options?: {
           updateSettings: () => Effect.succeed(DEFAULT_SERVER_SETTINGS),
           streamChanges: Stream.empty,
           ...options?.layers?.serverSettings,
+        }),
+      ),
+      Layer.provide(
+        Layer.mock(SyntaxThemes)({
+          start: Effect.void,
+          ready: Effect.void,
+          getSnapshot: Effect.succeed({
+            diffTheme: null,
+            syntaxThemeDark: null,
+            syntaxThemeLight: null,
+            issues: [],
+          }),
+          streamChanges: Stream.empty,
         }),
       ),
       Layer.provide(

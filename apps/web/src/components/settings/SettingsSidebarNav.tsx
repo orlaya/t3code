@@ -3,6 +3,7 @@ import {
   ArchiveIcon,
   ArrowLeftIcon,
   Link2Icon,
+  PaletteIcon,
   Settings2Icon,
   TerminalSquareIcon,
   WebhookIcon,
@@ -21,6 +22,7 @@ import {
 
 export type SettingsSectionPath =
   | "/settings/general"
+  | "/settings/appearance"
   | "/settings/connections"
   | "/settings/commands"
   | "/settings/hooks"
@@ -32,6 +34,7 @@ export const SETTINGS_NAV_ITEMS: ReadonlyArray<{
   icon: ComponentType<{ className?: string }>;
 }> = [
   { label: "General", to: "/settings/general", icon: Settings2Icon },
+  { label: "Appearance", to: "/settings/appearance", icon: PaletteIcon },
   { label: "Connections", to: "/settings/connections", icon: Link2Icon },
   { label: "Commands", to: "/settings/commands", icon: TerminalSquareIcon },
   { label: "Hooks", to: "/settings/hooks", icon: WebhookIcon },

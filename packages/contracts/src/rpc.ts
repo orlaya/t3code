@@ -35,6 +35,7 @@ import {
   GitStatusStreamEvent,
 } from "./git.ts";
 import { KeybindingsConfigError } from "./keybindings.ts";
+import { SyntaxThemesConfigError } from "./syntaxThemes.ts";
 import {
   ClientOrchestrationCommand,
   ORCHESTRATION_WS_METHODS,
@@ -156,7 +157,7 @@ export const WsServerUpsertKeybindingRpc = Rpc.make(WS_METHODS.serverUpsertKeybi
 export const WsServerGetConfigRpc = Rpc.make(WS_METHODS.serverGetConfig, {
   payload: Schema.Struct({}),
   success: ServerConfig,
-  error: Schema.Union([KeybindingsConfigError, ServerSettingsError]),
+  error: Schema.Union([KeybindingsConfigError, ServerSettingsError, SyntaxThemesConfigError]),
 });
 
 export const WsServerRefreshProvidersRpc = Rpc.make(WS_METHODS.serverRefreshProviders, {
@@ -383,7 +384,7 @@ export const WsSubscribeTerminalEventsRpc = Rpc.make(WS_METHODS.subscribeTermina
 export const WsSubscribeServerConfigRpc = Rpc.make(WS_METHODS.subscribeServerConfig, {
   payload: Schema.Struct({}),
   success: ServerConfigStreamEvent,
-  error: Schema.Union([KeybindingsConfigError, ServerSettingsError]),
+  error: Schema.Union([KeybindingsConfigError, ServerSettingsError, SyntaxThemesConfigError]),
   stream: true,
 });
 

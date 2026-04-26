@@ -18,6 +18,7 @@ import { Route as SettingsGeneralRouteImport } from './routes/settings.general'
 import { Route as SettingsConnectionsRouteImport } from './routes/settings.connections'
 import { Route as SettingsCommandsRouteImport } from './routes/settings.commands'
 import { Route as SettingsArchivedRouteImport } from './routes/settings.archived'
+import { Route as SettingsAppearanceRouteImport } from './routes/settings.appearance'
 import { Route as SettingsHooksIndexRouteImport } from './routes/settings.hooks.index'
 import { Route as SettingsCommandsIndexRouteImport } from './routes/settings.commands.index'
 import { Route as SettingsHooksNewRouteImport } from './routes/settings.hooks.new'
@@ -72,6 +73,11 @@ const SettingsArchivedRoute = SettingsArchivedRouteImport.update({
   path: '/archived',
   getParentRoute: () => SettingsRoute,
 } as any)
+const SettingsAppearanceRoute = SettingsAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const SettingsHooksIndexRoute = SettingsHooksIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/commands': typeof SettingsCommandsRouteWithChildren
   '/settings/connections': typeof SettingsConnectionsRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/connections': typeof SettingsConnectionsRoute
   '/settings/general': typeof SettingsGeneralRoute
@@ -161,6 +169,7 @@ export interface FileRoutesById {
   '/_chat': typeof ChatRouteWithChildren
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/settings/appearance': typeof SettingsAppearanceRoute
   '/settings/archived': typeof SettingsArchivedRoute
   '/settings/commands': typeof SettingsCommandsRouteWithChildren
   '/settings/connections': typeof SettingsConnectionsRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/'
     | '/pair'
     | '/settings'
+    | '/settings/appearance'
     | '/settings/archived'
     | '/settings/commands'
     | '/settings/connections'
@@ -201,6 +211,7 @@ export interface FileRouteTypes {
   to:
     | '/pair'
     | '/settings'
+    | '/settings/appearance'
     | '/settings/archived'
     | '/settings/connections'
     | '/settings/general'
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/_chat'
     | '/pair'
     | '/settings'
+    | '/settings/appearance'
     | '/settings/archived'
     | '/settings/commands'
     | '/settings/connections'
@@ -305,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/archived'
       fullPath: '/settings/archived'
       preLoaderRoute: typeof SettingsArchivedRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/appearance': {
+      id: '/settings/appearance'
+      path: '/appearance'
+      fullPath: '/settings/appearance'
+      preLoaderRoute: typeof SettingsAppearanceRouteImport
       parentRoute: typeof SettingsRoute
     }
     '/settings/hooks/': {
@@ -421,6 +440,7 @@ const SettingsHooksRouteWithChildren = SettingsHooksRoute._addFileChildren(
 )
 
 interface SettingsRouteChildren {
+  SettingsAppearanceRoute: typeof SettingsAppearanceRoute
   SettingsArchivedRoute: typeof SettingsArchivedRoute
   SettingsCommandsRoute: typeof SettingsCommandsRouteWithChildren
   SettingsConnectionsRoute: typeof SettingsConnectionsRoute
@@ -429,6 +449,7 @@ interface SettingsRouteChildren {
 }
 
 const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsAppearanceRoute: SettingsAppearanceRoute,
   SettingsArchivedRoute: SettingsArchivedRoute,
   SettingsCommandsRoute: SettingsCommandsRouteWithChildren,
   SettingsConnectionsRoute: SettingsConnectionsRoute,

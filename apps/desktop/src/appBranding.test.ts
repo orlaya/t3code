@@ -27,7 +27,7 @@ describe("resolveDesktopAppStageLabel", () => {
         isDevelopment: false,
         appVersion: "0.0.17",
       }),
-    ).toBe("Alpha");
+    ).toBe("Tweaked");
   });
 });
 

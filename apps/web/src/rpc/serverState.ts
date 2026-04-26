@@ -4,6 +4,7 @@ import {
   type EditorId,
   type ServerConfig,
   type ServerConfigStreamEvent,
+  type ServerConfigStreamSyntaxThemesUpdatedPayload,
   type ServerConfigUpdatedPayload,
   type ServerLifecycleWelcomePayload,
   type ServerProvider,
@@ -69,6 +70,10 @@ export const providersUpdatedAtom = makeStateAtom<ServerProviderUpdatedPayload |
   "server-providers-updated",
   null,
 );
+export const syntaxThemesAtom = makeStateAtom<ServerConfigStreamSyntaxThemesUpdatedPayload | null>(
+  "syntax-themes",
+  null,
+);
 
 export function getServerConfig(): ServerConfig | null {
   return appAtomRegistry.get(serverConfigAtom);
@@ -82,6 +87,9 @@ export function setServerConfigSnapshot(config: ServerConfig): void {
   resolveServerConfig(config);
   emitProvidersUpdated({ providers: config.providers });
   emitServerConfigUpdated(toServerConfigUpdatedPayload(config), "snapshot");
+  if (config.syntaxThemes) {
+    applySyntaxThemesUpdated(config.syntaxThemes);
+  }
 }
 
 export function applyServerConfigEvent(event: ServerConfigStreamEvent): void {
@@ -109,6 +117,10 @@ export function applyServerConfigEvent(event: ServerConfigStreamEvent): void {
     }
     case "settingsUpdated": {
       applySettingsUpdated(event.payload.settings);
+      return;
+    }
+    case "syntaxThemesUpdated": {
+      applySyntaxThemesUpdated(event.payload);
       return;
     }
   }
@@ -142,6 +154,16 @@ export function applySettingsUpdated(settings: ServerSettings): void {
   } satisfies ServerConfig;
   resolveServerConfig(nextConfig);
   emitServerConfigUpdated(toServerConfigUpdatedPayload(nextConfig), "settingsUpdated");
+}
+
+export function applySyntaxThemesUpdated(
+  payload: ServerConfigStreamSyntaxThemesUpdatedPayload,
+): void {
+  appAtomRegistry.set(syntaxThemesAtom, payload);
+}
+
+export function getSyntaxThemes(): ServerConfigStreamSyntaxThemesUpdatedPayload | null {
+  return appAtomRegistry.get(syntaxThemesAtom);
 }
 
 export function emitWelcome(payload: ServerLifecycleWelcomePayload): void {
@@ -284,6 +306,10 @@ export function useServerKeybindingsConfigPath(): string | null {
 
 export function useServerObservability(): ServerConfig["observability"] | null {
   return useAtomValue(serverConfigAtom, selectObservability);
+}
+
+export function useSyntaxThemes(): ServerConfigStreamSyntaxThemesUpdatedPayload | null {
+  return useAtomValue(syntaxThemesAtom);
 }
 
 export function useServerWelcomeSubscription(
