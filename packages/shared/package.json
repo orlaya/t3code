@@ -72,10 +72,6 @@
       "types": "./src/path.ts",
       "import": "./src/path.ts"
     },
-    "./fileOutline": {
-      "types": "./src/fileOutline.ts",
-      "import": "./src/fileOutline.ts"
-    },
     "./claudeHooksFingerprint": {
       "types": "./src/claudeHooksFingerprint.ts",
       "import": "./src/claudeHooksFingerprint.ts"
@@ -88,9 +84,7 @@
   },
   "dependencies": {
     "@t3tools/contracts": "workspace:*",
-    "effect": "catalog:",
-    "tree-sitter-wasms": "^0.1.13",
-    "web-tree-sitter": "0.20.8"
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@effect/language-service": "catalog:",

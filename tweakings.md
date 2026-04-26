@@ -637,12 +637,10 @@
 - `apps/web/src/ui-adapter/claude/assembly/file.ts` — `FileChangeInvocation` gained `turnId`. Uses `shiftMatchingTurnId` instead of `shift()`.
 - `apps/web/src/ui-adapter/claude/assembly/generic.ts` — `GenericToolInvocation` gained `turnId`. MCP `find()` calls and dynamic tool completed matching both check `inv.turnId === activity.turnId`.
 
-**File outline condensation module (new, not yet wired in):**
+**File outline condensation module (added then removed):**
 
-- `packages/shared/src/fileOutline.ts` — new module. Uses `web-tree-sitter` (WASM) to parse large files (>16KB) into structural outlines (symbol names + line ranges). Falls back to first 1KB preview for unknown grammars. Outline queries for TypeScript, TSX, JavaScript. Provider-agnostic.
-- `packages/shared/src/fileOutline.test.ts` — 8 tests covering small files, large TS files, markdown fallback, unknown extensions.
-- `packages/shared/package.json` — added `web-tree-sitter@0.20.8` and `tree-sitter-wasms@^0.1.13` as dependencies. Added `"./fileOutline"` subpath export.
-- Not wired into the provider layer yet. Will become a PostToolUse hook preset on the Read tool once the hooks metadata layer (see `__notes/PLAN.hooks-metadata-layer.md`) reaches that stage.
+- Was `packages/shared/src/fileOutline.ts` + `fileOutline.test.ts` — proof of concept using `web-tree-sitter` (WASM) for structural file outlining. Removed: will be rebuilt as native Rust CLI in the Frank repo (`___outline/` crate). See `__notes/PLAN.file-outline-condensation.md` for lessons learned, and `/Users/sh/ztc/frank/PLAN.outline.md` for the Rust plan.
+- `packages/shared/package.json` — `web-tree-sitter` and `tree-sitter-wasms` dependencies removed, `"./fileOutline"` subpath export removed.
 
 **Appearance settings page (new):**
 
