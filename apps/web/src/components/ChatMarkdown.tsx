@@ -26,7 +26,7 @@ import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
 import { fnv1a32 } from "../lib/diffRendering";
 import { LRUCache } from "../lib/lruCache";
 import { useTheme } from "../hooks/useTheme";
-import { useSyntaxThemes } from "../rpc/serverState";
+import { useDiffThemeSync } from "../hooks/useDiffThemeSync";
 import { resolveMarkdownFileLinkMeta, rewriteMarkdownFileUriHref } from "../markdown-links";
 import { readLocalApi } from "../localApi";
 import { cn } from "../lib/utils";
@@ -118,24 +118,29 @@ function estimateHighlightedSize(html: string, code: string): number {
   return Math.max(html.length * 2, code.length * 3);
 }
 
-function getHighlighterPromise(language: string): Promise<DiffsHighlighter> {
-  const cached = highlighterPromiseCache.get(language);
+function getHighlighterPromise(
+  language: string,
+  darkTheme: string,
+  lightTheme: string,
+): Promise<DiffsHighlighter> {
+  const cacheKey = `${language}:${darkTheme}:${lightTheme}`;
+  const cached = highlighterPromiseCache.get(cacheKey);
   if (cached) return cached;
 
   const promise = getSharedHighlighter({
-    themes: [resolveDiffThemeName("dark"), resolveDiffThemeName("light")],
+    themes: [darkTheme, lightTheme],
     langs: [language as SupportedLanguages],
     preferredHighlighter: "shiki-js",
   }).catch((err) => {
-    highlighterPromiseCache.delete(language);
+    highlighterPromiseCache.delete(cacheKey);
     if (language === "text") {
       // "text" itself failed — Shiki cannot initialize at all, surface the error
       throw err;
     }
     // Language not supported by Shiki — fall back to "text"
-    return getHighlighterPromise("text");
+    return getHighlighterPromise("text", darkTheme, lightTheme);
   });
-  highlighterPromiseCache.set(language, promise);
+  highlighterPromiseCache.set(cacheKey, promise);
   return promise;
 }
 
@@ -191,6 +196,8 @@ interface SuspenseShikiCodeBlockProps {
   className: string | undefined;
   code: string;
   themeName: DiffThemeName;
+  darkThemeName: string;
+  lightThemeName: string;
   isStreaming: boolean;
 }
 
@@ -198,6 +205,8 @@ function SuspenseShikiCodeBlock({
   className,
   code,
   themeName,
+  darkThemeName,
+  lightThemeName,
   isStreaming,
 }: SuspenseShikiCodeBlockProps) {
   const language = extractFenceLanguage(className);
@@ -213,7 +222,7 @@ function SuspenseShikiCodeBlock({
     );
   }
 
-  const highlighter = use(getHighlighterPromise(language));
+  const highlighter = use(getHighlighterPromise(language, darkThemeName, lightThemeName));
   const highlightedHtml = useMemo(() => {
     try {
       return highlighter.codeToHtml(code, { lang: language, theme: themeName });
@@ -480,12 +489,9 @@ function areMarkdownFileLinkPropsEqual(
 
 function ChatMarkdown({ text, cwd, isStreaming = false, className }: ChatMarkdownProps) {
   const { resolvedTheme } = useTheme();
-  const syntaxThemes = useSyntaxThemes();
-  const hasCustomTheme =
-    resolvedTheme === "dark"
-      ? syntaxThemes?.syntaxThemeDark != null
-      : syntaxThemes?.syntaxThemeLight != null;
-  const diffThemeName = resolveDiffThemeName(resolvedTheme, hasCustomTheme);
+  const { diffThemeName, hasCustomTheme } = useDiffThemeSync();
+  const darkThemeName = resolveDiffThemeName("dark", hasCustomTheme);
+  const lightThemeName = resolveDiffThemeName("light", hasCustomTheme);
   const markdownFileLinkMetaByHref = useMemo(() => {
     const metaByHref = new Map<
       string,
@@ -554,6 +560,8 @@ function ChatMarkdown({ text, cwd, isStreaming = false, className }: ChatMarkdow
                   className={codeBlock.className}
                   code={codeBlock.code}
                   themeName={diffThemeName}
+                  darkThemeName={darkThemeName}
+                  lightThemeName={lightThemeName}
                   isStreaming={isStreaming}
                 />
               </Suspense>
@@ -563,9 +571,11 @@ function ChatMarkdown({ text, cwd, isStreaming = false, className }: ChatMarkdow
       },
     }),
     [
+      darkThemeName,
       diffThemeName,
       fileLinkParentSuffixByPath,
       isStreaming,
+      lightThemeName,
       markdownFileLinkMetaByHref,
       resolvedTheme,
     ],
