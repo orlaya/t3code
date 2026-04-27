@@ -390,6 +390,15 @@ export function finalizeFileRead(inv: FileReadInvocation): AssembledFileRead | n
         ? "in-progress"
         : "starting";
 
+  // Claude: offset = starting line number, limit = number of lines to read.
+  // Both map directly to display line numbers (offset 40 → line 40 in output).
+  const rawOffset =
+    typeof bestCanonical.input.offset === "number" ? bestCanonical.input.offset : undefined;
+  const rawLimit =
+    typeof bestCanonical.input.limit === "number" ? bestCanonical.input.limit : undefined;
+  const lineStart = rawOffset ?? undefined;
+  const lineEnd = rawOffset != null && rawLimit != null ? rawOffset + rawLimit : undefined;
+
   const assembled: AssembledFileRead = {
     kind: "file-read",
     id: firstId,
@@ -398,6 +407,8 @@ export function finalizeFileRead(inv: FileReadInvocation): AssembledFileRead | n
     state: state as AssembledFileRead["state"],
     heading: "Read",
     filePath: bestCanonical.input.file_path,
+    ...(lineStart != null && { lineStart }),
+    ...(lineEnd != null && { lineEnd }),
   };
 
   if (bestCanonical.toolCallId) assembled.toolCallId = bestCanonical.toolCallId;

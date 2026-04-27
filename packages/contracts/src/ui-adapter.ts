@@ -41,6 +41,10 @@ export type CanonicalToolInput = {
   url?: string;
   /** Glob/Grep: search pattern. */
   pattern?: string;
+  /** Read: line offset (0-based). */
+  offset?: number;
+  /** Read: number of lines to read. */
+  limit?: number;
   /** Catch-all for provider-specific extras we don't explicitly model. */
   [key: string]: unknown;
 };
@@ -277,6 +281,10 @@ export interface AssembledWrite extends AssembledToolBase {
 export interface AssembledFileRead extends AssembledToolBase {
   kind: "file-read";
   filePath: string;
+  /** First line of the targeted range (1-based). */
+  lineStart?: number;
+  /** Last line of the targeted range (1-based, inclusive). */
+  lineEnd?: number;
   resultContent?: string;
 }
 

@@ -52,6 +52,8 @@ function extractInput(raw: unknown): CanonicalToolInput | undefined {
   if (typeof raw.query === "string") input.query = raw.query;
   if (typeof raw.url === "string") input.url = raw.url;
   if (typeof raw.pattern === "string") input.pattern = raw.pattern;
+  if (typeof raw.offset === "number") input.offset = raw.offset;
+  if (typeof raw.limit === "number") input.limit = raw.limit;
 
   return Object.keys(input).length > 0 ? input : undefined;
 }

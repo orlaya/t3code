@@ -18,14 +18,12 @@ import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { VscodeEntryIcon } from "./chat/VscodeEntryIcon";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { openInPreferredEditor } from "../editorPreferences";
 import { resolveDiffThemeName, type DiffThemeName } from "../lib/diffRendering";
 import { fnv1a32 } from "../lib/diffRendering";
 import { LRUCache } from "../lib/lruCache";
-import { useTheme } from "../hooks/useTheme";
 import { useDiffThemeSync } from "../hooks/useDiffThemeSync";
 import { resolveMarkdownFileLinkMeta, rewriteMarkdownFileUriHref } from "../markdown-links";
 import { readLocalApi } from "../localApi";
@@ -258,14 +256,12 @@ interface MarkdownFileLinkProps {
   displayPath: string;
   filePath: string;
   label: string;
-  theme: "light" | "dark";
   className?: string | undefined;
 }
 
 const MARKDOWN_LINK_HREF_PATTERN = /\[[^\]]*]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
 const MARKDOWN_FILE_LINK_CLASS_NAME =
   "chat-markdown-file-link relative top-[2px] max-w-full no-underline";
-const MARKDOWN_FILE_LINK_ICON_CLASS_NAME = "chat-markdown-file-link-icon size-3.5 shrink-0";
 const MARKDOWN_FILE_LINK_LABEL_CLASS_NAME = "chat-markdown-file-link-label truncate";
 
 function pathParentSegments(path: string): string[] {
@@ -348,7 +344,6 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
   displayPath,
   filePath,
   label,
-  theme,
   className,
 }: MarkdownFileLinkProps) {
   const handleOpen = useCallback(() => {
@@ -450,12 +445,6 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
             }}
             onContextMenu={handleContextMenu}
           >
-            <VscodeEntryIcon
-              pathValue={filePath}
-              kind="file"
-              theme={theme}
-              className={cn(MARKDOWN_FILE_LINK_ICON_CLASS_NAME, "text-current")}
-            />
             <span className={MARKDOWN_FILE_LINK_LABEL_CLASS_NAME}>{label}</span>
           </a>
         }
@@ -482,13 +471,11 @@ function areMarkdownFileLinkPropsEqual(
     previous.displayPath === next.displayPath &&
     previous.filePath === next.filePath &&
     previous.label === next.label &&
-    previous.theme === next.theme &&
     previous.className === next.className
   );
 }
 
 function ChatMarkdown({ text, cwd, isStreaming = false, className }: ChatMarkdownProps) {
-  const { resolvedTheme } = useTheme();
   const { diffThemeName, hasCustomTheme } = useDiffThemeSync();
   const darkThemeName = resolveDiffThemeName("dark", hasCustomTheme);
   const lightThemeName = resolveDiffThemeName("light", hasCustomTheme);
@@ -541,7 +528,6 @@ function ChatMarkdown({ text, cwd, isStreaming = false, className }: ChatMarkdow
             displayPath={fileLinkMeta.displayPath}
             filePath={fileLinkMeta.filePath}
             label={labelParts.join(" · ")}
-            theme={resolvedTheme}
             className={props.className}
           />
         );
@@ -577,7 +563,6 @@ function ChatMarkdown({ text, cwd, isStreaming = false, className }: ChatMarkdow
       isStreaming,
       lightThemeName,
       markdownFileLinkMetaByHref,
-      resolvedTheme,
     ],
   );
 

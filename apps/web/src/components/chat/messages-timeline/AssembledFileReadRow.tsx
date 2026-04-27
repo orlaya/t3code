@@ -18,19 +18,32 @@ export const AssembledFileReadRow = memo(function AssembledFileReadRow({
 }) {
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const hasResult = !!tool.resultContent;
-  const displayPath = tool.filePath
+  const relativePath = tool.filePath
     ? formatWorkspaceRelativePath(tool.filePath, workspaceRoot)
     : null;
+  const rangeLabel =
+    tool.lineStart != null && tool.lineEnd != null
+      ? ` (${tool.lineStart}-${tool.lineEnd})`
+      : tool.lineStart != null
+        ? ` (${tool.lineStart}+)`
+        : null;
+  const displayPath = relativePath ? `${relativePath}${rangeLabel ?? ""}` : null;
   const heading = tool.heading + toolHeadingSuffix(tool.state);
   const headingCls = toolHeadingClass(tool.state);
   const displayText = displayPath ? `${heading} - ${displayPath}` : heading;
 
+  const editorTarget = tool.filePath
+    ? tool.lineStart != null
+      ? `${tool.filePath}:${tool.lineStart}`
+      : tool.filePath
+    : null;
+
   const handleOpenInEditor = useCallback(() => {
-    if (!tool.filePath) return;
+    if (!editorTarget) return;
     const api = readLocalApi();
     if (!api) return;
-    void openInPreferredEditor(api, tool.filePath);
-  }, [tool.filePath]);
+    void openInPreferredEditor(api, editorTarget);
+  }, [editorTarget]);
 
   const handleResultClick = hasResult ? () => setResultDialogOpen(true) : undefined;
   const handleResultClose = useCallback((open: boolean) => setResultDialogOpen(open), []);
@@ -83,7 +96,7 @@ export const AssembledFileReadRow = memo(function AssembledFileReadRow({
           open={resultDialogOpen}
           onOpenChange={handleResultClose}
           heading={heading}
-          command={tool.filePath}
+          command={displayPath ?? tool.filePath}
           resultContent={tool.resultContent!}
         />
       )}
