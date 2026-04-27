@@ -368,7 +368,7 @@ label:has(> select#reasoning-effort) select {
 
 .chat-markdown :not(pre) > code {
   padding: 0.15rem 0.25rem;
-  color: #ab8d76;
+  color: #A19385;
   font-size: 0.8rem;
   font-style: italic;
 }
