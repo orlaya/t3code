@@ -1,5 +1,5 @@
 import { DiffsHighlighter, getSharedHighlighter, SupportedLanguages } from "@pierre/diffs";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, TextWrapIcon } from "lucide-react";
 import React, {
   Children,
   Suspense,
@@ -142,8 +142,24 @@ function getHighlighterPromise(
   return promise;
 }
 
-function MarkdownCodeBlock({ code, children }: { code: string; children: ReactNode }) {
+const WRAP_BY_DEFAULT_LANGUAGES = new Set(["markdown", "md", "mdx", "text", "txt"]);
+
+function shouldDefaultWrap(className: string | undefined): boolean {
+  const lang = extractFenceLanguage(className);
+  return WRAP_BY_DEFAULT_LANGUAGES.has(lang);
+}
+
+function MarkdownCodeBlock({
+  code,
+  className,
+  children,
+}: {
+  code: string;
+  className: string | undefined;
+  children: ReactNode;
+}) {
   const [copied, setCopied] = useState(false);
+  const [wordWrap, setWordWrap] = useState(() => shouldDefaultWrap(className));
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleCopy = useCallback(() => {
     if (typeof navigator === "undefined" || navigator.clipboard == null) {
@@ -175,16 +191,35 @@ function MarkdownCodeBlock({ code, children }: { code: string; children: ReactNo
   );
 
   return (
-    <div className="chat-markdown-codeblock leading-snug">
-      <button
-        type="button"
-        className="chat-markdown-copy-button"
-        onClick={handleCopy}
-        title={copied ? "Copied" : "Copy code"}
-        aria-label={copied ? "Copied" : "Copy code"}
-      >
-        {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
-      </button>
+    <div
+      className={cn(
+        "chat-markdown-codeblock leading-snug",
+        wordWrap && "chat-markdown-codeblock-wrapped",
+      )}
+    >
+      <div className="chat-markdown-codeblock-actions">
+        <button
+          type="button"
+          className="chat-markdown-action-button"
+          onClick={handleCopy}
+          title={copied ? "Copied" : "Copy code"}
+          aria-label={copied ? "Copied" : "Copy code"}
+        >
+          {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "chat-markdown-action-button",
+            wordWrap && "chat-markdown-action-button-active",
+          )}
+          onClick={() => setWordWrap((v) => !v)}
+          title={wordWrap ? "Disable line wrapping" : "Enable line wrapping"}
+          aria-label={wordWrap ? "Disable line wrapping" : "Enable line wrapping"}
+        >
+          <TextWrapIcon className="size-3" />
+        </button>
+      </div>
       {children}
     </div>
   );
@@ -539,7 +574,7 @@ function ChatMarkdown({ text, cwd, isStreaming = false, className }: ChatMarkdow
         }
 
         return (
-          <MarkdownCodeBlock code={codeBlock.code}>
+          <MarkdownCodeBlock code={codeBlock.code} className={codeBlock.className}>
             <CodeHighlightErrorBoundary fallback={<pre {...props}>{children}</pre>}>
               <Suspense fallback={<pre {...props}>{children}</pre>}>
                 <SuspenseShikiCodeBlock

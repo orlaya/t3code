@@ -368,7 +368,7 @@ label:has(> select#reasoning-effort) select {
 
 .chat-markdown :not(pre) > code {
   padding: 0.15rem 0.25rem;
-  color: #A19385;
+  color: #a19385;
   font-size: 0.8rem;
   font-style: italic;
 }
@@ -389,7 +389,7 @@ label:has(> select#reasoning-effort) select {
 }
 
 .chat-markdown a.chat-markdown-file-link {
-  color: #DEDEDE;
+  color: #dedede;
   font-weight: bold;
   font-size: 0.8rem;
   text-underline-offset: 0.1rem;
@@ -468,21 +468,44 @@ label:has(> select#reasoning-effort) select {
 }
 
 .chat-markdown .chat-markdown-codeblock {
-  --chat-markdown-codeblock-copy-button-space: 1.5rem;
   position: relative;
   margin: 0.65rem 0;
 }
 
 .chat-markdown .chat-markdown-codeblock pre {
   margin: 0;
-  padding-right: calc(0.9rem + var(--chat-markdown-codeblock-copy-button-space));
 }
 
-.chat-markdown .chat-markdown-copy-button {
+.chat-markdown .chat-markdown-codeblock pre::before {
+  content: "";
+  float: right;
+  width: 3.5rem;
+  height: 1.5em;
+}
+
+.chat-markdown .chat-markdown-codeblock:not(.chat-markdown-codeblock-wrapped) pre {
+  padding-right: 3.5rem;
+}
+
+.chat-markdown .chat-markdown-codeblock-actions {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
   z-index: 1;
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.chat-markdown .chat-markdown-codeblock:hover .chat-markdown-codeblock-actions,
+.chat-markdown .chat-markdown-codeblock:focus-within .chat-markdown-codeblock-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chat-markdown .chat-markdown-action-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -490,26 +513,30 @@ label:has(> select#reasoning-effort) select {
   width: 1.5rem;
   border-radius: 0.375rem;
   border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--background) 82%, transparent);
+  background: color-mix(in srgb, var(--foreground) 4%, var(--background));
   color: var(--muted-foreground);
   cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
   transition:
-    opacity 120ms ease,
     color 120ms ease,
-    border-color 120ms ease;
+    border-color 120ms ease,
+    background 120ms ease;
 }
 
-.chat-markdown .chat-markdown-codeblock:hover .chat-markdown-copy-button,
-.chat-markdown .chat-markdown-codeblock:focus-within .chat-markdown-copy-button {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.chat-markdown .chat-markdown-copy-button:hover {
+.chat-markdown .chat-markdown-action-button:hover {
   color: var(--foreground);
   border-color: color-mix(in srgb, var(--border) 70%, var(--foreground));
+}
+
+.chat-markdown .chat-markdown-action-button-active {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 10%, var(--background));
+  border-color: color-mix(in srgb, var(--border) 70%, var(--foreground));
+}
+
+.chat-markdown .chat-markdown-codeblock-wrapped pre {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .chat-markdown .chat-markdown-shiki .shiki {
