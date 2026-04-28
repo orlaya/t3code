@@ -2460,6 +2460,18 @@ const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           },
         });
         return;
+      case "api_retry":
+        yield* offerRuntimeEvent({
+          ...base,
+          type: "provider.api-retry",
+          payload: {
+            attempt: typeof message.attempt === "number" ? message.attempt : 0,
+            maxRetries: typeof message.max_retries === "number" ? message.max_retries : 0,
+            errorStatus: typeof message.error_status === "number" ? message.error_status : 0,
+            errorKind: typeof message.error === "string" ? message.error : "unknown",
+          },
+        });
+        return;
       default:
         yield* emitRuntimeWarning(
           context,

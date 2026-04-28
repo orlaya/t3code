@@ -265,6 +265,22 @@ function runtimeEventToActivities(
       ];
     }
 
+    case "provider.api-retry": {
+      const { attempt, maxRetries, errorStatus } = event.payload;
+      return [
+        {
+          id: event.eventId,
+          createdAt: event.createdAt,
+          tone: "error",
+          kind: "provider.api-retry",
+          summary: `API overloaded (${errorStatus}) — attempt ${attempt}/${maxRetries}`,
+          payload: event.payload,
+          turnId: toTurnId(event.turnId) ?? null,
+          ...maybeSequence,
+        },
+      ];
+    }
+
     case "runtime.warning": {
       return [
         {

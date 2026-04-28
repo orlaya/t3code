@@ -192,6 +192,7 @@ const ProviderRuntimeEventType = Schema.Literals([
   "config.warning",
   "deprecation.notice",
   "files.persisted",
+  "provider.api-retry",
   "runtime.warning",
   "runtime.error",
 ]);
@@ -242,6 +243,7 @@ const ModelReroutedType = Schema.Literal("model.rerouted");
 const ConfigWarningType = Schema.Literal("config.warning");
 const DeprecationNoticeType = Schema.Literal("deprecation.notice");
 const FilesPersistedType = Schema.Literal("files.persisted");
+const ProviderApiRetryType = Schema.Literal("provider.api-retry");
 const RuntimeWarningType = Schema.Literal("runtime.warning");
 const RuntimeErrorType = Schema.Literal("runtime.error");
 
@@ -586,6 +588,14 @@ const FilesPersistedPayload = Schema.Struct({
   ),
 });
 export type FilesPersistedPayload = typeof FilesPersistedPayload.Type;
+
+const ProviderApiRetryPayload = Schema.Struct({
+  attempt: Schema.Number,
+  maxRetries: Schema.Number,
+  errorStatus: Schema.Number,
+  errorKind: TrimmedNonEmptyStringSchema,
+});
+export type ProviderApiRetryPayload = typeof ProviderApiRetryPayload.Type;
 
 const RuntimeWarningPayload = Schema.Struct({
   message: TrimmedNonEmptyStringSchema,
@@ -932,6 +942,13 @@ const ProviderRuntimeFilesPersistedEvent = Schema.Struct({
 });
 export type ProviderRuntimeFilesPersistedEvent = typeof ProviderRuntimeFilesPersistedEvent.Type;
 
+const ProviderRuntimeApiRetryEvent = Schema.Struct({
+  ...ProviderRuntimeEventBase.fields,
+  type: ProviderApiRetryType,
+  payload: ProviderApiRetryPayload,
+});
+export type ProviderRuntimeApiRetryEvent = typeof ProviderRuntimeApiRetryEvent.Type;
+
 const ProviderRuntimeWarningEvent = Schema.Struct({
   ...ProviderRuntimeEventBase.fields,
   type: RuntimeWarningType,
@@ -992,6 +1009,7 @@ export const ProviderRuntimeEventV2 = Schema.Union([
   ProviderRuntimeConfigWarningEvent,
   ProviderRuntimeDeprecationNoticeEvent,
   ProviderRuntimeFilesPersistedEvent,
+  ProviderRuntimeApiRetryEvent,
   ProviderRuntimeWarningEvent,
   ProviderRuntimeErrorEvent,
 ]);
