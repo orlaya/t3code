@@ -145,6 +145,17 @@ export function groupWebSearchActivities(
     if (activity.kind === "tool.updated") {
       const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
       if (pendingStarted && pendingStarted.query === undefined) {
+        // Before marrying, check if there's already a completed invocation
+        // with this query — duplicate updated events steal unrelated starteds.
+        if (query) {
+          const bucket = byQuery.get(query);
+          const completedExisting = bucket?.find((inv) => inv.hasCompleted);
+          if (completedExisting) {
+            startedQueue.push(pendingStarted);
+            completedExisting.activities.push(activity);
+            continue;
+          }
+        }
         pendingStarted.query = query;
         pendingStarted.activities.push(activity);
         if (query) {
@@ -156,6 +167,7 @@ export function groupWebSearchActivities(
           bucket.push(pendingStarted);
         }
       } else {
+        if (pendingStarted) startedQueue.push(pendingStarted);
         let matched = false;
         if (query) {
           const bucket = byQuery.get(query);

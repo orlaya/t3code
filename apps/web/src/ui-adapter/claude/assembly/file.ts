@@ -244,6 +244,17 @@ export function groupFileChangeActivities(
     if (activity.kind === "tool.updated") {
       const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
       if (pendingStarted && pendingStarted.filePath === undefined) {
+        // Before marrying, check if there's already a completed invocation
+        // with this file path — duplicate updated events steal unrelated starteds.
+        if (fp) {
+          const bucket = byFilePath.get(fp);
+          const completedExisting = bucket?.find((inv) => inv.hasCompleted);
+          if (completedExisting) {
+            startedQueue.push(pendingStarted);
+            completedExisting.activities.push(activity);
+            continue;
+          }
+        }
         // Marry to earliest unmatched started
         pendingStarted.filePath = fp;
         pendingStarted.activities.push(activity);
@@ -256,6 +267,7 @@ export function groupFileChangeActivities(
           bucket.push(pendingStarted);
         }
       } else {
+        if (pendingStarted) startedQueue.push(pendingStarted);
         let matched = false;
         if (fp) {
           const bucket = byFilePath.get(fp);

@@ -154,6 +154,17 @@ export function groupSubAgentActivities(
     if (activity.kind === "tool.updated") {
       const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
       if (pendingStarted && pendingStarted.description === undefined) {
+        // Before marrying, check if there's already a completed invocation
+        // with this description — duplicate updated events steal unrelated starteds.
+        if (desc) {
+          const bucket = byDescription.get(desc);
+          const completedExisting = bucket?.find((inv) => inv.hasCompleted);
+          if (completedExisting) {
+            startedQueue.push(pendingStarted);
+            completedExisting.activities.push(activity);
+            continue;
+          }
+        }
         pendingStarted.description = desc;
         pendingStarted.activities.push(activity);
         if (desc) {
@@ -165,6 +176,7 @@ export function groupSubAgentActivities(
           bucket.push(pendingStarted);
         }
       } else {
+        if (pendingStarted) startedQueue.push(pendingStarted);
         let matched = false;
         if (desc) {
           const bucket = byDescription.get(desc);
