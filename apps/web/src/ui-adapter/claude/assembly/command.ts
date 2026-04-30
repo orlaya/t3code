@@ -252,6 +252,22 @@ export function groupCommandActivities(
       // Try to marry to the earliest unmatched tool.started from the same turn
       const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
       if (pendingStarted && pendingStarted.commandString === undefined) {
+        // Before marrying, check if there's already a COMPLETED invocation
+        // with this command string. Claude sometimes sends a duplicate
+        // tool.updated at the same timestamp as tool.completed — without this
+        // guard, the duplicate steals the tool.started that belongs to a
+        // DIFFERENT command in the same turn, creating a phantom invocation
+        // that never completes (permanent spinner).
+        if (cmdStr) {
+          const bucket = byCommandString.get(cmdStr);
+          const completedExisting = bucket?.find((inv) => inv.hasCompleted);
+          if (completedExisting) {
+            // Return the started to the queue — it belongs to another command.
+            startedQueue.push(pendingStarted);
+            completedExisting.activities.push(activity);
+            continue;
+          }
+        }
         // Marry this updated to the pending started
         pendingStarted.commandString = cmdStr;
         pendingStarted.activities.push(activity);
@@ -269,6 +285,7 @@ export function groupCommandActivities(
         // check if this updated belongs to an existing invocation by command string.
         // Prefer an incomplete invocation, but also absorb into a completed one
         // (Claude sends duplicate updated events at the same time as completed).
+        if (pendingStarted) startedQueue.push(pendingStarted);
         let matched = false;
         if (cmdStr) {
           const bucket = byCommandString.get(cmdStr);

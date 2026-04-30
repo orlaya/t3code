@@ -240,6 +240,60 @@ describe("claude assembly — command", () => {
     expect(cmd3.toolCallId).toBe("toolu_01F7");
   });
 
+  it("duplicate tool.updated does not steal tool.started from a different command", () => {
+    // Real scenario: Claude fires two commands in parallel. The first command's
+    // tool.completed arrives, then a duplicate tool.updated (same command string,
+    // same timestamp) arrives. Without the fix, shiftMatchingTurnId steals the
+    // second command's tool.started, creating a phantom spinner.
+    const activities = [
+      makeActivity("tool.started", makeCommandPayload("started"), {
+        id: "s1",
+        createdAt: "2026-04-30T08:20:48.616Z",
+      }),
+      makeActivity("tool.updated", makeCommandPayload("updated", "outline main/*.rs"), {
+        id: "u1",
+        createdAt: "2026-04-30T08:20:49.482Z",
+      }),
+      makeActivity("tool.started", makeCommandPayload("started"), {
+        id: "s2",
+        createdAt: "2026-04-30T08:20:49.485Z",
+      }),
+      makeActivity(
+        "tool.completed",
+        makeCommandPayload("completed", "outline main/*.rs", "toolu_01MG"),
+        { id: "c1", createdAt: "2026-04-30T08:20:50.163Z" },
+      ),
+      // Duplicate updated — same command, same timestamp as completed
+      makeActivity("tool.updated", makeCommandPayload("updated", "outline main/*.rs"), {
+        id: "u1-dup",
+        createdAt: "2026-04-30T08:20:50.163Z",
+      }),
+      // Second command's events
+      makeActivity("tool.updated", makeCommandPayload("updated", "ls /Users/sh"), {
+        id: "u2",
+        createdAt: "2026-04-30T08:20:50.180Z",
+      }),
+      makeActivity(
+        "tool.completed",
+        makeCommandPayload("completed", "ls /Users/sh", "toolu_01Ld"),
+        { id: "c2", createdAt: "2026-04-30T08:20:50.236Z" },
+      ),
+    ];
+
+    const { tools: result } = assembleClaudeTools(activities);
+
+    // Should produce exactly 2 invocations, both completed — NOT 3 with a phantom spinner
+    expect(result).toHaveLength(2);
+
+    const cmd1 = expectCommand(result[0]);
+    expect(cmd1.command).toBe("outline main/*.rs");
+    expect(cmd1.state).toBe("completed");
+
+    const cmd2 = expectCommand(result[1]);
+    expect(cmd2.command).toBe("ls /Users/sh");
+    expect(cmd2.state).toBe("completed");
+  });
+
   it("emits starting state for unmatched tool.started (crash/disconnect)", () => {
     const activities = [
       makeActivity("tool.started", makeCommandPayload("started"), { id: "orphan" }),
