@@ -164,6 +164,7 @@ const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
         buildBooleanOptionDescriptor({
           id: "thinking",
           label: "Thinking",
+          currentValue: false,
         }),
       ],
     }),
