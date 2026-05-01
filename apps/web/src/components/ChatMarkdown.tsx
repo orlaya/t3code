@@ -377,7 +377,6 @@ const MarkdownFileLink = memo(function MarkdownFileLink({
   href,
   targetPath,
   displayPath,
-  filePath,
   label,
   className,
 }: MarkdownFileLinkProps) {

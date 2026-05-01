@@ -540,7 +540,7 @@ label:has(> select#reasoning-effort) select {
 }
 
 .chat-markdown .chat-markdown-shiki .shiki {
-  background: color-mix(in srgb, var(--muted) 78%, var(--background)) !important;
+  background: color-mix(in srgb, var(--muted) 78%, var(--background));
 }
 
 .chat-markdown table {

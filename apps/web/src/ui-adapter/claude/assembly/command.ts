@@ -1,23 +1,21 @@
 /**
  * Command (command_execution) — grouping and assembly.
  *
- * Grouping strategy:
- *   - tool.started has NO data (just itemType) — creates a pending slot
- *   - tool.updated has data.input.command — marries to earliest unmatched
- *     tool.started of the same itemType, keyed by command string
- *   - tool.completed has data.input.command + result.tool_use_id — marries
- *     to the group with the matching command string
- *   - Unmatched tool.started at the end → state "starting"
+ * Grouping strategy: every tool.started / tool.updated / tool.completed for a
+ * single command carries the same `providerItemId` (Claude's `tool_use_id`)
+ * stamped on by the orchestration projector. We bucket activities by that id;
+ * activities without a providerItemId are dropped (they're either pre-projector
+ * legacy events or non-Claude events that shouldn't reach this grouper).
  */
 
 import type { OrchestrationThreadActivity, AssembledCommand } from "@t3tools/contracts";
 
-import { extractClaudeToolData } from "../extraction";
 import {
-  extractCommandString,
-  extractItemType,
+  deriveAssembledState,
   extractResultContent,
-  shiftMatchingTurnId,
+  groupByProviderItemId,
+  summarizeInvocation,
+  type ProviderItemInvocation,
 } from "./shared";
 
 // ---------------------------------------------------------------------------
@@ -117,50 +115,17 @@ function formatCommandForDisplay(command: string): {
 }
 
 // ---------------------------------------------------------------------------
-// Command invocation accumulator
+// Finalize / group
 // ---------------------------------------------------------------------------
 
-interface CommandInvocation {
-  itemType: string;
-  /** Command string — the grouping key. Undefined until first updated/completed. */
-  commandString: string | undefined;
-  turnId: string | null;
-  activities: OrchestrationThreadActivity[];
-  hasStarted: boolean;
-  hasCompleted: boolean;
-}
-
-export function finalizeCommand(inv: CommandInvocation): AssembledCommand | null {
-  // Find the most informative activity — completed > updated > started
-  let bestCanonical = null;
-  let bestKind: string | null = null;
-  let firstId: string | null = null;
-  let firstCreatedAt: string | null = null;
-
-  for (const activity of inv.activities) {
-    if (!firstId) {
-      firstId = activity.id;
-      firstCreatedAt = activity.createdAt;
-    }
-    const canonical = extractClaudeToolData(activity.payload);
-    if (!canonical) continue;
-
-    if (
-      !bestCanonical ||
-      activity.kind === "tool.completed" ||
-      (activity.kind === "tool.updated" && bestKind === "tool.started")
-    ) {
-      bestCanonical = canonical;
-      bestKind = activity.kind;
-    }
-  }
-
-  if (!firstId || !firstCreatedAt) return null;
+export function finalizeCommand(inv: ProviderItemInvocation): AssembledCommand | null {
+  const summary = summarizeInvocation(inv);
+  if (!summary) return null;
+  const { firstId, firstCreatedAt, bestCanonical, bestKind } = summary;
 
   // tool.started only (no updated/completed ever arrived) — emit a
-  // "starting" placeholder so the UI can show a spinner.
-  // If tool.completed arrived with status "failed" (interrupted mid-stream),
-  // mark as interrupted instead of leaving it stuck as starting.
+  // "starting" placeholder. If tool.completed arrived with status "failed"
+  // (interrupted mid-stream), mark as interrupted instead.
   if (!bestCanonical || !bestCanonical.input?.command) {
     const wasInterrupted = bestKind === "tool.completed";
     return {
@@ -175,15 +140,7 @@ export function finalizeCommand(inv: CommandInvocation): AssembledCommand | null
   }
 
   const formatted = formatCommandForDisplay(bestCanonical.input.command);
-
-  const state =
-    bestKind === "tool.completed"
-      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
-        ? "failed"
-        : "completed"
-      : bestKind === "tool.updated"
-        ? "in-progress"
-        : "starting";
+  const state = deriveAssembledState(bestCanonical, bestKind);
 
   const assembled: AssembledCommand = {
     kind: "command",
@@ -204,165 +161,8 @@ export function finalizeCommand(inv: CommandInvocation): AssembledCommand | null
   return assembled;
 }
 
-// ---------------------------------------------------------------------------
-// Command grouping — by command string, not sequence position
-// ---------------------------------------------------------------------------
-
 export function groupCommandActivities(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
-): CommandInvocation[] {
-  // Queue of tool.started events awaiting a tool.updated to marry them
-  const startedQueue: CommandInvocation[] = [];
-  // Invocations keyed by command string (for tool.updated ↔ tool.completed matching)
-  const byCommandString = new Map<string, CommandInvocation[]>();
-  // All invocations in encounter order (for deterministic output)
-  const allInvocations: CommandInvocation[] = [];
-
-  for (const activity of activities) {
-    if (
-      activity.kind !== "tool.started" &&
-      activity.kind !== "tool.updated" &&
-      activity.kind !== "tool.completed"
-    ) {
-      continue;
-    }
-
-    const itemType = extractItemType(activity.payload);
-    if (itemType !== "command_execution") continue;
-
-    if (activity.kind === "tool.started") {
-      // No data — create a pending slot
-      const inv: CommandInvocation = {
-        itemType,
-        commandString: undefined,
-        turnId: activity.turnId,
-        activities: [activity],
-        hasStarted: true,
-        hasCompleted: false,
-      };
-      startedQueue.push(inv);
-      allInvocations.push(inv);
-      continue;
-    }
-
-    // tool.updated or tool.completed — has command string
-    const cmdStr = extractCommandString(activity.payload);
-
-    if (activity.kind === "tool.updated") {
-      // Try to marry to the earliest unmatched tool.started from the same turn
-      const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
-      if (pendingStarted && pendingStarted.commandString === undefined) {
-        // Before marrying, check if there's already a COMPLETED invocation
-        // with this command string. Claude sometimes sends a duplicate
-        // tool.updated at the same timestamp as tool.completed — without this
-        // guard, the duplicate steals the tool.started that belongs to a
-        // DIFFERENT command in the same turn, creating a phantom invocation
-        // that never completes (permanent spinner).
-        if (cmdStr) {
-          const bucket = byCommandString.get(cmdStr);
-          const completedExisting = bucket?.find((inv) => inv.hasCompleted);
-          if (completedExisting) {
-            // Return the started to the queue — it belongs to another command.
-            startedQueue.push(pendingStarted);
-            completedExisting.activities.push(activity);
-            continue;
-          }
-        }
-        // Marry this updated to the pending started
-        pendingStarted.commandString = cmdStr;
-        pendingStarted.activities.push(activity);
-        // Register by command string for future completed matching
-        if (cmdStr) {
-          let bucket = byCommandString.get(cmdStr);
-          if (!bucket) {
-            bucket = [];
-            byCommandString.set(cmdStr, bucket);
-          }
-          bucket.push(pendingStarted);
-        }
-      } else {
-        // No pending started (or it was already married) — put it back and
-        // check if this updated belongs to an existing invocation by command string.
-        // Prefer an incomplete invocation, but also absorb into a completed one
-        // (Claude sends duplicate updated events at the same time as completed).
-        if (pendingStarted) startedQueue.push(pendingStarted);
-        let matched = false;
-        if (cmdStr) {
-          const bucket = byCommandString.get(cmdStr);
-          const existing = bucket?.find((inv) => !inv.hasCompleted) ?? bucket?.at(-1);
-          if (existing) {
-            existing.activities.push(activity);
-            matched = true;
-          }
-        }
-        if (!matched) {
-          // Standalone updated — create a new invocation
-          const inv: CommandInvocation = {
-            itemType,
-            commandString: cmdStr,
-            turnId: activity.turnId,
-            activities: [activity],
-            hasStarted: false,
-            hasCompleted: false,
-          };
-          allInvocations.push(inv);
-          if (cmdStr) {
-            let bucket = byCommandString.get(cmdStr);
-            if (!bucket) {
-              bucket = [];
-              byCommandString.set(cmdStr, bucket);
-            }
-            bucket.push(inv);
-          }
-        }
-      }
-      continue;
-    }
-
-    // tool.completed — find existing invocation by command string
-    if (activity.kind === "tool.completed") {
-      let matched = false;
-      if (cmdStr) {
-        const bucket = byCommandString.get(cmdStr);
-        const existing = bucket?.find((inv) => !inv.hasCompleted);
-        if (existing) {
-          existing.activities.push(activity);
-          existing.hasCompleted = true;
-          matched = true;
-        }
-      }
-      // Fallback: match by turnId against the startedQueue (handles interrupted
-      // tools where tool.completed arrives with empty input/no command string).
-      if (!matched) {
-        const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
-        if (pendingStarted) {
-          pendingStarted.activities.push(activity);
-          pendingStarted.hasCompleted = true;
-          matched = true;
-        }
-      }
-      if (!matched) {
-        // Standalone completed — create a new invocation
-        const inv: CommandInvocation = {
-          itemType,
-          commandString: cmdStr,
-          turnId: activity.turnId,
-          activities: [activity],
-          hasStarted: false,
-          hasCompleted: true,
-        };
-        allInvocations.push(inv);
-        if (cmdStr) {
-          let bucket = byCommandString.get(cmdStr);
-          if (!bucket) {
-            bucket = [];
-            byCommandString.set(cmdStr, bucket);
-          }
-          bucket.push(inv);
-        }
-      }
-    }
-  }
-
-  return allInvocations;
+): ProviderItemInvocation[] {
+  return groupByProviderItemId(activities, "command_execution");
 }

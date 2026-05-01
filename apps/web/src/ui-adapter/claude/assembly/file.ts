@@ -1,8 +1,14 @@
 /**
  * File-related tool grouping and assembly:
- *   - File change (Edit / Write) — file_change itemType, FIFO startedQueue
- *   - File read (Read) — dynamic_tool_call, NO startedQueue
- *   - File search (Grep / Glob) — dynamic_tool_call, NO startedQueue
+ *   - File change (Edit / Write) — file_change itemType
+ *   - File read (Read) — dynamic_tool_call, toolName "Read"
+ *   - File search (Grep / Glob) — dynamic_tool_call, toolName "Grep" | "Glob"
+ *
+ * All three group by `providerItemId` (Claude `tool_use_id`) plumbed through
+ * by the orchestration projector. Activities without a providerItemId are
+ * dropped. For dynamic_tool_call tools, tool.started lacks toolName so its
+ * activity is held in a pending bucket and only attached to a typed grouper
+ * once a later tool.updated reveals the toolName for the same providerItemId.
  */
 
 import type {
@@ -14,15 +20,15 @@ import type {
   CanonicalInlineDiff,
 } from "@t3tools/contracts";
 
-import { extractClaudeToolData, extractClaudeInlineDiffs } from "../extraction";
+import { extractClaudeInlineDiffs } from "../extraction";
 import {
-  extractItemType,
-  extractToolName,
-  extractFilePath,
-  extractPattern,
+  deriveAssembledState,
   extractSearchPath,
   extractResultContent,
-  shiftMatchingTurnId,
+  groupByProviderItemId,
+  groupDynamicToolCallActivities,
+  summarizeInvocation,
+  type ProviderItemInvocation,
 } from "./shared";
 
 // =========================================================================
@@ -78,45 +84,14 @@ function humaniseEditError(raw: string | undefined): string | undefined {
 // File change (Edit / Write)
 // =========================================================================
 
-interface FileChangeInvocation {
-  /** Grouping key — file_path extracted from the updated/completed payload. */
-  filePath: string | undefined;
-  turnId: string | null;
-  activities: OrchestrationThreadActivity[];
-  hasStarted: boolean;
-  hasCompleted: boolean;
-}
+type FileChangeInvocation = ProviderItemInvocation;
 
 export function finalizeFileChange(
   inv: FileChangeInvocation,
 ): AssembledEdit | AssembledWrite | null {
-  // Find the most informative activity — completed > updated > started
-  let bestCanonical = null;
-  let bestKind: string | null = null;
-  let bestPayload: unknown = null;
-  let firstId: string | null = null;
-  let firstCreatedAt: string | null = null;
-
-  for (const activity of inv.activities) {
-    if (!firstId) {
-      firstId = activity.id;
-      firstCreatedAt = activity.createdAt;
-    }
-    const canonical = extractClaudeToolData(activity.payload);
-    if (!canonical) continue;
-
-    if (
-      !bestCanonical ||
-      activity.kind === "tool.completed" ||
-      (activity.kind === "tool.updated" && bestKind === "tool.started")
-    ) {
-      bestCanonical = canonical;
-      bestKind = activity.kind;
-      bestPayload = activity.payload;
-    }
-  }
-
-  if (!firstId || !firstCreatedAt) return null;
+  const summary = summarizeInvocation(inv);
+  if (!summary) return null;
+  const { firstId, firstCreatedAt, bestCanonical, bestKind, bestPayload } = summary;
 
   // tool.started only — no data yet, emit a "starting" placeholder.
   // If tool.completed arrived with status "failed" (interrupted mid-stream),
@@ -152,15 +127,7 @@ export function finalizeFileChange(
     };
   }
 
-  const state =
-    bestKind === "tool.completed"
-      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
-        ? "failed"
-        : "completed"
-      : bestKind === "tool.updated"
-        ? "in-progress"
-        : "starting";
-
+  const state = deriveAssembledState(bestCanonical, bestKind);
   const filePath = bestCanonical.input.file_path;
   const toolName = bestCanonical.toolName;
 
@@ -209,140 +176,7 @@ export function finalizeFileChange(
 export function groupFileChangeActivities(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): FileChangeInvocation[] {
-  const startedQueue: FileChangeInvocation[] = [];
-  const byFilePath = new Map<string, FileChangeInvocation[]>();
-  const allInvocations: FileChangeInvocation[] = [];
-
-  for (const activity of activities) {
-    if (
-      activity.kind !== "tool.started" &&
-      activity.kind !== "tool.updated" &&
-      activity.kind !== "tool.completed"
-    ) {
-      continue;
-    }
-
-    const itemType = extractItemType(activity.payload);
-    if (itemType !== "file_change") continue;
-
-    if (activity.kind === "tool.started") {
-      const inv: FileChangeInvocation = {
-        filePath: undefined,
-        turnId: activity.turnId,
-        activities: [activity],
-        hasStarted: true,
-        hasCompleted: false,
-      };
-      startedQueue.push(inv);
-      allInvocations.push(inv);
-      continue;
-    }
-
-    // tool.updated or tool.completed — has file_path
-    const fp = extractFilePath(activity.payload);
-
-    if (activity.kind === "tool.updated") {
-      const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
-      if (pendingStarted && pendingStarted.filePath === undefined) {
-        // Before marrying, check if there's already a completed invocation
-        // with this file path — duplicate updated events steal unrelated starteds.
-        if (fp) {
-          const bucket = byFilePath.get(fp);
-          const completedExisting = bucket?.find((inv) => inv.hasCompleted);
-          if (completedExisting) {
-            startedQueue.push(pendingStarted);
-            completedExisting.activities.push(activity);
-            continue;
-          }
-        }
-        // Marry to earliest unmatched started
-        pendingStarted.filePath = fp;
-        pendingStarted.activities.push(activity);
-        if (fp) {
-          let bucket = byFilePath.get(fp);
-          if (!bucket) {
-            bucket = [];
-            byFilePath.set(fp, bucket);
-          }
-          bucket.push(pendingStarted);
-        }
-      } else {
-        if (pendingStarted) startedQueue.push(pendingStarted);
-        let matched = false;
-        if (fp) {
-          const bucket = byFilePath.get(fp);
-          const existing = bucket?.find((inv) => !inv.hasCompleted) ?? bucket?.at(-1);
-          if (existing) {
-            existing.activities.push(activity);
-            matched = true;
-          }
-        }
-        if (!matched) {
-          const inv: FileChangeInvocation = {
-            filePath: fp,
-            turnId: activity.turnId,
-            activities: [activity],
-            hasStarted: false,
-            hasCompleted: false,
-          };
-          allInvocations.push(inv);
-          if (fp) {
-            let bucket = byFilePath.get(fp);
-            if (!bucket) {
-              bucket = [];
-              byFilePath.set(fp, bucket);
-            }
-            bucket.push(inv);
-          }
-        }
-      }
-      continue;
-    }
-
-    // tool.completed
-    if (activity.kind === "tool.completed") {
-      let matched = false;
-      if (fp) {
-        const bucket = byFilePath.get(fp);
-        const existing = bucket?.find((inv) => !inv.hasCompleted);
-        if (existing) {
-          existing.activities.push(activity);
-          existing.hasCompleted = true;
-          matched = true;
-        }
-      }
-      // Fallback: match by turnId against the startedQueue (handles interrupted
-      // tools where tool.completed arrives with empty input/no file path).
-      if (!matched) {
-        const pendingStarted = shiftMatchingTurnId(startedQueue, activity.turnId);
-        if (pendingStarted) {
-          pendingStarted.activities.push(activity);
-          pendingStarted.hasCompleted = true;
-          matched = true;
-        }
-      }
-      if (!matched) {
-        const inv: FileChangeInvocation = {
-          filePath: fp,
-          turnId: activity.turnId,
-          activities: [activity],
-          hasStarted: false,
-          hasCompleted: true,
-        };
-        allInvocations.push(inv);
-        if (fp) {
-          let bucket = byFilePath.get(fp);
-          if (!bucket) {
-            bucket = [];
-            byFilePath.set(fp, bucket);
-          }
-          bucket.push(inv);
-        }
-      }
-    }
-  }
-
-  return allInvocations;
+  return groupByProviderItemId(activities, "file_change");
 }
 
 // =========================================================================
@@ -350,57 +184,23 @@ export function groupFileChangeActivities(
 // =========================================================================
 
 /**
- * dynamic_tool_call tool.started events have no toolName — they're shared by
- * Read, Grep, Glob, WebFetch, etc. We can't claim them for any one tool type
- * without stealing from another. So we skip tool.started entirely and only
- * create invocations from tool.updated/tool.completed where toolName === "Read".
+ * dynamic_tool_call tool.started events have no toolName — but they DO carry
+ * providerItemId. We discover the toolName from a later tool.updated /
+ * tool.completed for the same providerItemId, then attach the tool.started
+ * activity to the right typed grouper.
  */
 
-interface FileReadInvocation {
-  filePath: string | undefined;
-  turnId: string | null;
-  activities: OrchestrationThreadActivity[];
-  hasStarted: boolean;
-  hasCompleted: boolean;
-}
+type FileReadInvocation = ProviderItemInvocation;
 
 export function finalizeFileRead(inv: FileReadInvocation): AssembledFileRead | null {
-  let bestCanonical = null;
-  let bestKind: string | null = null;
-  let firstId: string | null = null;
-  let firstCreatedAt: string | null = null;
+  const summary = summarizeInvocation(inv);
+  if (!summary) return null;
+  const { firstId, firstCreatedAt, bestCanonical, bestKind } = summary;
 
-  for (const activity of inv.activities) {
-    if (!firstId) {
-      firstId = activity.id;
-      firstCreatedAt = activity.createdAt;
-    }
-    const canonical = extractClaudeToolData(activity.payload);
-    if (!canonical) continue;
-
-    if (
-      !bestCanonical ||
-      activity.kind === "tool.completed" ||
-      (activity.kind === "tool.updated" && bestKind === "tool.started")
-    ) {
-      bestCanonical = canonical;
-      bestKind = activity.kind;
-    }
-  }
-
-  if (!firstId || !firstCreatedAt) return null;
-
-  // No usable data — shouldn't happen since we only group from updated/completed
+  // No usable data — shouldn't happen since we only finalize when toolName is known
   if (!bestCanonical || !bestCanonical.input?.file_path) return null;
 
-  const state =
-    bestKind === "tool.completed"
-      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
-        ? "failed"
-        : "completed"
-      : bestKind === "tool.updated"
-        ? "in-progress"
-        : "starting";
+  const state = deriveAssembledState(bestCanonical, bestKind);
 
   // Claude: offset = starting line number, limit = number of lines to read.
   // Both map directly to display line numbers (offset 40 → line 40 in output).
@@ -434,88 +234,7 @@ export function finalizeFileRead(inv: FileReadInvocation): AssembledFileRead | n
 export function groupFileReadActivities(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): FileReadInvocation[] {
-  const byFilePath = new Map<string, FileReadInvocation[]>();
-  const allInvocations: FileReadInvocation[] = [];
-
-  for (const activity of activities) {
-    if (activity.kind !== "tool.updated" && activity.kind !== "tool.completed") {
-      continue;
-    }
-
-    const itemType = extractItemType(activity.payload);
-    if (itemType !== "dynamic_tool_call") continue;
-
-    const toolName = extractToolName(activity.payload);
-    if (toolName !== "Read") continue;
-
-    const fp = extractFilePath(activity.payload);
-
-    if (activity.kind === "tool.updated") {
-      // Try to absorb into an existing incomplete invocation for the same file
-      let matched = false;
-      if (fp) {
-        const bucket = byFilePath.get(fp);
-        const existing = bucket?.find((inv) => !inv.hasCompleted) ?? bucket?.at(-1);
-        if (existing) {
-          existing.activities.push(activity);
-          matched = true;
-        }
-      }
-      if (!matched) {
-        const inv: FileReadInvocation = {
-          filePath: fp,
-          turnId: activity.turnId,
-          activities: [activity],
-          hasStarted: false,
-          hasCompleted: false,
-        };
-        allInvocations.push(inv);
-        if (fp) {
-          let bucket = byFilePath.get(fp);
-          if (!bucket) {
-            bucket = [];
-            byFilePath.set(fp, bucket);
-          }
-          bucket.push(inv);
-        }
-      }
-      continue;
-    }
-
-    // tool.completed
-    if (activity.kind === "tool.completed") {
-      let matched = false;
-      if (fp) {
-        const bucket = byFilePath.get(fp);
-        const existing = bucket?.find((inv) => !inv.hasCompleted);
-        if (existing) {
-          existing.activities.push(activity);
-          existing.hasCompleted = true;
-          matched = true;
-        }
-      }
-      if (!matched) {
-        const inv: FileReadInvocation = {
-          filePath: fp,
-          turnId: activity.turnId,
-          activities: [activity],
-          hasStarted: false,
-          hasCompleted: true,
-        };
-        allInvocations.push(inv);
-        if (fp) {
-          let bucket = byFilePath.get(fp);
-          if (!bucket) {
-            bucket = [];
-            byFilePath.set(fp, bucket);
-          }
-          bucket.push(inv);
-        }
-      }
-    }
-  }
-
-  return allInvocations;
+  return groupDynamicToolCallActivities(activities, (toolName) => toolName === "Read");
 }
 
 // =========================================================================
@@ -524,50 +243,15 @@ export function groupFileReadActivities(
 
 const FILE_SEARCH_TOOL_NAMES = new Set(["Grep", "Glob"]);
 
-interface FileSearchInvocation {
-  toolName: string | undefined;
-  /** Grouping key — pattern string from input. */
-  pattern: string | undefined;
-  turnId: string | null;
-  activities: OrchestrationThreadActivity[];
-  hasCompleted: boolean;
-}
+type FileSearchInvocation = ProviderItemInvocation;
 
 export function finalizeFileSearch(inv: FileSearchInvocation): AssembledFileSearch | null {
-  let bestCanonical = null;
-  let bestKind: string | null = null;
-  let firstId: string | null = null;
-  let firstCreatedAt: string | null = null;
-
-  for (const activity of inv.activities) {
-    if (!firstId) {
-      firstId = activity.id;
-      firstCreatedAt = activity.createdAt;
-    }
-    const canonical = extractClaudeToolData(activity.payload);
-    if (!canonical) continue;
-
-    if (
-      !bestCanonical ||
-      activity.kind === "tool.completed" ||
-      (activity.kind === "tool.updated" && bestKind === "tool.started")
-    ) {
-      bestCanonical = canonical;
-      bestKind = activity.kind;
-    }
-  }
-
-  if (!firstId || !firstCreatedAt) return null;
+  const summary = summarizeInvocation(inv);
+  if (!summary) return null;
+  const { firstId, firstCreatedAt, bestCanonical, bestKind } = summary;
   if (!bestCanonical) return null;
 
-  const state =
-    bestKind === "tool.completed"
-      ? bestCanonical.result?.isError || bestCanonical.status === "failed"
-        ? "failed"
-        : "completed"
-      : bestKind === "tool.updated"
-        ? "in-progress"
-        : "starting";
+  const state = deriveAssembledState(bestCanonical, bestKind);
 
   const toolName = bestCanonical.toolName;
   const heading = toolName === "Glob" ? "Glob" : toolName === "Grep" ? "Grep" : "Search";
@@ -603,85 +287,7 @@ export function finalizeFileSearch(inv: FileSearchInvocation): AssembledFileSear
 export function groupFileSearchActivities(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): FileSearchInvocation[] {
-  const byPattern = new Map<string, FileSearchInvocation[]>();
-  const allInvocations: FileSearchInvocation[] = [];
-
-  for (const activity of activities) {
-    if (activity.kind !== "tool.updated" && activity.kind !== "tool.completed") {
-      continue;
-    }
-
-    const itemType = extractItemType(activity.payload);
-    if (itemType !== "dynamic_tool_call") continue;
-
-    const toolName = extractToolName(activity.payload);
-    if (!toolName || !FILE_SEARCH_TOOL_NAMES.has(toolName)) continue;
-
-    const pattern = extractPattern(activity.payload);
-
-    if (activity.kind === "tool.updated") {
-      let matched = false;
-      if (pattern) {
-        const bucket = byPattern.get(pattern);
-        const existing = bucket?.find((inv) => !inv.hasCompleted) ?? bucket?.at(-1);
-        if (existing) {
-          existing.activities.push(activity);
-          matched = true;
-        }
-      }
-      if (!matched) {
-        const inv: FileSearchInvocation = {
-          toolName,
-          pattern,
-          turnId: activity.turnId,
-          activities: [activity],
-          hasCompleted: false,
-        };
-        allInvocations.push(inv);
-        if (pattern) {
-          let bucket = byPattern.get(pattern);
-          if (!bucket) {
-            bucket = [];
-            byPattern.set(pattern, bucket);
-          }
-          bucket.push(inv);
-        }
-      }
-      continue;
-    }
-
-    // tool.completed
-    if (activity.kind === "tool.completed") {
-      let matched = false;
-      if (pattern) {
-        const bucket = byPattern.get(pattern);
-        const existing = bucket?.find((inv) => !inv.hasCompleted);
-        if (existing) {
-          existing.activities.push(activity);
-          existing.hasCompleted = true;
-          matched = true;
-        }
-      }
-      if (!matched) {
-        const inv: FileSearchInvocation = {
-          toolName,
-          pattern,
-          turnId: activity.turnId,
-          activities: [activity],
-          hasCompleted: true,
-        };
-        allInvocations.push(inv);
-        if (pattern) {
-          let bucket = byPattern.get(pattern);
-          if (!bucket) {
-            bucket = [];
-            byPattern.set(pattern, bucket);
-          }
-          bucket.push(inv);
-        }
-      }
-    }
-  }
-
-  return allInvocations;
+  return groupDynamicToolCallActivities(activities, (toolName) =>
+    FILE_SEARCH_TOOL_NAMES.has(toolName),
+  );
 }

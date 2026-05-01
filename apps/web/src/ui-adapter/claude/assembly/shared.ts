@@ -2,11 +2,31 @@
  * Shared payload helpers used across assembly groupers.
  */
 
+import type { CanonicalToolData, OrchestrationThreadActivity } from "@t3tools/contracts";
+
+import { extractClaudeToolData } from "../extraction";
 import { isRecord } from "../../helpers";
 
 // ---------------------------------------------------------------------------
 // Payload helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Extract the stable provider-side item id from a tool activity payload.
+ *
+ * For Claude this is the `tool_use_id` (e.g. "toolu_01EjRaHvRa…") plumbed
+ * through by the orchestration projector. It is present on every
+ * tool.started / tool.updated / tool.completed activity for a given tool
+ * invocation and is the canonical join key for assembly grouping.
+ *
+ * Returns undefined for non-Claude / pre-providerItemId activities — those
+ * activities are skipped during grouping rather than falling back to
+ * heuristic matching (which has been removed).
+ */
+export function extractProviderItemId(payload: unknown): string | undefined {
+  if (!isRecord(payload)) return undefined;
+  return typeof payload.providerItemId === "string" ? payload.providerItemId : undefined;
+}
 
 export function extractCommandString(payload: unknown): string | undefined {
   if (!isRecord(payload)) return undefined;
@@ -77,23 +97,187 @@ export function extractDescription(payload: unknown): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// Started queue helpers
+// Generic groupers
 // ---------------------------------------------------------------------------
 
+/** Single-providerItemId invocation — base shape used by every grouper. */
+export interface ProviderItemInvocation {
+  providerItemId: string;
+  turnId: string | null;
+  activities: OrchestrationThreadActivity[];
+  hasCompleted: boolean;
+}
+
+const TOOL_LIFECYCLE_KINDS = new Set(["tool.started", "tool.updated", "tool.completed"]);
+
 /**
- * Find and remove the first queue entry whose turnId matches the given
- * activity's turnId. Returns the matched entry, or undefined if none match.
- *
- * This prevents cross-turn contamination: if Turn A was interrupted and left
- * an orphaned tool.started in the queue, Turn B's tool.updated won't steal it.
+ * Group activities by `providerItemId` for an identifiable tool itemType
+ * (e.g. "command_execution", "file_change", "web_search",
+ * "collab_agent_tool_call"). All three lifecycle events carry providerItemId
+ * for identifiable types, so we can include tool.started.
  */
-export function shiftMatchingTurnId<T extends { turnId: string | null }>(
-  queue: T[],
-  activityTurnId: string | null,
-): T | undefined {
-  const idx = queue.findIndex((entry) => entry.turnId === activityTurnId);
-  if (idx === -1) return undefined;
-  return queue.splice(idx, 1)[0];
+export function groupByProviderItemId(
+  activities: ReadonlyArray<OrchestrationThreadActivity>,
+  itemType: string,
+): ProviderItemInvocation[] {
+  const byProviderItemId = new Map<string, ProviderItemInvocation>();
+  const allInvocations: ProviderItemInvocation[] = [];
+
+  for (const activity of activities) {
+    if (!TOOL_LIFECYCLE_KINDS.has(activity.kind)) continue;
+    if (extractItemType(activity.payload) !== itemType) continue;
+
+    const providerItemId = extractProviderItemId(activity.payload);
+    if (!providerItemId) continue;
+
+    let inv = byProviderItemId.get(providerItemId);
+    if (!inv) {
+      inv = {
+        providerItemId,
+        turnId: activity.turnId,
+        activities: [],
+        hasCompleted: false,
+      };
+      byProviderItemId.set(providerItemId, inv);
+      allInvocations.push(inv);
+    }
+
+    inv.activities.push(activity);
+    if (activity.kind === "tool.completed") inv.hasCompleted = true;
+  }
+
+  return allInvocations;
+}
+
+/**
+ * Group activities for `dynamic_tool_call` tools (Read, Grep, Glob, WebFetch,
+ * other) by `providerItemId`.
+ *
+ * tool.started is skipped because dynamic_tool_call started events have no
+ * `toolName` — the toolName only appears on tool.updated / tool.completed,
+ * which is also when we can apply the `toolNamePredicate`. This means
+ * dynamic_tool_call tools start displaying at the "in-progress" state.
+ */
+export function groupDynamicToolCallActivities(
+  activities: ReadonlyArray<OrchestrationThreadActivity>,
+  toolNamePredicate: (toolName: string) => boolean,
+): ProviderItemInvocation[] {
+  const byProviderItemId = new Map<string, ProviderItemInvocation>();
+  const allInvocations: ProviderItemInvocation[] = [];
+
+  for (const activity of activities) {
+    if (activity.kind !== "tool.updated" && activity.kind !== "tool.completed") continue;
+    if (extractItemType(activity.payload) !== "dynamic_tool_call") continue;
+
+    const toolName = extractToolName(activity.payload);
+    if (!toolName || !toolNamePredicate(toolName)) continue;
+
+    const providerItemId = extractProviderItemId(activity.payload);
+    if (!providerItemId) continue;
+
+    let inv = byProviderItemId.get(providerItemId);
+    if (!inv) {
+      inv = {
+        providerItemId,
+        turnId: activity.turnId,
+        activities: [],
+        hasCompleted: false,
+      };
+      byProviderItemId.set(providerItemId, inv);
+      allInvocations.push(inv);
+    }
+
+    inv.activities.push(activity);
+    if (activity.kind === "tool.completed") inv.hasCompleted = true;
+  }
+
+  return allInvocations;
+}
+
+// ---------------------------------------------------------------------------
+// Finalize helpers — shared by all per-tool finalize functions
+// ---------------------------------------------------------------------------
+
+export type AssembledLifecycleState = "starting" | "in-progress" | "completed" | "failed";
+
+export interface InvocationSummary {
+  /** id from the first activity — used as the assembled tool's stable id. */
+  firstId: string;
+  /** createdAt from the first activity. */
+  firstCreatedAt: string;
+  /**
+   * The most informative canonical tool data found across the invocation's
+   * activities (preferring tool.completed > tool.updated > tool.started).
+   * Null if no activity yielded canonical data (e.g. only tool.started seen).
+   */
+  bestCanonical: CanonicalToolData | null;
+  /** The kind of the activity whose canonical data became `bestCanonical`. */
+  bestKind: string | null;
+  /**
+   * The raw payload of the activity that produced `bestCanonical`. Useful for
+   * extractors that read provider-specific fields not exposed via CanonicalToolData
+   * (e.g. inline diffs in file_change activities).
+   */
+  bestPayload: unknown;
+}
+
+/**
+ * Walk an invocation's activities and pull out:
+ *   - the first activity's id + createdAt (used as the assembled tool's id)
+ *   - the most informative canonical tool data (preferring completed > updated > started)
+ *
+ * Returns null if the invocation has no activities (shouldn't happen because
+ * groupers only register an invocation once they have something to push).
+ */
+export function summarizeInvocation(inv: ProviderItemInvocation): InvocationSummary | null {
+  const first = inv.activities[0];
+  if (!first) return null;
+
+  let bestCanonical: CanonicalToolData | null = null;
+  let bestKind: string | null = null;
+  let bestPayload: unknown = null;
+
+  for (const activity of inv.activities) {
+    const canonical = extractClaudeToolData(activity.payload);
+    if (!canonical) continue;
+    if (
+      !bestCanonical ||
+      activity.kind === "tool.completed" ||
+      (activity.kind === "tool.updated" && bestKind === "tool.started")
+    ) {
+      bestCanonical = canonical;
+      bestKind = activity.kind;
+      bestPayload = activity.payload;
+    }
+  }
+
+  return {
+    firstId: first.id,
+    firstCreatedAt: first.createdAt,
+    bestCanonical,
+    bestKind,
+    bestPayload,
+  };
+}
+
+/**
+ * Map (bestCanonical, bestKind) onto the assembled tool's lifecycle state.
+ *
+ * - tool.completed with isError or status="failed" → "failed"
+ * - tool.completed otherwise → "completed"
+ * - tool.updated → "in-progress"
+ * - tool.started (or no canonical) → "starting"
+ */
+export function deriveAssembledState(
+  bestCanonical: CanonicalToolData | null,
+  bestKind: string | null,
+): AssembledLifecycleState {
+  if (bestKind === "tool.completed") {
+    if (bestCanonical?.result?.isError || bestCanonical?.status === "failed") return "failed";
+    return "completed";
+  }
+  if (bestKind === "tool.updated") return "in-progress";
+  return "starting";
 }
 
 // ---------------------------------------------------------------------------

@@ -27,13 +27,29 @@ function makeActivity(
     summary?: string;
     createdAt?: string;
     tone?: OrchestrationThreadActivity["tone"];
+    /**
+     * providerItemId — Claude `tool_use_id` plumbed through by the
+     * orchestration projector. The assembly groupers join lifecycle events
+     * (started → updated → completed) by this id. Pass the same value for
+     * every activity belonging to a single tool invocation.
+     */
+    pid?: string;
   },
 ): OrchestrationThreadActivity {
+  let finalPayload = payload;
+  if (
+    overrides?.pid !== undefined &&
+    payload !== null &&
+    typeof payload === "object" &&
+    !Array.isArray(payload)
+  ) {
+    finalPayload = { ...(payload as Record<string, unknown>), providerItemId: overrides.pid };
+  }
   return {
     id: EventId.make(overrides?.id ?? crypto.randomUUID()),
     kind,
     summary: overrides?.summary ?? kind,
-    payload,
+    payload: finalPayload,
     turnId: null,
     createdAt: overrides?.createdAt ?? "2026-04-22T00:00:00.000Z",
     tone: overrides?.tone ?? "tool",
@@ -95,9 +111,9 @@ function expectFileSearch(value: unknown): AssembledFileSearch {
 describe("claude assembly — command", () => {
   it("assembles a full started → updated → completed lifecycle into one entry", () => {
     const activities = [
-      makeActivity("tool.started", bashFixture.started, { id: "act-1" }),
-      makeActivity("tool.updated", bashFixture.updated, { id: "act-2" }),
-      makeActivity("tool.completed", bashFixture.completed, { id: "act-3" }),
+      makeActivity("tool.started", bashFixture.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", bashFixture.updated, { id: "act-2", pid: "tu-1" }),
+      makeActivity("tool.completed", bashFixture.completed, { id: "act-3", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -114,8 +130,8 @@ describe("claude assembly — command", () => {
 
   it("assembles an in-progress command from started + updated", () => {
     const activities = [
-      makeActivity("tool.started", bashFixture.started, { id: "act-1" }),
-      makeActivity("tool.updated", bashFixture.updated, { id: "act-2" }),
+      makeActivity("tool.started", bashFixture.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", bashFixture.updated, { id: "act-2", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -130,8 +146,8 @@ describe("claude assembly — command", () => {
 
   it("assembles from just updated + completed (no started)", () => {
     const activities = [
-      makeActivity("tool.updated", bashFixture.updated, { id: "act-1" }),
-      makeActivity("tool.completed", bashFixture.completed, { id: "act-2" }),
+      makeActivity("tool.updated", bashFixture.updated, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.completed", bashFixture.completed, { id: "act-2", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -145,12 +161,12 @@ describe("claude assembly — command", () => {
 
   it("handles two consecutive commands as separate invocations", () => {
     const activities = [
-      makeActivity("tool.started", bashFixture.started, { id: "act-1" }),
-      makeActivity("tool.updated", bashFixture.updated, { id: "act-2" }),
-      makeActivity("tool.completed", bashFixture.completed, { id: "act-3" }),
-      makeActivity("tool.started", bashFixture.started, { id: "act-4" }),
-      makeActivity("tool.updated", bashFixture.updated, { id: "act-5" }),
-      makeActivity("tool.completed", bashFixture.completed, { id: "act-6" }),
+      makeActivity("tool.started", bashFixture.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", bashFixture.updated, { id: "act-2", pid: "tu-1" }),
+      makeActivity("tool.completed", bashFixture.completed, { id: "act-3", pid: "tu-1" }),
+      makeActivity("tool.started", bashFixture.started, { id: "act-4", pid: "tu-2" }),
+      makeActivity("tool.updated", bashFixture.updated, { id: "act-5", pid: "tu-2" }),
+      makeActivity("tool.completed", bashFixture.completed, { id: "act-6", pid: "tu-2" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -160,59 +176,66 @@ describe("claude assembly — command", () => {
     expect(result[1]!.id).toBe("act-4");
   });
 
-  it("groups interleaved parallel commands by command string", () => {
-    // Real scenario: Claude fires three commands in parallel.
-    // started events interleave with updated events from different commands.
+  it("groups interleaved parallel commands by providerItemId", () => {
+    // Three commands fire in parallel; started events interleave with updated
+    // events from different commands. All lifecycle events for one command
+    // share a providerItemId — the grouping is robust to interleaving.
     const activities = [
       makeActivity("tool.started", makeCommandPayload("started"), {
         id: "s1",
+        pid: "tu-1",
         createdAt: "2026-04-20T01:27:43.669Z",
       }),
       makeActivity("tool.updated", makeCommandPayload("updated", "bun run typecheck"), {
         id: "u1",
+        pid: "tu-1",
         createdAt: "2026-04-20T01:27:44.399Z",
       }),
       makeActivity("tool.started", makeCommandPayload("started"), {
         id: "s2",
+        pid: "tu-2",
         createdAt: "2026-04-20T01:27:44.421Z",
       }),
       makeActivity("tool.updated", makeCommandPayload("updated", "bun run fmt"), {
         id: "u2",
+        pid: "tu-2",
         createdAt: "2026-04-20T01:27:45.236Z",
       }),
       makeActivity("tool.started", makeCommandPayload("started"), {
         id: "s3",
+        pid: "tu-3",
         createdAt: "2026-04-20T01:27:45.239Z",
       }),
       makeActivity("tool.updated", makeCommandPayload("updated", "echo hello"), {
         id: "u3",
+        pid: "tu-3",
         createdAt: "2026-04-20T01:27:45.760Z",
       }),
       // Non-tool events in between
       makeActivity(
         "context-window.updated",
         { usedTokens: 37424 },
-        {
-          id: "ctx",
-          createdAt: "2026-04-20T01:27:58.855Z",
-        },
+        { id: "ctx", createdAt: "2026-04-20T01:27:58.855Z" },
       ),
       // Completions arrive later, potentially with duplicate updated events
       makeActivity(
         "tool.completed",
         makeCommandPayload("completed", "bun run typecheck", "toolu_01Kf"),
-        { id: "c1", createdAt: "2026-04-20T01:27:58.857Z" },
+        { id: "c1", pid: "tu-1", createdAt: "2026-04-20T01:27:58.857Z" },
       ),
       makeActivity("tool.updated", makeCommandPayload("updated", "bun run typecheck"), {
         id: "u1-dup",
+        pid: "tu-1",
         createdAt: "2026-04-20T01:27:58.857Z",
       }),
       makeActivity("tool.completed", makeCommandPayload("completed", "bun run fmt", "toolu_01JW"), {
         id: "c2",
+        pid: "tu-2",
         createdAt: "2026-04-20T01:27:59.792Z",
       }),
       makeActivity("tool.completed", makeCommandPayload("completed", "echo hello", "toolu_01F7"), {
         id: "c3",
+        pid: "tu-3",
         createdAt: "2026-04-20T01:27:59.809Z",
       }),
     ];
@@ -240,49 +263,52 @@ describe("claude assembly — command", () => {
     expect(cmd3.toolCallId).toBe("toolu_01F7");
   });
 
-  it("duplicate tool.updated does not steal tool.started from a different command", () => {
-    // Real scenario: Claude fires two commands in parallel. The first command's
-    // tool.completed arrives, then a duplicate tool.updated (same command string,
-    // same timestamp) arrives. Without the fix, shiftMatchingTurnId steals the
-    // second command's tool.started, creating a phantom spinner.
+  it("absorbs duplicate tool.updated arriving with tool.completed (same providerItemId)", () => {
+    // Claude sends a duplicate tool.updated at the same time as tool.completed
+    // for the same tool invocation. With ID-based grouping these are simply
+    // appended to the same invocation's activity list — no phantom spinner.
     const activities = [
       makeActivity("tool.started", makeCommandPayload("started"), {
         id: "s1",
+        pid: "tu-1",
         createdAt: "2026-04-30T08:20:48.616Z",
       }),
       makeActivity("tool.updated", makeCommandPayload("updated", "outline main/*.rs"), {
         id: "u1",
+        pid: "tu-1",
         createdAt: "2026-04-30T08:20:49.482Z",
       }),
       makeActivity("tool.started", makeCommandPayload("started"), {
         id: "s2",
+        pid: "tu-2",
         createdAt: "2026-04-30T08:20:49.485Z",
       }),
       makeActivity(
         "tool.completed",
         makeCommandPayload("completed", "outline main/*.rs", "toolu_01MG"),
-        { id: "c1", createdAt: "2026-04-30T08:20:50.163Z" },
+        { id: "c1", pid: "tu-1", createdAt: "2026-04-30T08:20:50.163Z" },
       ),
-      // Duplicate updated — same command, same timestamp as completed
+      // Duplicate updated for tu-1 — same providerItemId as the completed
       makeActivity("tool.updated", makeCommandPayload("updated", "outline main/*.rs"), {
         id: "u1-dup",
+        pid: "tu-1",
         createdAt: "2026-04-30T08:20:50.163Z",
       }),
-      // Second command's events
+      // Second command's lifecycle (tu-2)
       makeActivity("tool.updated", makeCommandPayload("updated", "ls /Users/sh"), {
         id: "u2",
+        pid: "tu-2",
         createdAt: "2026-04-30T08:20:50.180Z",
       }),
       makeActivity(
         "tool.completed",
         makeCommandPayload("completed", "ls /Users/sh", "toolu_01Ld"),
-        { id: "c2", createdAt: "2026-04-30T08:20:50.236Z" },
+        { id: "c2", pid: "tu-2", createdAt: "2026-04-30T08:20:50.236Z" },
       ),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
 
-    // Should produce exactly 2 invocations, both completed — NOT 3 with a phantom spinner
     expect(result).toHaveLength(2);
 
     const cmd1 = expectCommand(result[0]);
@@ -294,9 +320,184 @@ describe("claude assembly — command", () => {
     expect(cmd2.state).toBe("completed");
   });
 
+  it("parallel commands: fast command's tool.updated with result echo arrives before slow command's input", () => {
+    // Real scenario: two parallel commands — fast one (bun test) finishes
+    // quickly, slow one takes ~48s. The fast command's tool.updated-with-result
+    // arrives BEFORE either command has its input materialised. Each command's
+    // events still group correctly by providerItemId regardless of timing.
+    const activities = [
+      makeActivity("tool.started", makeCommandPayload("started"), {
+        id: "s1",
+        pid: "tu-fast",
+        createdAt: "2026-04-30T22:17:25.986Z",
+      }),
+      makeActivity("tool.updated", makeCommandPayload("updated", "bun test assembly.test.ts"), {
+        id: "u1",
+        pid: "tu-fast",
+        createdAt: "2026-04-30T22:17:26.408Z",
+      }),
+      makeActivity("tool.started", makeCommandPayload("started"), {
+        id: "s2",
+        pid: "tu-slow",
+        createdAt: "2026-04-30T22:17:26.409Z",
+      }),
+      // Fast command's tool.updated WITH result data — arrives before its completed
+      makeActivity(
+        "tool.updated",
+        {
+          itemType: "command_execution",
+          status: "inProgress",
+          detail: "bun test assembly.test.ts",
+          data: {
+            toolName: "Bash",
+            input: { command: "bun test assembly.test.ts" },
+            result: {
+              tool_use_id: "toolu_01RjZa",
+              type: "tool_result",
+              content: "31 pass\n0 fail",
+              is_error: false,
+            },
+          },
+        },
+        { id: "u1-dup", pid: "tu-fast", createdAt: "2026-04-30T22:17:26.681Z" },
+      ),
+      makeActivity(
+        "tool.completed",
+        makeCommandPayload("completed", "bun test assembly.test.ts", "toolu_01RjZa"),
+        { id: "c1", pid: "tu-fast", createdAt: "2026-04-30T22:17:26.681Z" },
+      ),
+      // Slow command's input (60s after the fast one completed)
+      makeActivity(
+        "tool.updated",
+        makeCommandPayload("updated", "bun run fmt && bun run typecheck && bun run lint"),
+        { id: "u2", pid: "tu-slow", createdAt: "2026-04-30T22:17:26.689Z" },
+      ),
+      makeActivity(
+        "tool.completed",
+        makeCommandPayload(
+          "completed",
+          "bun run fmt && bun run typecheck && bun run lint",
+          "toolu_01SbY6",
+        ),
+        { id: "c2", pid: "tu-slow", createdAt: "2026-04-30T22:18:14.706Z" },
+      ),
+    ];
+
+    const { tools: result } = assembleClaudeTools(activities);
+
+    expect(result).toHaveLength(2);
+
+    const cmd1 = expectCommand(result[0]);
+    expect(cmd1.command).toBe("bun test assembly.test.ts");
+    expect(cmd1.state).toBe("completed");
+
+    const cmd2 = expectCommand(result[1]);
+    expect(cmd2.command).toBe("bun run fmt && bun run typecheck && bun run lint");
+    expect(cmd2.state).toBe("completed");
+    expect(cmd2.id).toBe("s2");
+  });
+
+  it("incremental assembly: slow command shows details at every stage", () => {
+    // Simulates what actually happens in the UI: the assembly re-runs each
+    // time a new activity arrives. At every stage, once the slow command's
+    // tool.updated has arrived, it must show its command string.
+    //
+    // This catches rendering bugs where the final assembly is correct but
+    // intermediate states show a bare "Command" while waiting.
+    const s1 = makeActivity("tool.started", makeCommandPayload("started"), {
+      id: "s1",
+      pid: "tu-fast",
+      createdAt: "2026-05-01T10:00:00.000Z",
+    });
+    const u1 = makeActivity(
+      "tool.updated",
+      makeCommandPayload("updated", "bun test assembly.test.ts"),
+      { id: "u1", pid: "tu-fast", createdAt: "2026-05-01T10:00:00.015Z" },
+    );
+    const s2 = makeActivity("tool.started", makeCommandPayload("started"), {
+      id: "s2",
+      pid: "tu-slow",
+      createdAt: "2026-05-01T10:00:00.020Z",
+    });
+    const u2 = makeActivity(
+      "tool.updated",
+      makeCommandPayload("updated", "bun run fmt && bun run typecheck && bun run lint"),
+      { id: "u2", pid: "tu-slow", createdAt: "2026-05-01T10:00:00.150Z" },
+    );
+    const u1dup = makeActivity(
+      "tool.updated",
+      {
+        itemType: "command_execution",
+        status: "inProgress",
+        detail: "bun test assembly.test.ts",
+        data: {
+          toolName: "Bash",
+          input: { command: "bun test assembly.test.ts" },
+          result: {
+            tool_use_id: "toolu_01",
+            type: "tool_result",
+            content: "32 pass",
+            is_error: false,
+          },
+        },
+      },
+      { id: "u1-dup", pid: "tu-fast", createdAt: "2026-05-01T10:00:00.240Z" },
+    );
+    const c1 = makeActivity(
+      "tool.completed",
+      makeCommandPayload("completed", "bun test assembly.test.ts", "toolu_01"),
+      { id: "c1", pid: "tu-fast", createdAt: "2026-05-01T10:00:00.241Z" },
+    );
+
+    // Stage 1: just s1 — bare "Command" spinner (expected)
+    let result = assembleClaudeTools([s1]).tools;
+    expect(result).toHaveLength(1);
+    expect(expectCommand(result[0]).command).toBe("");
+
+    // Stage 2: s1 + u1 — first command shows its string
+    result = assembleClaudeTools([s1, u1]).tools;
+    expect(result).toHaveLength(1);
+    expect(expectCommand(result[0]).command).toBe("bun test assembly.test.ts");
+
+    // Stage 3: s1 + u1 + s2 — second command is bare (expected, no updated yet)
+    result = assembleClaudeTools([s1, u1, s2]).tools;
+    expect(result).toHaveLength(2);
+    expect(expectCommand(result[0]).command).toBe("bun test assembly.test.ts");
+    expect(expectCommand(result[1]).command).toBe("");
+
+    // Stage 4: s1 + u1 + s2 + u2 — BOTH commands must show details
+    result = assembleClaudeTools([s1, u1, s2, u2]).tools;
+    expect(result).toHaveLength(2);
+    expect(expectCommand(result[0]).command).toBe("bun test assembly.test.ts");
+    expect(expectCommand(result[1]).command).toBe(
+      "bun run fmt && bun run typecheck && bun run lint",
+    );
+    expect(expectCommand(result[1]).id).toBe("s2");
+
+    // Stage 5: + u1-dup (result echo) — slow command must STILL show details
+    result = assembleClaudeTools([s1, u1, s2, u2, u1dup]).tools;
+    expect(result).toHaveLength(2);
+    expect(expectCommand(result[0]).command).toBe("bun test assembly.test.ts");
+    expect(expectCommand(result[1]).command).toBe(
+      "bun run fmt && bun run typecheck && bun run lint",
+    );
+    expect(expectCommand(result[1]).id).toBe("s2");
+
+    // Stage 6: + c1 (fast command completes) — slow command still shows details
+    result = assembleClaudeTools([s1, u1, s2, u2, u1dup, c1]).tools;
+    expect(result).toHaveLength(2);
+    expect(expectCommand(result[0]).command).toBe("bun test assembly.test.ts");
+    expect(expectCommand(result[0]).state).toBe("completed");
+    expect(expectCommand(result[1]).command).toBe(
+      "bun run fmt && bun run typecheck && bun run lint",
+    );
+    expect(expectCommand(result[1]).state).toBe("in-progress");
+    expect(expectCommand(result[1]).id).toBe("s2");
+  });
+
   it("emits starting state for unmatched tool.started (crash/disconnect)", () => {
     const activities = [
-      makeActivity("tool.started", makeCommandPayload("started"), { id: "orphan" }),
+      makeActivity("tool.started", makeCommandPayload("started"), { id: "orphan", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -310,16 +511,17 @@ describe("claude assembly — command", () => {
 
   it("non-tool activities between events do not break grouping", () => {
     const activities = [
-      makeActivity("tool.started", makeCommandPayload("started"), { id: "s1" }),
+      makeActivity("tool.started", makeCommandPayload("started"), { id: "s1", pid: "tu-1" }),
       makeActivity("content.delta", { text: "thinking..." }, { id: "noise" }),
       makeActivity("tool.updated", makeCommandPayload("updated", "bun run typecheck"), {
         id: "u1",
+        pid: "tu-1",
       }),
       makeActivity("task.completed", { taskId: "t1" }, { id: "task" }),
       makeActivity(
         "tool.completed",
         makeCommandPayload("completed", "bun run typecheck", "toolu_abc"),
-        { id: "c1" },
+        { id: "c1", pid: "tu-1" },
       ),
     ];
 
@@ -343,7 +545,7 @@ describe("claude assembly — command", () => {
       },
     };
 
-    const activities = [makeActivity("tool.updated", wrappedPayload, { id: "act-1" })];
+    const activities = [makeActivity("tool.updated", wrappedPayload, { id: "act-1", pid: "tu-1" })];
 
     const { tools: result } = assembleClaudeTools(activities);
 
@@ -385,11 +587,12 @@ function makeFileReadPayload(phase: "started" | "updated" | "completed", filePat
 
 describe("claude assembly — file-read", () => {
   it("assembles a full started → updated → completed lifecycle into one entry", () => {
-    // tool.started is ignored (no toolName), invocation created from updated
+    // tool.started is skipped for dynamic_tool_call (no toolName); invocation
+    // is created from the first tool.updated.
     const activities = [
-      makeActivity("tool.started", readFixture.started, { id: "act-1" }),
-      makeActivity("tool.updated", readFixture.updated, { id: "act-2" }),
-      makeActivity("tool.completed", readFixture.completed, { id: "act-3" }),
+      makeActivity("tool.started", readFixture.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", readFixture.updated, { id: "act-2", pid: "tu-1" }),
+      makeActivity("tool.completed", readFixture.completed, { id: "act-3", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -407,8 +610,8 @@ describe("claude assembly — file-read", () => {
 
   it("assembles an in-progress read from started + updated", () => {
     const activities = [
-      makeActivity("tool.started", readFixture.started, { id: "act-1" }),
-      makeActivity("tool.updated", readFixture.updated, { id: "act-2" }),
+      makeActivity("tool.started", readFixture.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", readFixture.updated, { id: "act-2", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -423,8 +626,8 @@ describe("claude assembly — file-read", () => {
 
   it("assembles from just updated + completed (no started)", () => {
     const activities = [
-      makeActivity("tool.updated", readFixture.updated, { id: "act-1" }),
-      makeActivity("tool.completed", readFixture.completed, { id: "act-2" }),
+      makeActivity("tool.updated", readFixture.updated, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.completed", readFixture.completed, { id: "act-2", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -438,12 +641,24 @@ describe("claude assembly — file-read", () => {
 
   it("handles two consecutive reads of different files as separate invocations", () => {
     const activities = [
-      makeActivity("tool.started", makeFileReadPayload("started"), { id: "s1" }),
-      makeActivity("tool.updated", makeFileReadPayload("updated", "/a.ts"), { id: "u1" }),
-      makeActivity("tool.completed", makeFileReadPayload("completed", "/a.ts"), { id: "c1" }),
-      makeActivity("tool.started", makeFileReadPayload("started"), { id: "s2" }),
-      makeActivity("tool.updated", makeFileReadPayload("updated", "/b.ts"), { id: "u2" }),
-      makeActivity("tool.completed", makeFileReadPayload("completed", "/b.ts"), { id: "c2" }),
+      makeActivity("tool.started", makeFileReadPayload("started"), { id: "s1", pid: "tu-1" }),
+      makeActivity("tool.updated", makeFileReadPayload("updated", "/a.ts"), {
+        id: "u1",
+        pid: "tu-1",
+      }),
+      makeActivity("tool.completed", makeFileReadPayload("completed", "/a.ts"), {
+        id: "c1",
+        pid: "tu-1",
+      }),
+      makeActivity("tool.started", makeFileReadPayload("started"), { id: "s2", pid: "tu-2" }),
+      makeActivity("tool.updated", makeFileReadPayload("updated", "/b.ts"), {
+        id: "u2",
+        pid: "tu-2",
+      }),
+      makeActivity("tool.completed", makeFileReadPayload("completed", "/b.ts"), {
+        id: "c2",
+        pid: "tu-2",
+      }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -470,8 +685,8 @@ describe("claude assembly — file-read", () => {
     };
 
     const activities = [
-      makeActivity("tool.started", makeFileReadPayload("started"), { id: "s1" }),
-      makeActivity("tool.updated", grepPayload, { id: "u1" }),
+      makeActivity("tool.started", makeFileReadPayload("started"), { id: "s1", pid: "tu-1" }),
+      makeActivity("tool.updated", grepPayload, { id: "u1", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -481,10 +696,10 @@ describe("claude assembly — file-read", () => {
   });
 
   it("does not emit orphan tool.started as file-read when it could be any dynamic tool", () => {
-    // A standalone tool.started for dynamic_tool_call has no toolName — we can't
-    // know if it's Read or Grep, so we don't emit it as file-read.
+    // tool.started for dynamic_tool_call is skipped — without a toolName we
+    // can't tell if it's Read or Grep, so the Read grouper produces nothing.
     const activities = [
-      makeActivity("tool.started", makeFileReadPayload("started"), { id: "orphan" }),
+      makeActivity("tool.started", makeFileReadPayload("started"), { id: "orphan", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -493,9 +708,9 @@ describe("claude assembly — file-read", () => {
     expect(reads).toHaveLength(0);
   });
 
-  it("does not steal tool.started events that belong to other dynamic tools", () => {
-    // Real scenario: Glob started, Glob updated, Read started, Read updated...
-    // The Read grouper must NOT consume the Glob's tool.started.
+  it("does not absorb activities belonging to a parallel Glob invocation", () => {
+    // Real scenario: Glob and Read fire in parallel. Each invocation has its
+    // own providerItemId so events never cross-contaminate.
     const globUpdated = {
       itemType: "dynamic_tool_call",
       status: "inProgress",
@@ -513,12 +728,24 @@ describe("claude assembly — file-read", () => {
     };
 
     const activities = [
-      makeActivity("tool.started", makeFileReadPayload("started"), { id: "glob-s" }),
-      makeActivity("tool.updated", globUpdated, { id: "glob-u" }),
-      makeActivity("tool.started", makeFileReadPayload("started"), { id: "read-s" }),
-      makeActivity("tool.updated", makeFileReadPayload("updated", "/a.ts"), { id: "read-u" }),
-      makeActivity("tool.completed", globCompleted, { id: "glob-c" }),
-      makeActivity("tool.completed", makeFileReadPayload("completed", "/a.ts"), { id: "read-c" }),
+      makeActivity("tool.started", makeFileReadPayload("started"), {
+        id: "glob-s",
+        pid: "tu-glob",
+      }),
+      makeActivity("tool.updated", globUpdated, { id: "glob-u", pid: "tu-glob" }),
+      makeActivity("tool.started", makeFileReadPayload("started"), {
+        id: "read-s",
+        pid: "tu-read",
+      }),
+      makeActivity("tool.updated", makeFileReadPayload("updated", "/a.ts"), {
+        id: "read-u",
+        pid: "tu-read",
+      }),
+      makeActivity("tool.completed", globCompleted, { id: "glob-c", pid: "tu-glob" }),
+      makeActivity("tool.completed", makeFileReadPayload("completed", "/a.ts"), {
+        id: "read-c",
+        pid: "tu-read",
+      }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -532,12 +759,12 @@ describe("claude assembly — file-read", () => {
 
   it("interleaves with command activities without interference", () => {
     const activities = [
-      makeActivity("tool.started", bashFixture.started, { id: "cmd-s" }),
-      makeActivity("tool.started", readFixture.started, { id: "read-s" }),
-      makeActivity("tool.updated", bashFixture.updated, { id: "cmd-u" }),
-      makeActivity("tool.updated", readFixture.updated, { id: "read-u" }),
-      makeActivity("tool.completed", bashFixture.completed, { id: "cmd-c" }),
-      makeActivity("tool.completed", readFixture.completed, { id: "read-c" }),
+      makeActivity("tool.started", bashFixture.started, { id: "cmd-s", pid: "tu-cmd" }),
+      makeActivity("tool.started", readFixture.started, { id: "read-s", pid: "tu-read" }),
+      makeActivity("tool.updated", bashFixture.updated, { id: "cmd-u", pid: "tu-cmd" }),
+      makeActivity("tool.updated", readFixture.updated, { id: "read-u", pid: "tu-read" }),
+      makeActivity("tool.completed", bashFixture.completed, { id: "cmd-c", pid: "tu-cmd" }),
+      makeActivity("tool.completed", readFixture.completed, { id: "read-c", pid: "tu-read" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -558,9 +785,9 @@ describe("claude assembly — file-read", () => {
 describe("claude assembly — file-search", () => {
   it("assembles a Grep lifecycle into one entry with correct heading", () => {
     const activities = [
-      makeActivity("tool.started", grepFixture.started, { id: "s1" }),
-      makeActivity("tool.updated", grepFixture.updated, { id: "u1" }),
-      makeActivity("tool.completed", grepFixture.completed, { id: "c1" }),
+      makeActivity("tool.started", grepFixture.started, { id: "s1", pid: "tu-1" }),
+      makeActivity("tool.updated", grepFixture.updated, { id: "u1", pid: "tu-1" }),
+      makeActivity("tool.completed", grepFixture.completed, { id: "c1", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -580,9 +807,9 @@ describe("claude assembly — file-search", () => {
 
   it("assembles a Glob lifecycle into one entry with correct heading", () => {
     const activities = [
-      makeActivity("tool.started", globFixture.started, { id: "s1" }),
-      makeActivity("tool.updated", globFixture.updated, { id: "u1" }),
-      makeActivity("tool.completed", globFixture.completed, { id: "c1" }),
+      makeActivity("tool.started", globFixture.started, { id: "s1", pid: "tu-1" }),
+      makeActivity("tool.updated", globFixture.updated, { id: "u1", pid: "tu-1" }),
+      makeActivity("tool.completed", globFixture.completed, { id: "c1", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -598,10 +825,10 @@ describe("claude assembly — file-search", () => {
 
   it("handles interleaved Grep and Glob as separate invocations", () => {
     const activities = [
-      makeActivity("tool.updated", grepFixture.updated, { id: "grep-u" }),
-      makeActivity("tool.updated", globFixture.updated, { id: "glob-u" }),
-      makeActivity("tool.completed", grepFixture.completed, { id: "grep-c" }),
-      makeActivity("tool.completed", globFixture.completed, { id: "glob-c" }),
+      makeActivity("tool.updated", grepFixture.updated, { id: "grep-u", pid: "tu-grep" }),
+      makeActivity("tool.updated", globFixture.updated, { id: "glob-u", pid: "tu-glob" }),
+      makeActivity("tool.completed", grepFixture.completed, { id: "grep-c", pid: "tu-grep" }),
+      makeActivity("tool.completed", globFixture.completed, { id: "glob-c", pid: "tu-glob" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -614,8 +841,8 @@ describe("claude assembly — file-search", () => {
 
   it("does not pick up Read activities as file-search", () => {
     const activities = [
-      makeActivity("tool.updated", readFixture.updated, { id: "read-u" }),
-      makeActivity("tool.completed", readFixture.completed, { id: "read-c" }),
+      makeActivity("tool.updated", readFixture.updated, { id: "read-u", pid: "tu-read" }),
+      makeActivity("tool.completed", readFixture.completed, { id: "read-c", pid: "tu-read" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -627,7 +854,9 @@ describe("claude assembly — file-search", () => {
   });
 
   it("does not emit orphan tool.started as file-search", () => {
-    const activities = [makeActivity("tool.started", grepFixture.started, { id: "orphan" })];
+    const activities = [
+      makeActivity("tool.started", grepFixture.started, { id: "orphan", pid: "tu-1" }),
+    ];
 
     const { tools: result } = assembleClaudeTools(activities);
 
@@ -656,9 +885,9 @@ describe("claude assembly — sub-agent", () => {
 
   it("assembles a full started → updated → completed lifecycle into one entry", () => {
     const activities = [
-      makeActivity("tool.started", fixture1.started, { id: "act-1" }),
-      makeActivity("tool.updated", fixture1.updated, { id: "act-2" }),
-      makeActivity("tool.completed", fixture1.completed, { id: "act-3" }),
+      makeActivity("tool.started", fixture1.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", fixture1.updated, { id: "act-2", pid: "tu-1" }),
+      makeActivity("tool.completed", fixture1.completed, { id: "act-3", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -678,8 +907,8 @@ describe("claude assembly — sub-agent", () => {
 
   it("assembles an in-progress sub-agent from started + updated", () => {
     const activities = [
-      makeActivity("tool.started", fixture1.started, { id: "act-1" }),
-      makeActivity("tool.updated", fixture1.updated, { id: "act-2" }),
+      makeActivity("tool.started", fixture1.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", fixture1.updated, { id: "act-2", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -693,7 +922,9 @@ describe("claude assembly — sub-agent", () => {
   });
 
   it("emits a starting placeholder from tool.started only", () => {
-    const activities = [makeActivity("tool.started", fixture1.started, { id: "act-1" })];
+    const activities = [
+      makeActivity("tool.started", fixture1.started, { id: "act-1", pid: "tu-1" }),
+    ];
 
     const { tools: result } = assembleClaudeTools(activities);
 
@@ -707,12 +938,12 @@ describe("claude assembly — sub-agent", () => {
 
   it("assembles two concurrent sub-agents independently", () => {
     const activities = [
-      makeActivity("tool.started", fixture1.started, { id: "a1-started" }),
-      makeActivity("tool.updated", fixture1.updated, { id: "a1-updated" }),
-      makeActivity("tool.started", fixture2.started, { id: "a2-started" }),
-      makeActivity("tool.updated", fixture2.updated, { id: "a2-updated" }),
-      makeActivity("tool.completed", fixture1.completed, { id: "a1-completed" }),
-      makeActivity("tool.completed", fixture2.completed, { id: "a2-completed" }),
+      makeActivity("tool.started", fixture1.started, { id: "a1-started", pid: "tu-1" }),
+      makeActivity("tool.updated", fixture1.updated, { id: "a1-updated", pid: "tu-1" }),
+      makeActivity("tool.started", fixture2.started, { id: "a2-started", pid: "tu-2" }),
+      makeActivity("tool.updated", fixture2.updated, { id: "a2-updated", pid: "tu-2" }),
+      makeActivity("tool.completed", fixture1.completed, { id: "a1-completed", pid: "tu-1" }),
+      makeActivity("tool.completed", fixture2.completed, { id: "a2-completed", pid: "tu-2" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -735,13 +966,13 @@ describe("claude assembly — sub-agent", () => {
 
   it("grafts taskId when task.started activity is present", () => {
     const activities = [
-      makeActivity("tool.started", fixture1.started, { id: "act-1" }),
-      makeActivity("tool.updated", fixture1.updated, { id: "act-2" }),
+      makeActivity("tool.started", fixture1.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", fixture1.updated, { id: "act-2", pid: "tu-1" }),
       makeActivity("task.started", fixture1.taskStarted, {
         id: "task-1",
         tone: "info",
       }),
-      makeActivity("tool.completed", fixture1.completed, { id: "act-3" }),
+      makeActivity("tool.completed", fixture1.completed, { id: "act-3", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -754,14 +985,14 @@ describe("claude assembly — sub-agent", () => {
 
   it("grafts independent taskIds to concurrent sub-agents", () => {
     const activities = [
-      makeActivity("tool.started", fixture1.started, { id: "a1-started" }),
-      makeActivity("tool.updated", fixture1.updated, { id: "a1-updated" }),
+      makeActivity("tool.started", fixture1.started, { id: "a1-started", pid: "tu-1" }),
+      makeActivity("tool.updated", fixture1.updated, { id: "a1-updated", pid: "tu-1" }),
       makeActivity("task.started", fixture1.taskStarted, { id: "t1", tone: "info" }),
-      makeActivity("tool.started", fixture2.started, { id: "a2-started" }),
-      makeActivity("tool.updated", fixture2.updated, { id: "a2-updated" }),
+      makeActivity("tool.started", fixture2.started, { id: "a2-started", pid: "tu-2" }),
+      makeActivity("tool.updated", fixture2.updated, { id: "a2-updated", pid: "tu-2" }),
       makeActivity("task.started", fixture2.taskStarted, { id: "t2", tone: "info" }),
-      makeActivity("tool.completed", fixture1.completed, { id: "a1-completed" }),
-      makeActivity("tool.completed", fixture2.completed, { id: "a2-completed" }),
+      makeActivity("tool.completed", fixture1.completed, { id: "a1-completed", pid: "tu-1" }),
+      makeActivity("tool.completed", fixture2.completed, { id: "a2-completed", pid: "tu-2" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -779,10 +1010,10 @@ describe("claude assembly — sub-agent", () => {
   it("absorbs duplicate tool.updated that arrives with tool.completed", () => {
     // Claude sends a duplicate tool.updated at the same time as tool.completed
     const activities = [
-      makeActivity("tool.started", fixture1.started, { id: "act-1" }),
-      makeActivity("tool.updated", fixture1.updated, { id: "act-2" }),
-      makeActivity("tool.completed", fixture1.completed, { id: "act-3" }),
-      makeActivity("tool.updated", fixture1.completed, { id: "act-4" }),
+      makeActivity("tool.started", fixture1.started, { id: "act-1", pid: "tu-1" }),
+      makeActivity("tool.updated", fixture1.updated, { id: "act-2", pid: "tu-1" }),
+      makeActivity("tool.completed", fixture1.completed, { id: "act-3", pid: "tu-1" }),
+      makeActivity("tool.updated", fixture1.completed, { id: "act-4", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
@@ -794,7 +1025,9 @@ describe("claude assembly — sub-agent", () => {
   });
 
   it("handles tool.completed without prior started/updated", () => {
-    const activities = [makeActivity("tool.completed", fixture1.completed, { id: "act-1" })];
+    const activities = [
+      makeActivity("tool.completed", fixture1.completed, { id: "act-1", pid: "tu-1" }),
+    ];
 
     const { tools: result } = assembleClaudeTools(activities);
 
@@ -807,9 +1040,9 @@ describe("claude assembly — sub-agent", () => {
 
   it("does not produce sub-agent entries for non-collab_agent activities", () => {
     const activities = [
-      makeActivity("tool.started", bashFixture.started, { id: "cmd-1" }),
-      makeActivity("tool.updated", bashFixture.updated, { id: "cmd-2" }),
-      makeActivity("tool.completed", bashFixture.completed, { id: "cmd-3" }),
+      makeActivity("tool.started", bashFixture.started, { id: "cmd-1", pid: "tu-1" }),
+      makeActivity("tool.updated", bashFixture.updated, { id: "cmd-2", pid: "tu-1" }),
+      makeActivity("tool.completed", bashFixture.completed, { id: "cmd-3", pid: "tu-1" }),
     ];
 
     const { tools: result } = assembleClaudeTools(activities);
