@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  resolveMentionsToAbsolutePaths,
   selectionTouchesMentionBoundary,
   splitPromptIntoComposerSegments,
 } from "./composer-editor-mentions";
@@ -124,5 +125,33 @@ describe("selectionTouchesMentionBoundary", () => {
         prompt.length,
       ),
     ).toBe(true);
+  });
+});
+
+describe("resolveMentionsToAbsolutePaths", () => {
+  it("replaces @mention with absolute path, stripping the @", () => {
+    expect(
+      resolveMentionsToAbsolutePaths("look at @src/index.ts please", "/Users/me/project"),
+    ).toBe("look at /Users/me/project/src/index.ts please");
+  });
+
+  it("handles multiple mentions", () => {
+    expect(resolveMentionsToAbsolutePaths("@foo.ts and @bar/baz.ts done", "/cwd")).toBe(
+      "/cwd/foo.ts and /cwd/bar/baz.ts done",
+    );
+  });
+
+  it("handles cwd with trailing slash", () => {
+    expect(resolveMentionsToAbsolutePaths("see @README.md end", "/cwd/")).toBe(
+      "see /cwd/README.md end",
+    );
+  });
+
+  it("does not touch incomplete trailing mention (no trailing whitespace)", () => {
+    expect(resolveMentionsToAbsolutePaths("see @README.md", "/cwd")).toBe("see @README.md");
+  });
+
+  it("leaves text without mentions unchanged", () => {
+    expect(resolveMentionsToAbsolutePaths("just some text", "/cwd")).toBe("just some text");
   });
 });

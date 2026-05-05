@@ -256,3 +256,14 @@ export function splitPromptIntoComposerSegments(
 
   return segments;
 }
+
+/**
+ * Resolve `@mention` tokens in the prompt to absolute paths and strip the `@`
+ * prefix so the outgoing message contains clean absolute file paths.
+ */
+export function resolveMentionsToAbsolutePaths(prompt: string, cwd: string): string {
+  const trailingSlash = cwd.endsWith("/") ? "" : "/";
+  return prompt.replace(MENTION_TOKEN_REGEX, (_match, prefix: string, relativePath: string) => {
+    return `${prefix}${cwd}${trailingSlash}${relativePath}`;
+  });
+}
