@@ -102,7 +102,7 @@ const SET_SAVED_ENVIRONMENT_SECRET_CHANNEL = "desktop:set-saved-environment-secr
 const REMOVE_SAVED_ENVIRONMENT_SECRET_CHANNEL = "desktop:remove-saved-environment-secret";
 const GET_SERVER_EXPOSURE_STATE_CHANNEL = "desktop:get-server-exposure-state";
 const SET_SERVER_EXPOSURE_MODE_CHANNEL = "desktop:set-server-exposure-mode";
-const BASE_DIR = process.env.T3CODE_HOME?.trim() || Path.join(OS.homedir(), ".t3");
+const BASE_DIR = process.env.T3CODE_HOME?.trim() || Path.join(OS.homedir(), ".t3-tweaked");
 const STATE_DIR = Path.join(BASE_DIR, "userdata");
 const DESKTOP_SETTINGS_PATH = Path.join(STATE_DIR, "desktop-settings.json");
 const CLIENT_SETTINGS_PATH = Path.join(STATE_DIR, "client-settings.json");
@@ -115,11 +115,10 @@ const desktopAppBranding: DesktopAppBranding = resolveDesktopAppBranding({
   appVersion: app.getVersion(),
 });
 const APP_DISPLAY_NAME = desktopAppBranding.displayName;
-const APP_USER_MODEL_ID = isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code";
-const LINUX_DESKTOP_ENTRY_NAME = isDevelopment ? "t3code-dev.desktop" : "t3code.desktop";
-const LINUX_WM_CLASS = isDevelopment ? "t3code-dev" : "t3code";
-const USER_DATA_DIR_NAME = isDevelopment ? "t3code-dev" : "t3code";
-const LEGACY_USER_DATA_DIR_NAME = isDevelopment ? "T3 Code (Dev)" : "T3 Code (Alpha)";
+const APP_USER_MODEL_ID = isDevelopment ? "com.t3tools.t3code.dev" : "com.t3tools.t3code.tweaked";
+const LINUX_DESKTOP_ENTRY_NAME = isDevelopment ? "t3code-dev.desktop" : "t3code-tweaked.desktop";
+const LINUX_WM_CLASS = isDevelopment ? "t3code-dev" : "t3code-tweaked";
+const USER_DATA_DIR_NAME = isDevelopment ? "t3code-dev" : "t3code-tweaked";
 const COMMIT_HASH_PATTERN = /^[0-9a-f]{7,40}$/i;
 const COMMIT_HASH_DISPLAY_LENGTH = 12;
 const LOG_DIR = Path.join(STATE_DIR, "logs");
@@ -1036,11 +1035,6 @@ function resolveUserDataPath(): string {
       : process.platform === "darwin"
         ? Path.join(OS.homedir(), "Library", "Application Support")
         : process.env.XDG_CONFIG_HOME || Path.join(OS.homedir(), ".config");
-
-  const legacyPath = Path.join(appDataBase, LEGACY_USER_DATA_DIR_NAME);
-  if (FS.existsSync(legacyPath)) {
-    return legacyPath;
-  }
 
   return Path.join(appDataBase, USER_DATA_DIR_NAME);
 }
