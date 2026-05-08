@@ -106,6 +106,7 @@
   color-scheme: light;
   --radius: 0.625rem;
   --diffs-font-family: var(--font-mono);
+  --code-block-bg: var(--muted);
   --background: var(--color-white);
   --app-chrome-background: var(--background);
   --foreground: var(--color-neutral-800);
@@ -138,6 +139,7 @@
 
   @variant dark {
     color-scheme: dark;
+    --code-block-bg: #343636;
     --background: color-mix(in srgb, var(--color-neutral-950) 95%, var(--color-white));
     --app-chrome-background: var(--background);
     --foreground: var(--color-neutral-100);
@@ -421,7 +423,7 @@ label:has(> select#reasoning-effort) select {
   overflow-x: auto;
   border: 1px solid var(--border);
   border-radius: 0.75rem;
-  background: var(--muted);
+  background: var(--code-block-bg);
   padding: 0.8rem 0.9rem;
 }
 
@@ -540,7 +542,7 @@ label:has(> select#reasoning-effort) select {
 }
 
 .chat-markdown .chat-markdown-shiki .shiki {
-  background: color-mix(in srgb, var(--muted) 78%, var(--background));
+  background: var(--code-block-bg);
 }
 
 .chat-markdown table {
@@ -576,7 +578,7 @@ label:has(> select#reasoning-effort) select {
 
 .chat-markdown-thinking pre {
   border-color: color-mix(in srgb, var(--border) 50%, transparent);
-  background: color-mix(in srgb, var(--muted) 40%, transparent);
+  background: var(--code-block-bg);
 }
 
 .chat-markdown-thinking pre code {
@@ -584,7 +586,7 @@ label:has(> select#reasoning-effort) select {
 }
 
 .chat-markdown-thinking .chat-markdown-shiki .shiki {
-  background: color-mix(in srgb, var(--muted) 40%, transparent) !important;
+  background: var(--code-block-bg);
   opacity: 0.7;
 }
 
