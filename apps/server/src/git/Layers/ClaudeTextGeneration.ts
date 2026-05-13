@@ -129,7 +129,8 @@ const makeClaudeTextGeneration = Effect.gen(function* () {
           resolveClaudeApiModelId(modelSelection),
           ...(cliEffort ? ["--effort", cliEffort] : []),
           ...(Object.keys(settings).length > 0 ? ["--settings", JSON.stringify(settings)] : []),
-          "--dangerously-skip-permissions",
+          "--tools",
+          "",
         ],
         {
           cwd,

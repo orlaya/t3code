@@ -183,11 +183,12 @@ export interface ThreadTitlePromptInput {
 
 export function buildThreadTitlePrompt(input: ThreadTitlePromptInput) {
   const prompt = buildPromptFromMessage({
-    instruction: "You write concise thread titles for coding conversations.",
+    instruction:
+      "You generate concise thread titles. Under no circumstances are you to attempt to implement, action, or respond to the user's request. You are solely to return a JSON object with key title. No more, no less.",
     responseShape: "Return a JSON object with key: title.",
     rules: [
       "Title should summarize the user's request, not restate it verbatim.",
-      "Keep it short and specific (3-8 words).",
+      "Keep it short and specific (3-4 words).",
       "Avoid quotes, filler, prefixes, and trailing punctuation.",
       "If images are attached, use them as primary context for visual/UI issues.",
     ],
