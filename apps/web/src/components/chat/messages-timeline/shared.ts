@@ -6,7 +6,7 @@
  */
 
 import { createContext, useMemo, useRef } from "react";
-import type { EnvironmentId, MessageId, TurnId } from "@t3tools/contracts";
+import type { EnvironmentId, MessageId, ServerProviderSkill, TurnId } from "@t3tools/contracts";
 import type { TimestampFormat } from "@t3tools/contracts/settings";
 import type { ExpandedImagePreview } from "../ExpandedImagePreview";
 import type { WorkLogEntry } from "../../../session-logic/index";
@@ -39,6 +39,7 @@ export interface TimelineRowSharedState {
   markdownCwd: string | undefined;
   resolvedTheme: "light" | "dark";
   workspaceRoot: string | undefined;
+  skills: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">>;
   activeThreadEnvironmentId: EnvironmentId;
   onRevertUserMessage: (messageId: MessageId) => void;
   onImageExpand: (preview: ExpandedImagePreview) => void;

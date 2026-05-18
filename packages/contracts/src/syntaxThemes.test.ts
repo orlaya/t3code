@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_DIFF_THEME, mergePartialDiffTheme, PartialDiffTheme } from "./syntaxThemes.ts";
@@ -16,9 +16,11 @@ function parseLenientJson(input: string): unknown {
   return JSON.parse(stripped);
 }
 
+const decodePartialDiffTheme = Schema.decodeUnknownExit(PartialDiffTheme);
+
 const decodePartial = (jsonc: string) => {
   const parsed = parseLenientJson(jsonc);
-  return Schema.decodeUnknownExit(PartialDiffTheme)(parsed);
+  return decodePartialDiffTheme(parsed);
 };
 
 const USER_FILE = `{

@@ -19,6 +19,14 @@ const BrowserSavedEnvironmentRecordSchema = Schema.Struct({
   wsBaseUrl: Schema.String,
   createdAt: Schema.String,
   lastConnectedAt: Schema.NullOr(Schema.String),
+  desktopSsh: Schema.optionalKey(
+    Schema.Struct({
+      alias: Schema.String,
+      hostname: Schema.String,
+      username: Schema.NullOr(Schema.String),
+      port: Schema.NullOr(Schema.Number),
+    }),
+  ),
   bearerToken: Schema.optionalKey(Schema.String),
 });
 type BrowserSavedEnvironmentRecord = typeof BrowserSavedEnvironmentRecordSchema.Type;
@@ -37,7 +45,7 @@ function hasWindow(): boolean {
 function toPersistedSavedEnvironmentRecord(
   record: PersistedSavedEnvironmentRecord,
 ): PersistedSavedEnvironmentRecord {
-  return {
+  const nextRecord = {
     environmentId: record.environmentId,
     label: record.label,
     httpBaseUrl: record.httpBaseUrl,
@@ -45,6 +53,7 @@ function toPersistedSavedEnvironmentRecord(
     createdAt: record.createdAt,
     lastConnectedAt: record.lastConnectedAt,
   };
+  return record.desktopSsh ? { ...nextRecord, desktopSsh: record.desktopSsh } : nextRecord;
 }
 
 export function readBrowserClientSettings(): ClientSettings | null {
@@ -135,6 +144,7 @@ export function writeBrowserSavedEnvironmentRegistry(
             wsBaseUrl: record.wsBaseUrl,
             createdAt: record.createdAt,
             lastConnectedAt: record.lastConnectedAt,
+            ...(record.desktopSsh ? { desktopSsh: record.desktopSsh } : {}),
             bearerToken,
           }
         : toPersistedSavedEnvironmentRecord(record);
@@ -166,15 +176,26 @@ export function writeBrowserSavedEnvironmentSecret(
         return record;
       }
       found = true;
-      return {
-        environmentId: record.environmentId,
-        label: record.label,
-        httpBaseUrl: record.httpBaseUrl,
-        wsBaseUrl: record.wsBaseUrl,
-        createdAt: record.createdAt,
-        lastConnectedAt: record.lastConnectedAt,
-        bearerToken: secret,
-      } satisfies BrowserSavedEnvironmentRecord;
+      return record.desktopSsh
+        ? {
+            environmentId: record.environmentId,
+            label: record.label,
+            httpBaseUrl: record.httpBaseUrl,
+            wsBaseUrl: record.wsBaseUrl,
+            createdAt: record.createdAt,
+            lastConnectedAt: record.lastConnectedAt,
+            bearerToken: secret,
+            desktopSsh: record.desktopSsh,
+          }
+        : {
+            environmentId: record.environmentId,
+            label: record.label,
+            httpBaseUrl: record.httpBaseUrl,
+            wsBaseUrl: record.wsBaseUrl,
+            createdAt: record.createdAt,
+            lastConnectedAt: record.lastConnectedAt,
+            bearerToken: secret,
+          };
     }),
   });
   return found;

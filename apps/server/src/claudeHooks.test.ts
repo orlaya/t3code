@@ -8,10 +8,19 @@
  */
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, it, expect } from "@effect/vitest";
-import { Effect, FileSystem, Layer, Path } from "effect";
+import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
+import * as Path from "effect/Path";
+import * as Schema from "effect/Schema";
 
 import type { ManagedHookEntry, HookAction, ClaudeHooksWriteInput } from "@t3tools/contracts";
 import { fingerprintAction } from "@t3tools/shared/claudeHooksFingerprint";
+import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
+
+const SettingsObject = Schema.Record(Schema.String, Schema.Unknown);
+const decodeSettingsObject = Schema.decodeUnknownSync(fromLenientJson(SettingsObject));
+const encodeSettingsObject = Schema.encodeUnknownSync(fromJsonStringPretty(SettingsObject));
 import { getClaudeHooks, writeClaudeHook, deleteClaudeHook, pullInHook } from "./claudeHooks.ts";
 import { readHooksClaudeFile, writeHooksClaudeFile, settingsFilePath } from "./claudeHooksStore.ts";
 import { ServerConfig } from "./config.ts";
@@ -53,7 +62,7 @@ const readProjectSettingsHooks = (projectDir: string) =>
     const exists = yield* fs.exists(filePath);
     if (!exists) return null;
     const raw = yield* fs.readFileString(filePath);
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = decodeSettingsObject(raw);
     return (parsed["hooks"] ?? null) as Record<string, unknown> | null;
   });
 
@@ -66,7 +75,7 @@ const readProjectLocalSettingsHooks = (projectDir: string) =>
     const exists = yield* fs.exists(filePath);
     if (!exists) return null;
     const raw = yield* fs.readFileString(filePath);
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const parsed = decodeSettingsObject(raw);
     return (parsed["hooks"] ?? null) as Record<string, unknown> | null;
   });
 
@@ -84,7 +93,7 @@ const seedProjectSettings = (
     const pathService = yield* Path.Path;
     const filePath = settingsFilePath(pathService, "project", file, projectDir);
     yield* fs.makeDirectory(pathService.dirname(filePath), { recursive: true });
-    yield* fs.writeFileString(filePath, JSON.stringify({ hooks }, null, 2));
+    yield* fs.writeFileString(filePath, encodeSettingsObject({ hooks }));
   });
 
 // ── Tests ──────────────────────────────────────────────────────────

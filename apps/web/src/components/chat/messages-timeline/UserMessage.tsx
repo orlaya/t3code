@@ -1,4 +1,6 @@
 import { memo, ReactNode, use, useCallback, useEffect, useRef, useState } from "react";
+import type { ServerProviderSkill } from "@t3tools/contracts";
+import { SkillInlineText } from "~/components/chat/SkillInlineText";
 import { SearchMatchDot } from "~/components/chat/messages-timeline/SearchMatchDot";
 import {
   SearchQueryCtx,
@@ -127,6 +129,7 @@ export const UserMessageBody = memo(function UserMessageBody(props: {
   text: string;
   terminalContexts: ParsedTerminalContextEntry[];
   slashCommandMatch: SlashCommandMatch | null;
+  skills: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">>;
 }) {
   if (props.terminalContexts.length > 0) {
     const hasEmbeddedInlineLabels = textContainsInlineTerminalContextLabels(
@@ -149,7 +152,7 @@ export const UserMessageBody = memo(function UserMessageBody(props: {
         if (matchIndex > cursor) {
           inlineNodes.push(
             <span key={`user-terminal-context-inline-before:${context.header}:${cursor}`}>
-              {props.text.slice(cursor, matchIndex)}
+              <SkillInlineText text={props.text.slice(cursor, matchIndex)} skills={props.skills} />
             </span>,
           );
         }
@@ -166,7 +169,7 @@ export const UserMessageBody = memo(function UserMessageBody(props: {
         if (cursor < props.text.length) {
           inlineNodes.push(
             <span key={`user-message-terminal-context-inline-rest:${cursor}`}>
-              {props.text.slice(cursor)}
+              <SkillInlineText text={props.text.slice(cursor)} skills={props.skills} />
             </span>,
           );
         }
@@ -194,7 +197,11 @@ export const UserMessageBody = memo(function UserMessageBody(props: {
     }
 
     if (props.text.length > 0) {
-      inlineNodes.push(<span key="user-message-terminal-context-inline-text">{props.text}</span>);
+      inlineNodes.push(
+        <span key="user-message-terminal-context-inline-text">
+          <SkillInlineText text={props.text} skills={props.skills} />
+        </span>,
+      );
     } else if (inlinePrefix.length === 0) {
       return null;
     }
@@ -223,7 +230,7 @@ export const UserMessageBody = memo(function UserMessageBody(props: {
 
   return (
     <div className="mb-2 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground">
-      {props.text}
+      <SkillInlineText text={props.text} skills={props.skills} />
     </div>
   );
 });

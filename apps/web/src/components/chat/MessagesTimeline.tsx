@@ -1,4 +1,9 @@
-import { type EnvironmentId, type MessageId, type TurnId } from "@t3tools/contracts";
+import {
+  type EnvironmentId,
+  type MessageId,
+  type ServerProviderSkill,
+  type TurnId,
+} from "@t3tools/contracts";
 
 import { memo, use, useCallback, useEffect, useMemo, useRef } from "react";
 import { LegendList, type LegendListRef } from "@legendapp/list/react";
@@ -47,6 +52,8 @@ import {
   UserMessageBody,
 } from "~/components/chat/messages-timeline/UserMessage";
 
+const EMPTY_TIMELINE_SKILLS: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">> = [];
+
 // Props (public API)
 
 interface MessagesTimelineProps {
@@ -72,6 +79,7 @@ interface MessagesTimelineProps {
   resolvedTheme: "light" | "dark";
   timestampFormat: TimestampFormat;
   workspaceRoot: string | undefined;
+  skills?: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">>;
   onIsAtEndChange: (isAtEnd: boolean) => void;
   searchOpen: boolean;
   onSearchClose: () => void;
@@ -102,6 +110,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   resolvedTheme,
   timestampFormat,
   workspaceRoot,
+  skills = EMPTY_TIMELINE_SKILLS,
   onIsAtEndChange,
   searchOpen,
   onSearchClose,
@@ -173,6 +182,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       markdownCwd,
       resolvedTheme,
       workspaceRoot,
+      skills,
       activeThreadEnvironmentId,
       onRevertUserMessage,
       onImageExpand,
@@ -191,6 +201,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       markdownCwd,
       resolvedTheme,
       workspaceRoot,
+      skills,
       activeThreadEnvironmentId,
       onRevertUserMessage,
       onImageExpand,
@@ -417,6 +428,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                       text={displayedUserMessage.visibleText}
                       terminalContexts={terminalContexts}
                       slashCommandMatch={slashCommandMatch}
+                      skills={ctx.skills}
                     />
                   )}
                 </CollapsibleUserMessageContent>
@@ -483,6 +495,7 @@ function TimelineRowContent({ row }: { row: TimelineRow }) {
                   text={messageText}
                   cwd={ctx.markdownCwd}
                   isStreaming={Boolean(row.message.streaming)}
+                  skills={ctx.skills}
                 />
                 <div className="mt-1.5 flex items-center gap-2">
                   {/* During streaming the static WorkingIndicator (outside

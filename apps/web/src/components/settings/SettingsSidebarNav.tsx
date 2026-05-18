@@ -1,14 +1,18 @@
-import type { ComponentType } from "react";
+import { useCallback, type ComponentType } from "react";
 import {
   ArchiveIcon,
   ArrowLeftIcon,
+  ActivityIcon,
+  BotIcon,
+  GitBranchIcon,
+  KeyboardIcon,
   Link2Icon,
   PaletteIcon,
   Settings2Icon,
   TerminalSquareIcon,
   WebhookIcon,
 } from "lucide-react";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useCanGoBack, useNavigate } from "@tanstack/react-router";
 
 import {
   SidebarContent,
@@ -18,11 +22,16 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "../ui/sidebar";
 
 export type SettingsSectionPath =
   | "/settings/general"
   | "/settings/appearance"
+  | "/settings/keybindings"
+  | "/settings/providers"
+  | "/settings/source-control"
+  | "/settings/diagnostics"
   | "/settings/connections"
   | "/settings/commands"
   | "/settings/hooks"
@@ -35,25 +44,44 @@ export const SETTINGS_NAV_ITEMS: ReadonlyArray<{
 }> = [
   { label: "General", to: "/settings/general", icon: Settings2Icon },
   { label: "Appearance", to: "/settings/appearance", icon: PaletteIcon },
+  { label: "Keybindings", to: "/settings/keybindings", icon: KeyboardIcon },
+  { label: "Providers", to: "/settings/providers", icon: BotIcon },
+  { label: "Source Control", to: "/settings/source-control", icon: GitBranchIcon },
+  { label: "Diagnostics", to: "/settings/diagnostics", icon: ActivityIcon },
   { label: "Connections", to: "/settings/connections", icon: Link2Icon },
   { label: "Commands", to: "/settings/commands", icon: TerminalSquareIcon },
   { label: "Hooks", to: "/settings/hooks", icon: WebhookIcon },
   { label: "Archive", to: "/settings/archived", icon: ArchiveIcon },
 ];
 
-function useNavigateUp(): () => void {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const segments = location.pathname.replace(/^\//, "").split("/");
-  // Sub-pages (e.g. /settings/hooks/new) → go up to /settings/hooks
-  // Top-level settings pages → exit settings
-  const upPath = segments.length > 2 ? `/settings/${segments[1]}` : "/";
-  return () => void navigate({ to: upPath, replace: true });
-}
-
 export function SettingsSidebarNav({ pathname }: { pathname: string }) {
   const navigate = useNavigate();
-  const handleBack = useNavigateUp();
+  const canGoBack = useCanGoBack();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const handleSectionClick = useCallback(
+    (to: SettingsSectionPath) => {
+      if (isMobile) {
+        setOpenMobile(false);
+      }
+      void navigate({ to, replace: true });
+    },
+    [isMobile, navigate, setOpenMobile],
+  );
+  const handleBackClick = useCallback(() => {
+    const segments = pathname.replace(/^\//, "").split("/");
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+    if (segments.length > 2) {
+      void navigate({ to: `/settings/${segments[1]}` as SettingsSectionPath, replace: true });
+      return;
+    }
+    if (canGoBack) {
+      window.history.back();
+      return;
+    }
+    void navigate({ to: "/" });
+  }, [canGoBack, isMobile, navigate, pathname, setOpenMobile]);
 
   return (
     <>
@@ -73,7 +101,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
                         ? "gap-2.5 px-2.5 py-2 text-left text-[13px] font-medium text-foreground"
                         : "gap-2.5 px-2.5 py-2 text-left text-[13px] text-muted-foreground/70 hover:text-foreground/80"
                     }
-                    onClick={() => void navigate({ to: item.to, replace: true })}
+                    onClick={() => handleSectionClick(item.to)}
                   >
                     <Icon
                       className={
@@ -98,7 +126,7 @@ export function SettingsSidebarNav({ pathname }: { pathname: string }) {
             <SidebarMenuButton
               size="sm"
               className="gap-2 px-2 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={handleBack}
+              onClick={handleBackClick}
             >
               <ArrowLeftIcon className="size-4" />
               <span>Back</span>

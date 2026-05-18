@@ -1,6 +1,6 @@
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 import { assert, it, describe } from "@effect/vitest";
-import { Effect } from "effect";
+import * as Effect from "effect/Effect";
 
 import {
   HookEvent,

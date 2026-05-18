@@ -19,6 +19,7 @@ export interface PersistedUiState {
   collapsedProjectCwds?: string[];
   expandedProjectCwds?: string[];
   projectOrderCwds?: string[];
+  defaultAdvertisedEndpointKey?: string | null;
   threadChangedFilesExpandedById?: Record<string, Record<string, boolean>>;
   pinnedThreadKeys?: string[];
 }
@@ -35,7 +36,11 @@ export interface UiThreadState {
   pinnedThreadKeys: Set<string>;
 }
 
-export interface UiState extends UiProjectState, UiThreadState {}
+export interface UiEndpointState {
+  defaultAdvertisedEndpointKey: string | null;
+}
+
+export interface UiState extends UiProjectState, UiThreadState, UiEndpointState {}
 
 export interface SyncProjectInput {
   /** Physical project key (env + cwd). Used for manual sort order. */
@@ -57,6 +62,7 @@ const initialState: UiState = {
   threadLastVisitedAtById: {},
   threadChangedFilesExpandedById: {},
   pinnedThreadKeys: new Set(),
+  defaultAdvertisedEndpointKey: null,
 };
 
 const persistedCollapsedProjectCwds = new Set<string>();
@@ -93,6 +99,11 @@ function readPersistedState(): UiState {
     hydratePersistedProjectState(parsed);
     return {
       ...initialState,
+      defaultAdvertisedEndpointKey:
+        typeof parsed.defaultAdvertisedEndpointKey === "string" &&
+        parsed.defaultAdvertisedEndpointKey.length > 0
+          ? parsed.defaultAdvertisedEndpointKey
+          : null,
       threadChangedFilesExpandedById: sanitizePersistedThreadChangedFilesExpanded(
         parsed.threadChangedFilesExpandedById,
       ),
@@ -191,6 +202,7 @@ export function persistState(state: UiState): void {
         collapsedProjectCwds,
         expandedProjectCwds,
         projectOrderCwds,
+        defaultAdvertisedEndpointKey: state.defaultAdvertisedEndpointKey,
         threadChangedFilesExpandedById,
         pinnedThreadKeys,
       } satisfies PersistedUiState),
@@ -578,6 +590,17 @@ export function toggleThreadPinned(state: UiState, threadKey: string): UiState {
   return { ...state, pinnedThreadKeys: next };
 }
 
+export function setDefaultAdvertisedEndpointKey(state: UiState, key: string | null): UiState {
+  const nextKey = key && key.length > 0 ? key : null;
+  if (state.defaultAdvertisedEndpointKey === nextKey) {
+    return state;
+  }
+  return {
+    ...state,
+    defaultAdvertisedEndpointKey: nextKey,
+  };
+}
+
 /** Expand only this project (step 1 of accordion). */
 function expandProject(state: UiState, projectId: string): UiState {
   return {
@@ -712,6 +735,7 @@ interface UiStateStore extends UiState {
   clearThreadUi: (threadId: string) => void;
   setThreadChangedFilesExpanded: (threadId: string, turnId: string, expanded: boolean) => void;
   toggleThreadPinned: (threadKey: string) => void;
+  setDefaultAdvertisedEndpointKey: (key: string | null) => void;
   toggleProject: (projectId: string) => void;
   setProjectExpanded: (projectId: string, expanded: boolean) => void;
   expandThreadListForProject: (projectKey: string) => void;
@@ -734,6 +758,8 @@ export const useUiStateStore = create<UiStateStore>((set) => ({
   setThreadChangedFilesExpanded: (threadId, turnId, expanded) =>
     set((state) => setThreadChangedFilesExpanded(state, threadId, turnId, expanded)),
   toggleThreadPinned: (threadKey) => set((state) => toggleThreadPinned(state, threadKey)),
+  setDefaultAdvertisedEndpointKey: (key) =>
+    set((state) => setDefaultAdvertisedEndpointKey(state, key)),
   toggleProject: (projectId) => {
     const state = useUiStateStore.getState();
     const expanded = state.projectExpandedById[projectId] ?? false;

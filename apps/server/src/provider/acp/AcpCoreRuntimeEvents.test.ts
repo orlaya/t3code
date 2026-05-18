@@ -1,4 +1,4 @@
-import { RuntimeRequestId, TurnId } from "@t3tools/contracts";
+import { ProviderDriverKind, RuntimeRequestId, TurnId } from "@t3tools/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -34,7 +34,7 @@ describe("AcpCoreRuntimeEvents", () => {
     expect(
       makeAcpRequestOpenedEvent({
         stamp,
-        provider: "cursor",
+        provider: ProviderDriverKind.make("cursor"),
         threadId: "thread-1" as never,
         turnId,
         requestId: RuntimeRequestId.make("request-1"),
@@ -56,7 +56,7 @@ describe("AcpCoreRuntimeEvents", () => {
     expect(
       makeAcpRequestResolvedEvent({
         stamp,
-        provider: "cursor",
+        provider: ProviderDriverKind.make("cursor"),
         threadId: "thread-1" as never,
         turnId,
         requestId: RuntimeRequestId.make("request-1"),
@@ -83,7 +83,7 @@ describe("AcpCoreRuntimeEvents", () => {
     expect(
       makeAcpPlanUpdatedEvent({
         stamp,
-        provider: "cursor",
+        provider: ProviderDriverKind.make("cursor"),
         threadId: "thread-1" as never,
         turnId,
         payload: {
@@ -103,7 +103,7 @@ describe("AcpCoreRuntimeEvents", () => {
     expect(
       makeAcpToolCallEvent({
         stamp,
-        provider: "cursor",
+        provider: ProviderDriverKind.make("cursor"),
         threadId: "thread-1" as never,
         turnId,
         toolCall: {
@@ -127,7 +127,7 @@ describe("AcpCoreRuntimeEvents", () => {
     expect(
       makeAcpContentDeltaEvent({
         stamp,
-        provider: "cursor",
+        provider: ProviderDriverKind.make("cursor"),
         threadId: "thread-1" as never,
         turnId,
         itemId: "assistant:session-1:segment:0",
@@ -145,7 +145,7 @@ describe("AcpCoreRuntimeEvents", () => {
     expect(
       makeAcpAssistantItemEvent({
         stamp,
-        provider: "cursor",
+        provider: ProviderDriverKind.make("cursor"),
         threadId: "thread-1" as never,
         turnId,
         itemId: "assistant:session-1:segment:0",

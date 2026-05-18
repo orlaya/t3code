@@ -6,6 +6,7 @@
  * live in the files that use them.
  */
 
+import { ProviderDriverKind } from "@t3tools/contracts";
 import type {
   ApprovalRequestId,
   AssembledToolInvocation,
@@ -14,7 +15,6 @@ import type {
   CanonicalInlineDiff,
   CanonicalLifecycleShape,
   OrchestrationProposedPlanId,
-  ProviderKind,
   ToolLifecycleItemType,
   UserInputQuestion,
   ThreadId,
@@ -27,7 +27,7 @@ import type { ChatMessage, ProposedPlan } from "../types";
 // Provider picker
 // ---------------------------------------------------------------------------
 
-export type ProviderPickerKind = ProviderKind;
+export type ProviderPickerKind = ProviderDriverKind;
 
 export const PROVIDER_OPTIONS: Array<{
   value: ProviderPickerKind;
@@ -36,10 +36,20 @@ export const PROVIDER_OPTIONS: Array<{
   /** Shown on the model picker sidebar when relevant */
   pickerSidebarBadge?: "new" | "soon";
 }> = [
-  { value: "codex", label: "Codex", available: true },
-  { value: "claudeAgent", label: "Claude", available: true },
-  { value: "opencode", label: "OpenCode", available: true, pickerSidebarBadge: "new" },
-  { value: "cursor", label: "Cursor", available: true, pickerSidebarBadge: "new" },
+  { value: ProviderDriverKind.make("codex"), label: "Codex", available: true },
+  { value: ProviderDriverKind.make("claudeAgent"), label: "Claude", available: true },
+  {
+    value: ProviderDriverKind.make("opencode"),
+    label: "OpenCode",
+    available: true,
+    pickerSidebarBadge: "new",
+  },
+  {
+    value: ProviderDriverKind.make("cursor"),
+    label: "Cursor",
+    available: true,
+    pickerSidebarBadge: "new",
+  },
 ];
 
 // ---------------------------------------------------------------------------

@@ -25,3 +25,7 @@ squashfs-root/
 __notes
 **/*CLAUDE.local.md
 .claude/
+.vercel
+.gstack/
+dist-electron/
+.electron-runtime/

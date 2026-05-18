@@ -1,7 +1,14 @@
 import { CommandId } from "@t3tools/contracts";
-import { Duration, Effect, Layer, Schedule } from "effect";
+import * as Clock from "effect/Clock";
+import * as DateTime from "effect/DateTime";
+import * as Duration from "effect/Duration";
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
+import * as Schedule from "effect/Schedule";
 
 import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
+import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { ProviderSessionDirectory } from "../Services/ProviderSessionDirectory.ts";
 import {
   ProviderSessionReaper,
@@ -22,6 +29,7 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
     const providerService = yield* ProviderService;
     const directory = yield* ProviderSessionDirectory;
     const orchestrationEngine = yield* OrchestrationEngineService;
+    const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
 
     const inactivityThresholdMs = Math.max(
       1,
@@ -30,10 +38,8 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
     const sweepIntervalMs = Math.max(1, options?.sweepIntervalMs ?? DEFAULT_SWEEP_INTERVAL_MS);
 
     const sweep = Effect.gen(function* () {
-      const readModel = yield* orchestrationEngine.getReadModel();
-      const threadsById = new Map(readModel.threads.map((thread) => [thread.id, thread] as const));
       const bindings = yield* directory.listBindings();
-      const now = Date.now();
+      const now = yield* Clock.currentTimeMillis;
       let reapedCount = 0;
 
       for (const binding of bindings) {
@@ -56,7 +62,9 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
           continue;
         }
 
-        const thread = threadsById.get(binding.threadId);
+        const thread = yield* projectionSnapshotQuery
+          .getThreadShellById(binding.threadId)
+          .pipe(Effect.map(Option.getOrUndefined));
         if (thread?.session?.activeTurnId != null) {
           yield* Effect.logDebug("provider.session.reaper.skipped-active-turn", {
             threadId: binding.threadId,
@@ -108,7 +116,7 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
      * model permanently stale.
      */
     const reconcile = Effect.gen(function* () {
-      const readModel = yield* orchestrationEngine.getReadModel();
+      const readModel = yield* projectionSnapshotQuery.getSnapshot();
       const liveSessions = yield* providerService.listSessions();
       const liveThreadIds = new Set(liveSessions.map((s) => s.threadId));
 
@@ -128,7 +136,7 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
         if (liveThreadIds.has(thread.id)) continue;
 
         // This thread thinks it has a live session, but no provider process exists.
-        const now = new Date().toISOString();
+        const now = DateTime.formatIso(yield* DateTime.now);
         const previousStatus = thread.session.status;
         yield* orchestrationEngine
           .dispatch({
@@ -201,6 +209,11 @@ const makeProviderSessionReaper = (options?: ProviderSessionReaperLiveOptions) =
       start,
       reconcile: () =>
         reconcile.pipe(
+          Effect.catch((error: unknown) =>
+            Effect.logWarning("provider.session.reaper.reconcile-failed", {
+              error,
+            }),
+          ),
           Effect.catchDefect((defect: unknown) =>
             Effect.logWarning("provider.session.reaper.reconcile-defect", {
               defect,

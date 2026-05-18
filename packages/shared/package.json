@@ -1,6 +1,6 @@
 {
   "name": "@t3tools/shared",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "private": true,
   "type": "module",
   "exports": {
@@ -8,17 +8,33 @@
       "types": "./src/model.ts",
       "import": "./src/model.ts"
     },
+    "./advertisedEndpoint": {
+      "types": "./src/advertisedEndpoint.ts",
+      "import": "./src/advertisedEndpoint.ts"
+    },
     "./git": {
       "types": "./src/git.ts",
       "import": "./src/git.ts"
+    },
+    "./sourceControl": {
+      "types": "./src/sourceControl.ts",
+      "import": "./src/sourceControl.ts"
     },
     "./logging": {
       "types": "./src/logging.ts",
       "import": "./src/logging.ts"
     },
+    "./observability": {
+      "types": "./src/observability.ts",
+      "import": "./src/observability.ts"
+    },
     "./shell": {
       "types": "./src/shell.ts",
       "import": "./src/shell.ts"
+    },
+    "./semver": {
+      "types": "./src/semver.ts",
+      "import": "./src/semver.ts"
     },
     "./Net": {
       "types": "./src/Net.ts",
@@ -75,10 +91,13 @@
     "./claudeHooksFingerprint": {
       "types": "./src/claudeHooksFingerprint.ts",
       "import": "./src/claudeHooksFingerprint.ts"
+    },
+    "./keybindings": {
+      "types": "./src/keybindings.ts",
+      "import": "./src/keybindings.ts"
     }
   },
   "scripts": {
-    "prepare": "effect-language-service patch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -88,6 +107,7 @@
   },
   "devDependencies": {
     "@effect/language-service": "catalog:",
+    "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",

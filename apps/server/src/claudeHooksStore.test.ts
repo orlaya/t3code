@@ -4,7 +4,11 @@
  */
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { describe, it, expect } from "@effect/vitest";
-import { Effect, FileSystem, Layer, Path } from "effect";
+import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
+import * as Path from "effect/Path";
+import * as Schema from "effect/Schema";
 
 import type {
   HookAction,
@@ -27,7 +31,12 @@ import {
   hooksClaudeFilePath,
   settingsFilePath,
 } from "./claudeHooksStore.ts";
+import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
 import { ServerConfig } from "./config.ts";
+
+const SettingsObject = Schema.Record(Schema.String, Schema.Unknown);
+const decodeSettingsObject = Schema.decodeUnknownSync(fromLenientJson(SettingsObject));
+const encodeSettingsObject = Schema.encodeUnknownSync(fromJsonStringPretty(SettingsObject));
 
 // ── Helpers ────────���─────────────────────────────────────────────────
 
@@ -591,7 +600,7 @@ it.layer(TestLayer)("claudeHooksStore filesystem", (it) => {
 
         const filePath = settingsFilePath(pathService, "project", "committed", projectDir);
         const raw = yield* fs.readFileString(filePath);
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const parsed = decodeSettingsObject(raw);
         const hooks = parsed["hooks"] as Record<string, unknown>;
         expect(hooks).toBeDefined();
         expect(hooks["PreToolUse"]).toBeDefined();
@@ -641,7 +650,7 @@ it.layer(TestLayer)("claudeHooksStore filesystem", (it) => {
 
         const filePath = settingsFilePath(pathService, "project", "local", projectDir);
         const raw = yield* fs.readFileString(filePath);
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const parsed = decodeSettingsObject(raw);
         const hooks = parsed["hooks"] as Record<string, unknown>;
         expect(hooks).toBeDefined();
         expect(hooks["Stop"]).toBeDefined();
@@ -659,7 +668,7 @@ it.layer(TestLayer)("claudeHooksStore filesystem", (it) => {
         yield* fs.makeDirectory(pathService.dirname(filePath), { recursive: true });
         yield* fs.writeFileString(
           filePath,
-          JSON.stringify({ permissions: { allow: ["Bash"] }, theme: "dark" }, null, 2),
+          encodeSettingsObject({ permissions: { allow: ["Bash"] }, theme: "dark" }),
         );
 
         const managed: Record<string, ManagedHookEntry> = {
@@ -674,7 +683,7 @@ it.layer(TestLayer)("claudeHooksStore filesystem", (it) => {
         );
 
         const raw = yield* fs.readFileString(filePath);
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const parsed = decodeSettingsObject(raw);
         expect(parsed["theme"]).toBe("dark");
         expect((parsed["permissions"] as Record<string, unknown>)["allow"]).toEqual(["Bash"]);
         expect(parsed["hooks"]).toBeDefined();
@@ -692,14 +701,10 @@ it.layer(TestLayer)("claudeHooksStore filesystem", (it) => {
         // Pre-populate with hooks + extra keys
         const filePath = settingsFilePath(pathService, "project", "committed", projectDir);
         yield* fs.makeDirectory(pathService.dirname(filePath), { recursive: true });
-        const initialContent = JSON.stringify(
-          {
-            permissions: { allow: ["Bash"] },
-            hooks: { Stop: [{ hooks: [{ type: "command", command: "echo" }] }] },
-          },
-          null,
-          2,
-        );
+        const initialContent = encodeSettingsObject({
+          permissions: { allow: ["Bash"] },
+          hooks: { Stop: [{ hooks: [{ type: "command", command: "echo" }] }] },
+        });
         yield* fs.writeFileString(filePath, initialContent);
 
         const managed: Record<string, ManagedHookEntry> = {
@@ -727,7 +732,9 @@ it.layer(TestLayer)("claudeHooksStore filesystem", (it) => {
         yield* fs.makeDirectory(pathService.dirname(filePath), { recursive: true });
         yield* fs.writeFileString(
           filePath,
-          JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "echo" }] }] } }),
+          encodeSettingsObject({
+            hooks: { Stop: [{ hooks: [{ type: "command", command: "echo" }] }] },
+          }),
         );
 
         // Sync with no hooks — should delete
@@ -790,7 +797,7 @@ it.layer(TestLayer)("claudeHooksStore filesystem", (it) => {
 
         const filePath = settingsFilePath(pathService, "project", "committed", projectDir);
         const raw = yield* fs.readFileString(filePath);
-        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const parsed = decodeSettingsObject(raw);
         const hooks = parsed["hooks"] as Record<string, unknown>;
         expect(hooks["Stop"]).toBeDefined();
         expect(hooks["PreToolUse"]).toBeDefined();
@@ -828,8 +835,8 @@ it.layer(TestLayer)("claudeHooksStore filesystem", (it) => {
 
         const committedRaw = yield* fs.readFileString(committedPath);
         const localRaw = yield* fs.readFileString(localPath);
-        const committed = JSON.parse(committedRaw) as Record<string, unknown>;
-        const local = JSON.parse(localRaw) as Record<string, unknown>;
+        const committed = decodeSettingsObject(committedRaw);
+        const local = decodeSettingsObject(localRaw);
 
         // Committed file has PreToolUse but NOT Stop
         const committedHooks = committed["hooks"] as Record<string, unknown>;

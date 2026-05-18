@@ -1,0 +1,3046 @@
+server[tweaks*] %  bun typecheck
+$ tsc --noEmit
+src/claudeHooks.test.ts:59:20 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+59     const parsed = JSON.parse(raw) as Record<string, unknown>;
+                      ~~~~~~~~~~~~~~~
+
+src/claudeHooks.test.ts:72:20 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+72     const parsed = JSON.parse(raw) as Record<string, unknown>;
+                      ~~~~~~~~~~~~~~~
+
+src/claudeHooks.test.ts:90:41 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+90     yield* fs.writeFileString(filePath, JSON.stringify({ hooks }, null, 2));
+                                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.test.ts:597:24 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+597         const parsed = JSON.parse(raw) as Record<string, unknown>;
+                           ~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.test.ts:647:24 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+647         const parsed = JSON.parse(raw) as Record<string, unknown>;
+                           ~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.test.ts:665:11 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+665           JSON.stringify({ permissions: { allow: ["Bash"] }, theme: "dark" }, null, 2),
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.test.ts:680:24 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+680         const parsed = JSON.parse(raw) as Record<string, unknown>;
+                           ~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.test.ts:698:32 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+698         const initialContent = JSON.stringify(
+                                   ~~~~~~~~~~~~~~~
+699           {
+    ~~~~~~~~~~~
+...
+704           2,
+    ~~~~~~~~~~~~
+705         );
+    ~~~~~~~~~
+
+src/claudeHooksStore.test.ts:733:11 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+733           JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: "echo" }] }] } }),
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.test.ts:796:24 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+796         const parsed = JSON.parse(raw) as Record<string, unknown>;
+                           ~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.test.ts:834:27 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+834         const committed = JSON.parse(committedRaw) as Record<string, unknown>;
+                              ~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.test.ts:835:23 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+835         const local = JSON.parse(localRaw) as Record<string, unknown>;
+                          ~~~~~~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.ts:157:52 - error TS55: Prefer using Clock or DateTime from Effect instead of Date.now() inside Effect generators.    effect(globalDateInEffect)
+
+157     const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+                                                       ~~~~~~~~~~
+
+src/claudeHooksStore.ts:172:24 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+172     const encoded = `${JSON.stringify(data, null, 2)}\n`;
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/claudeHooksStore.ts:456:24 - error TS44: Consider using Effect Schema for JSON operations instead of JSON.parse/JSON.stringify    effect(preferSchemaOverJson)
+
+456     const encoded = `${JSON.stringify(existing, null, 2)}\n`;
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/orchestration/Layers/ProviderCommandReactor.ts:26:30 - error TS52: Prefer using FileSystem from effect instead of the Node.js 'fs' module.    effect(nodeBuiltinImport)
+
+26 import { readFileSync } from "node:fs";
+                                ~~~~~~~~~
+
+src/orchestration/Layers/ProviderCommandReactor.ts:793:9 - message TS15: Avoid using try/catch inside Effect generators. Use Effect's error handling mechanisms instead (e.g. Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag).    effect(tryCatchInEffectGen)
+
+793         try {
+            ~~~~~
+794           promptParts.push(readFileSync(cmdEntry.promptFile, "utf-8").trim());
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...
+804           return;
+    ~~~~~~~~~~~~~~~~~
+805         }
+    ~~~~~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:760:17 - error TS59: Prefer using DateTime from Effect instead of new Date().    effect(globalDate)
+
+760     const now = new Date().toISOString();
+                    ~~~~~~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:765:7 - error TS2322: Type 'string' is not assignable to type 'string & Brand<"ProviderDriverKind">'.
+  Type 'string' is not assignable to type 'Brand<"ProviderDriverKind">'.
+
+765       provider: "codex",
+          ~~~~~~~~
+
+  src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:68:12
+    68   readonly provider: ProviderRuntimeEvent["provider"];
+                  ~~~~~~~~
+    The expected type comes from property 'provider' which is declared here on type 'LegacyProviderRuntimeEvent'
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:780:7 - error TS2322: Type 'string' is not assignable to type 'string & Brand<"ProviderDriverKind">'.
+  Type 'string' is not assignable to type 'Brand<"ProviderDriverKind">'.
+
+780       provider: "codex",
+          ~~~~~~~~
+
+  src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:68:12
+    68   readonly provider: ProviderRuntimeEvent["provider"];
+                  ~~~~~~~~
+    The expected type comes from property 'provider' which is declared here on type 'LegacyProviderRuntimeEvent'
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:791:40 - error TS2345: Argument of type 'OrchestrationEngineShape' is not assignable to parameter of type '() => Promise<{ readonly projects: readonly { readonly title: string; readonly id: string & Brand<"ProjectId">; readonly defaultModelSelection: { readonly model: string; readonly instanceId: string & Brand<"ProviderInstanceId">; readonly options?: readonly { ...; }[]; } | null; ... 5 more ...; readonly repositoryIde...'.
+  Type 'OrchestrationEngineShape' provides no match for the signature '(): Promise<{ readonly projects: readonly { readonly title: string; readonly id: string & Brand<"ProjectId">; readonly defaultModelSelection: { readonly model: string; readonly instanceId: string & Brand<"ProviderInstanceId">; readonly options?: readonly { ...; }[]; } | null; ... 5 more ...; readonly repositoryIdentity?: { ...; } | ... 1 more ... | undefined; }[]; readonly updatedAt: string; readonly threads: readonly { ...; }[]; readonly snapshotSequence: number; }>'.
+
+791     const thread = await waitForThread(harness.engine, (entry) =>
+                                           ~~~~~~~~~~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:807:17 - error TS59: Prefer using DateTime from Effect instead of new Date().    effect(globalDate)
+
+807     const now = new Date().toISOString();
+                    ~~~~~~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:812:7 - error TS2322: Type 'string' is not assignable to type 'string & Brand<"ProviderDriverKind">'.
+  Type 'string' is not assignable to type 'Brand<"ProviderDriverKind">'.
+
+812       provider: "codex",
+          ~~~~~~~~
+
+  src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:68:12
+    68   readonly provider: ProviderRuntimeEvent["provider"];
+                  ~~~~~~~~
+    The expected type comes from property 'provider' which is declared here on type 'LegacyProviderRuntimeEvent'
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:825:62 - error TS2339: Property 'getReadModel' does not exist on type 'OrchestrationEngineShape'.
+
+825     const readModel = await Effect.runPromise(harness.engine.getReadModel());
+                                                                 ~~~~~~~~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:826:20 - error TS18046: 'readModel' is of type 'unknown'.
+
+826     const thread = readModel.threads.find((entry) => entry.id === ThreadId.make("thread-1"));
+                       ~~~~~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:826:44 - error TS7006: Parameter 'entry' implicitly has an 'any' type.
+
+826     const thread = readModel.threads.find((entry) => entry.id === ThreadId.make("thread-1"));
+                                               ~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.ts:1495:76 - error TS55: Prefer using Clock or DateTime from Effect instead of Date.now() inside Effect generators.    effect(globalDateInEffect)
+
+1495             lastAssistantFlushTimestampByMessageId.set(assistantMessageId, Date.now());
+                                                                                ~~~~~~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.ts:1508:41 - error TS55: Prefer using Clock or DateTime from Effect instead of Date.now() inside Effect generators.    effect(globalDateInEffect)
+
+1508               lastFlush !== undefined ? Date.now() - lastFlush : STREAMING_FLUSH_INTERVAL_MS;
+                                             ~~~~~~~~~~
+
+src/orchestration/Layers/ProviderRuntimeIngestion.ts:1512:80 - error TS55: Prefer using Clock or DateTime from Effect instead of Date.now() inside Effect generators.    effect(globalDateInEffect)
+
+1512                 lastAssistantFlushTimestampByMessageId.set(assistantMessageId, Date.now());
+                                                                                    ~~~~~~~~~~
+
+src/provider/Layers/ProviderSessionReaper.test.ts:218:35 - error TS38: Missing 'OrchestrationEngineService' in the expected Layer context.    effect(missingLayerContext)
+
+218     runtime = ManagedRuntime.make(layer);
+                                      ~~~~~
+
+src/provider/Layers/ProviderSessionReaper.test.ts:218:35 - error TS2379: Argument of type 'Layer<NodeServices | ProjectionSnapshotQuery | ProviderSessionReaper | ProviderSessionRuntimeRepository | ProviderSessionDirectory | ProviderService, SqlError | MigrationError, OrchestrationEngineService>' is not assignable to parameter of type 'Layer<NodeServices | ProjectionSnapshotQuery | ProviderSessionReaper | ProviderSessionRuntimeRepository | ProviderSessionDirectory | ProviderService, SqlError | MigrationError, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'OrchestrationEngineService' is not assignable to type 'never'.
+
+218     runtime = ManagedRuntime.make(layer);
+                                      ~~~~~
+
+src/provider/Layers/ProviderSessionReaper.ts:138:21 - error TS55: Prefer using DateTime from Effect instead of new Date() inside Effect generators.    effect(globalDateInEffect)
+
+138         const now = new Date().toISOString();
+                        ~~~~~~~~~~
+
+src/provider/Layers/ProviderSessionReaper.ts:210:9 - error TS1: Missing 'PersistenceDecodeError | PersistenceSqlError' in the expected Effect errors.    effect(missingEffectError)
+
+210         reconcile.pipe(
+            ~~~~~~~~~~~~~~~
+211           Effect.catchDefect((defect: unknown) =>
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...
+215           ),
+    ~~~~~~~~~~~~
+216         ),
+    ~~~~~~~~~
+
+src/provider/Layers/ProviderSessionReaper.ts:210:9 - error TS2375: Type 'Effect<void, ProjectionRepositoryError, never>' is not assignable to type 'Effect<void, never, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'ProjectionRepositoryError' is not assignable to type 'never'.
+    Type 'PersistenceSqlError' is not assignable to type 'never'.
+
+210         reconcile.pipe(
+            ~~~~~~~~~~~~~~~
+211           Effect.catchDefect((defect: unknown) =>
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...
+215           ),
+    ~~~~~~~~~~~~
+216         ),
+    ~~~~~~~~~
+
+  src/provider/Services/ProviderSessionReaper.ts:16:23
+    16   readonly reconcile: () => Effect.Effect<void>;
+                             ~~~~~~~~~~~~~~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/provider/Layers/ProviderSessionReaper.ts:221:39 - error TS1: Missing 'PersistenceDecodeError | PersistenceSqlError' in the expected Effect errors.    effect(missingEffectError)
+
+221   Layer.effect(ProviderSessionReaper, makeProviderSessionReaper(options));
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/provider/Layers/ProviderSessionReaper.ts:221:39 - error TS2379: Argument of type 'Effect<{ start: () => Effect<void, never, Scope>; reconcile: () => Effect<void, ProjectionRepositoryError, never>; }, never, OrchestrationEngineService | ProjectionSnapshotQuery | ProviderSessionDirectory | ProviderService>' is not assignable to parameter of type 'Effect<ProviderSessionReaperShape, never, OrchestrationEngineService | ProjectionSnapshotQuery | ProviderSessionDirectory | ProviderService>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type '{ start: () => Effect.Effect<void, never, Scope>; reconcile: () => Effect.Effect<void, ProjectionRepositoryError, never>; }' is not assignable to type 'ProviderSessionReaperShape'.
+    The types returned by 'reconcile()' are incompatible between these types.
+      Type 'Effect<void, ProjectionRepositoryError, never>' is not assignable to type 'Effect<void, never, never>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+        Type 'ProjectionRepositoryError' is not assignable to type 'never'.
+          Type 'PersistenceSqlError' is not assignable to type 'never'.
+
+221   Layer.effect(ProviderSessionReaper, makeProviderSessionReaper(options));
+                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:707:7 - error TS2554: Expected 0-20 arguments, but got 22.
+
+707       Layer.provide(
+          ~~~~~~~~~~~~~~
+708         Layer.mock(ProjectionProjectRepository)({
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...
+733         }),
+    ~~~~~~~~~~~
+734       ),
+    ~~~~~~~
+
+src/server.test.ts:737:40 - error TS2339: Property 'pipe' does not exist on type 'never'.
+
+737     const appLayer = servedRoutesLayer.pipe(
+                                           ~~~~
+
+src/server.test.ts:779:12 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+779     yield* Layer.build(appLayer);
+               ~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:994:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+ 994     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+ 995       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1005       assert.include(yield* response.text, "router-static-ok");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1006     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:994:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+ 994     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+ 995       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1005       assert.include(yield* response.text, "router-static-ok");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1006     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1001:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1001       yield* buildAppUnderTest({ config: { staticDir } });
+                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1010:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1010     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1011       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1022       );
+     ~~~~~~~~
+1023     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1010:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1010     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1011       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1022       );
+     ~~~~~~~~
+1023     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1011:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1011       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+1012         config: { devUrl: new URL("http://127.0.0.1:5173") },
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1013       });
+     ~~~~~~~~
+
+src/server.test.ts:1027:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1027     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1028       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1052       assert.equal(yield* response.text, "<svg>router-project-favicon</svg>");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1053     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1027:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1027     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1028       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1052       assert.equal(yield* response.text, "<svg>router-project-favicon</svg>");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1053     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1038:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1038       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+1039         config: { devUrl: new URL("http://127.0.0.1:5173") },
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1040       });
+     ~~~~~~~~
+
+src/server.test.ts:1057:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1057     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1058       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1077       assert.include(yield* response.text, 'data-fallback="project-favicon"');
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1078     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1057:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1057     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1058       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1077       assert.include(yield* response.text, 'data-fallback="project-favicon"');
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1078     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1063:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1063       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+1064         config: { devUrl: new URL("http://127.0.0.1:5173") },
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1065       });
+     ~~~~~~~~
+
+src/server.test.ts:1082:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1082     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1083       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1092       assert.deepEqual(body, testEnvironmentDescriptor);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1093     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1082:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1082     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1083       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1092       assert.deepEqual(body, testEnvironmentDescriptor);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1093     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1083:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1083       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1097:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1097     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1098       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1114       assert.deepEqual(body, testEnvironmentDescriptor);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1115     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1097:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1097     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1098       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1114       assert.deepEqual(body, testEnvironmentDescriptor);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1115     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1098:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1098       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1119:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1119     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1120       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1142       assert.isTrue(body.auth.sessionCookieName.startsWith("t3_session_"));
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1143     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1119:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1119     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1120       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1142       assert.isTrue(body.auth.sessionCookieName.startsWith("t3_session_"));
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1143     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1120:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1120       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1147:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1147     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1148       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1177       assert.equal(sessionBody.sessionMethod, "browser-session-cookie");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1178     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1147:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1147     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1148       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1177       assert.equal(sessionBody.sessionMethod, "browser-session-cookie");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1178     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1148:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1148       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1184:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1184       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1185         yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1211         assert.equal(sessionBody.sessionMethod, "bearer-session-token");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1212       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1184:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1184       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1185         yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1211         assert.equal(sessionBody.sessionMethod, "bearer-session-token");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1212       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1185:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1185         yield* buildAppUnderTest();
+                    ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1216:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1216     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1217       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1237       assert.equal(typeof wsTokenBody.expiresAt, "string");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1238     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1216:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1216     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1217       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1237       assert.equal(typeof wsTokenBody.expiresAt, "string");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1238     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1217:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1217       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1242:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1242     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1243       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1293       assert.equal(typeof wsTokenBody.token, "string");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1294     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1242:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1242     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1243       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1293       assert.equal(typeof wsTokenBody.token, "string");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1294     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1243:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1243       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1300:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1300       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1301         yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1316         assertBrowserApiCorsHeaders(response.headers);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1317       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1300:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1300       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1301         yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1316         assertBrowserApiCorsHeaders(response.headers);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1317       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1301:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1301         yield* buildAppUnderTest();
+                    ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1321:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1321     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1322       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1339       assert.equal(body.error, "Authentication required.");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1340     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1321:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1321     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1322       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1339       assert.equal(body.error, "Authentication required.");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1340     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1322:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1322       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1344:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1344     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1345       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1366       assert.equal(reusedResult.response.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1367     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1344:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1344     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1345       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1366       assert.equal(reusedResult.response.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1367     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1345:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1345       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1371:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1371     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1372       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1375       assert.equal(response.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1376     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1371:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1371     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1372       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1375       assert.equal(response.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1376     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1372:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1372       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1380:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1380     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1381       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1425       assert.equal(revokedBootstrap.response.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1426     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1380:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1380     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1381       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1425       assert.equal(revokedBootstrap.response.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1426     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1381:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1381       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+1382         config: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+1384         },
+     ~~~~~~~~~~
+1385       });
+     ~~~~~~~~
+
+src/server.test.ts:1430:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1430     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1431       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1458       assert.equal(pairedBody.error, "Only owner sessions can create pairing credentials.");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1459     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1430:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1430     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1431       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1458       assert.equal(pairedBody.error, "Only owner sessions can create pairing credentials.");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1459     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1431:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1431       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+1432         config: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+1434         },
+     ~~~~~~~~~~
+1435       });
+     ~~~~~~~~
+
+src/server.test.ts:1463:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1463     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1464       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1569       assert.equal(pairedClientPairingBody.error, "Unauthorized request.");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1570     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1463:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1463     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1464       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1569       assert.equal(pairedClientPairingBody.error, "Unauthorized request.");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1570     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1464:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1464       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+1465         config: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+1467         },
+     ~~~~~~~~~~
+1468       });
+     ~~~~~~~~
+
+src/server.test.ts:1574:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1574     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1575       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1624       assert.equal(pairedClientPairingResponse.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1625     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1574:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1574     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1575       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1624       assert.equal(pairedClientPairingResponse.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1625     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1575:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1575       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+1576         config: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+1578         },
+     ~~~~~~~~~~
+1579       });
+     ~~~~~~~~
+
+src/server.test.ts:1629:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1629     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1630       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1640       );
+     ~~~~~~~~
+1641     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1629:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1629     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1630       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1640       );
+     ~~~~~~~~
+1641     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1630:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1630       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1647:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1647       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1648         const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1663         assert.equal(response.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1664       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1647:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1647       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1648         const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1663         assert.equal(response.status, 401);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1664       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1653:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1653         yield* buildAppUnderTest();
+                    ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1668:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1668     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1669       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1685       assert.equal(response.auth.policy, "desktop-managed-local");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1686     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1668:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1668     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1669       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1685       assert.equal(response.auth.policy, "desktop-managed-local");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1686     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1669:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1669       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1692:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1692       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1693         yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1705         assertInclude(String(error), "SocketOpenError");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1706       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1692:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1692       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1693         yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1705         assertInclude(String(error), "SocketOpenError");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1706       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1693:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1693         yield* buildAppUnderTest();
+                    ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1712:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1712       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1713         yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1735         assert.equal(response.auth.policy, "desktop-managed-local");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1736       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1712:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1712       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+1713         yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1735         assert.equal(response.auth.policy, "desktop-managed-local");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1736       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1713:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1713         yield* buildAppUnderTest();
+                    ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1740:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1740     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1741       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1761       assert.equal(yield* response.text, "attachment-ok");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1762     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1740:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1740     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1741       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1761       assert.equal(yield* response.text, "attachment-ok");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1762     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1745:29 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1745       const config = yield* buildAppUnderTest();
+                                 ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1766:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1766     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1767       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1789       assert.equal(yield* response.text, "attachment-encoded-ok");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1790     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1766:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1766     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1767       const fileSystem = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1789       assert.equal(yield* response.text, "attachment-encoded-ok");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1790     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1770:29 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1770       const config = yield* buildAppUnderTest();
+                                 ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1794:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1794     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1795       const upstreamRequests: Array<{
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1977       ]);
+     ~~~~~~~~~
+1978     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1794:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1794     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1795       const upstreamRequests: Array<{
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+1977       ]);
+     ~~~~~~~~~
+1978     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1907:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1907       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+1908         config: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+1918         },
+     ~~~~~~~~~~
+1919       });
+     ~~~~~~~~
+
+src/server.test.ts:1982:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+1982     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1983       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2009       ]);
+     ~~~~~~~~~
+2010     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:1982:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+1982     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+1983       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2009       ]);
+     ~~~~~~~~~
+2010     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:1983:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+1983       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2016:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2016       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+2017         const localTraceRecords: Array<unknown> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2082         assert.equal(record.status?.code, String(span.status.code));
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2083       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2016:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2016       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+2017         const localTraceRecords: Array<unknown> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2082         assert.equal(record.status?.code, String(span.status.code));
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2083       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2030:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2030         yield* buildAppUnderTest({
+                    ~~~~~~~~~~~~~~~~~~~
+2031           layers: {
+     ~~~~~~~~~~~~~~~~~~~
+ ...
+2038           },
+     ~~~~~~~~~~~~
+2039         });
+     ~~~~~~~~~~
+
+src/server.test.ts:2087:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2087     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2088       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2098       assert.equal(response.status, 404);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2099     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2087:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2087     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2088       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2098       assert.equal(response.status, 404);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2099     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2088:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2088       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2103:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2103     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2104       const rule: KeybindingRule = {
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2134       assert.deepEqual(response.keybindings, [resolved]);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2135     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2103:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2103     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2104       const rule: KeybindingRule = {
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2134       assert.deepEqual(response.keybindings, [resolved]);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2135     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2120:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2120       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2121         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2125         },
+     ~~~~~~~~~~
+2126       });
+     ~~~~~~~~
+
+src/server.test.ts:2139:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2139     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2140       const rule: KeybindingRule = {
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2170       assert.deepEqual(response.keybindings, [resolved]);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2171     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2139:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2139     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2140       const rule: KeybindingRule = {
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2170       assert.deepEqual(response.keybindings, [resolved]);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2171     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2156:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2156       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2157         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2161         },
+     ~~~~~~~~~~
+2162       });
+     ~~~~~~~~
+
+src/server.test.ts:2175:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2175     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2176       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2205       );
+     ~~~~~~~~
+2206     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2175:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2175     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2176       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2205       );
+     ~~~~~~~~
+2206     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2184:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2184       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2210:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2210     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2211       const providers = [
+     ~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2276       });
+     ~~~~~~~~~
+2277     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2210:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2210     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2211       const providers = [
+     ~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2276       });
+     ~~~~~~~~~
+2277     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2231:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2231       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2232         config: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2247         },
+     ~~~~~~~~~~
+2248       });
+     ~~~~~~~~
+
+src/server.test.ts:2281:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2281     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2282       const nextProviders = [
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2330       });
+     ~~~~~~~~~
+2331     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2281:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2281     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2282       const nextProviders = [
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2330       });
+     ~~~~~~~~~
+2331     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2298:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2298       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2299         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2311         },
+     ~~~~~~~~~~
+2312       });
+     ~~~~~~~~
+
+src/server.test.ts:2337:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2337       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+2338         const lifecycleEvents = [
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2380         assert.equal(second?.sequence, 2);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2381       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2337:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2337       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+2338         const lifecycleEvents = [
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2380         assert.equal(second?.sequence, 2);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2381       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2357:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2357         yield* buildAppUnderTest({
+                    ~~~~~~~~~~~~~~~~~~~
+2358           layers: {
+     ~~~~~~~~~~~~~~~~~~~
+ ...
+2366           },
+     ~~~~~~~~~~~~
+2367         });
+     ~~~~~~~~~~
+
+src/server.test.ts:2385:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2385     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2386       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2409       assert.equal(response.truncated, false);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2410     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2385:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2385     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2386       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2409       assert.equal(response.truncated, false);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2410     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2394:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2394       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2414:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2414     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2415       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2466       assert.equal(response.truncated, false);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2467     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2414:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2414     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2415       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2466       assert.equal(response.truncated, false);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2467     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2432:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2432       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2433         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2451         },
+     ~~~~~~~~~~
+2452       });
+     ~~~~~~~~
+
+src/server.test.ts:2471:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2471     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2472       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2490       );
+     ~~~~~~~~
+2491     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2471:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2471     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2472       yield* buildAppUnderTest();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2490       );
+     ~~~~~~~~
+2491     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2472:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2472       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2495:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2495     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2496       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2515       assert.equal(persisted, "written-by-rpc");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2516     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2495:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2495     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2496       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2515       assert.equal(persisted, "written-by-rpc");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2516     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2500:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2500       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2520:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2520     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2521       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2549       assert.equal(stat.type, "Directory");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2550     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2520:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2520     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2521       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2549       assert.equal(stat.type, "Directory");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2550     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2526:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2526       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2554:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2554     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2555       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2576       );
+     ~~~~~~~~
+2577     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2554:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2554     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2555       const fs = yield* FileSystem.FileSystem;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2576       );
+     ~~~~~~~~
+2577     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2558:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2558       yield* buildAppUnderTest();
+                  ~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2581:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2581     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2582       let openedInput: { cwd: string; editor: EditorId } | null = null;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2604       assert.deepEqual(openedInput, { cwd: "/tmp/project", editor: "cursor" });
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2605     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2581:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2581     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2582       let openedInput: { cwd: string; editor: EditorId } | null = null;
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2604       assert.deepEqual(openedInput, { cwd: "/tmp/project", editor: "cursor" });
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2605     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2583:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2583       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2584         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2591         },
+     ~~~~~~~~~~
+2592       });
+     ~~~~~~~~
+
+src/server.test.ts:2609:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2609     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2610       const externalLauncherError = new ExternalLauncherError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2631       assertFailure(result, externalLauncherError);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2632     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2609:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2609     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2610       const externalLauncherError = new ExternalLauncherError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2631       assertFailure(result, externalLauncherError);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2632     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2613:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2613       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2614         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2618         },
+     ~~~~~~~~~~
+2619       });
+     ~~~~~~~~
+
+src/server.test.ts:2636:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2636     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2637       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2883       );
+     ~~~~~~~~
+2884     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2636:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2636     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2637       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2883       );
+     ~~~~~~~~
+2884     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2637:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2637       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2638         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2778         },
+     ~~~~~~~~~~
+2779       });
+     ~~~~~~~~
+
+src/server.test.ts:2888:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2888     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2889       const gitError = new GitCommandError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2963       assert.equal(statusCalls, 0);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2964     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2888:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2888     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2889       const gitError = new GitCommandError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+2963       assert.equal(statusCalls, 0);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2964     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2897:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2897       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2898         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+2951         },
+     ~~~~~~~~~~
+2952       });
+     ~~~~~~~~
+
+src/server.test.ts:2968:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+2968     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2969       const gitError = new GitCommandError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3045       assert.equal(statusCalls, 0);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3046     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:2968:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+2968     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+2969       const gitError = new GitCommandError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3045       assert.equal(statusCalls, 0);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3046     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:2977:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+2977       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+2978         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3029         },
+     ~~~~~~~~~~
+3030       });
+     ~~~~~~~~
+
+src/server.test.ts:3050:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3050     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3051       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3094       assertTrue(elapsedMs < 1_000);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3095     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3050:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3050     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3051       yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3094       assertTrue(elapsedMs < 1_000);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3095     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3051:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3051       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3052         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3083         },
+     ~~~~~~~~~~
+3084       });
+     ~~~~~~~~
+
+src/server.test.ts:3101:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3101       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+3102         yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3168         assertTrue(elapsedMs < 1_000);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3169       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3101:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3101       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+3102         yield* buildAppUnderTest({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3168         assertTrue(elapsedMs < 1_000);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3169       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3102:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3102         yield* buildAppUnderTest({
+                    ~~~~~~~~~~~~~~~~~~~
+3103           layers: {
+     ~~~~~~~~~~~~~~~~~~~
+ ...
+3152           },
+     ~~~~~~~~~~~~
+3153         });
+     ~~~~~~~~~~
+
+src/server.test.ts:3175:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3175       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+3176         const localRefreshStarted = yield* Deferred.make<void>();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3247         yield* Deferred.await(localRefreshStarted);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3248       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3175:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3175       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+3176         const localRefreshStarted = yield* Deferred.make<void>();
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3247         yield* Deferred.await(localRefreshStarted);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3248       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3178:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3178         yield* buildAppUnderTest({
+                    ~~~~~~~~~~~~~~~~~~~
+3179           layers: {
+     ~~~~~~~~~~~~~~~~~~~
+ ...
+3233           },
+     ~~~~~~~~~~~~
+3234         });
+     ~~~~~~~~~~
+
+src/server.test.ts:3252:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3252     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3253       const now = "2026-01-01T00:00:00.000Z";
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3362       assert.deepEqual(replayResult, []);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3363     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3252:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3252     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3253       const now = "2026-01-01T00:00:00.000Z";
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3362       assert.deepEqual(replayResult, []);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3363     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3293:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3293       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3294         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3318         },
+     ~~~~~~~~~~
+3319       });
+     ~~~~~~~~
+
+src/server.test.ts:3367:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3367     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3368       const projectionError = new PersistenceSqlError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3390       assert.include(result.failure.cause.message, projectionError.message);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3391     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3367:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3367     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3368       const projectionError = new PersistenceSqlError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3390       assert.include(result.failure.cause.message, projectionError.message);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3391     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3372:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3372       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3373         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3377         },
+     ~~~~~~~~~~
+3378       });
+     ~~~~~~~~
+
+src/server.test.ts:3395:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3395     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3396       const repositoryIdentity = {
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3457       );
+     ~~~~~~~~
+3458     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3395:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3395     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3396       const repositoryIdentity = {
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3457       );
+     ~~~~~~~~
+3458     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3409:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3409       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3410         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3438         },
+     ~~~~~~~~~~
+3439       });
+     ~~~~~~~~
+
+src/server.test.ts:3462:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3462     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3463       const threadId = ThreadId.make("thread-archive");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3528       }
+     ~~~~~~~
+3529     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3462:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3462     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3463       const threadId = ThreadId.make("thread-archive");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3528       }
+     ~~~~~~~
+3529     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3468:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3468       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3469         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3504         },
+     ~~~~~~~~~~
+3505       });
+     ~~~~~~~~
+
+src/server.test.ts:3533:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3533     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3534       const threadId = ThreadId.make("thread-archive-precheck");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3606       );
+     ~~~~~~~~
+3607     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3533:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3533     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3534       const threadId = ThreadId.make("thread-archive-precheck");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3606       );
+     ~~~~~~~~
+3607     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3540:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3540       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3541         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3582         },
+     ~~~~~~~~~~
+3583       });
+     ~~~~~~~~
+
+src/server.test.ts:3611:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3611     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3612       const threadId = ThreadId.make("thread-archive-no-session");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3657       );
+     ~~~~~~~~
+3658     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3611:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3611     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3612       const threadId = ThreadId.make("thread-archive-no-session");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3657       );
+     ~~~~~~~~
+3658     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3616:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3616       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3617         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3638         },
+     ~~~~~~~~~~
+3639       });
+     ~~~~~~~~
+
+src/server.test.ts:3664:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3664       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+3665         const threadId = ThreadId.make("thread-archive-stopped-session");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3725         );
+     ~~~~~~~~~~
+3726       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3664:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3664       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+3665         const threadId = ThreadId.make("thread-archive-stopped-session");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3725         );
+     ~~~~~~~~~~
+3726       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3670:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3670         yield* buildAppUnderTest({
+                    ~~~~~~~~~~~~~~~~~~~
+3671           layers: {
+     ~~~~~~~~~~~~~~~~~~~
+ ...
+3706           },
+     ~~~~~~~~~~~~
+3707         });
+     ~~~~~~~~~~
+
+src/server.test.ts:3730:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3730     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3731       const threadId = ThreadId.make("thread-archive-stop-failure");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3802       );
+     ~~~~~~~~
+3803     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3730:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3730     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3731       const threadId = ThreadId.make("thread-archive-stop-failure");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3802       );
+     ~~~~~~~~
+3803     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3736:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3736       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3737         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3779         },
+     ~~~~~~~~~~
+3780       });
+     ~~~~~~~~
+
+src/server.test.ts:3807:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3807     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3808       const threadId = ThreadId.make("thread-archive-stop-defect");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3874       );
+     ~~~~~~~~
+3875     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3807:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3807     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+3808       const threadId = ThreadId.make("thread-archive-stop-defect");
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+3874       );
+     ~~~~~~~~
+3875     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3813:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3813       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+3814         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+3851         },
+     ~~~~~~~~~~
+3852       });
+     ~~~~~~~~
+
+src/server.test.ts:3881:7 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+3881       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+3882         const dispatchedCommands: Array<OrchestrationCommand> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4020         }
+     ~~~~~~~~~
+4021       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:3881:7 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+3881       Effect.gen(function* () {
+           ~~~~~~~~~~~~~~~~~~~~~~~~~
+3882         const dispatchedCommands: Array<OrchestrationCommand> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4020         }
+     ~~~~~~~~~
+4021       }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:3921:16 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+3921         yield* buildAppUnderTest({
+                    ~~~~~~~~~~~~~~~~~~~
+3922           layers: {
+     ~~~~~~~~~~~~~~~~~~~
+ ...
+3940           },
+     ~~~~~~~~~~~~
+3941         });
+     ~~~~~~~~~~
+
+src/server.test.ts:4025:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+4025     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4026       const dispatchedCommands: Array<OrchestrationCommand> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4114       assertTrue(dispatchedCommands.every((command) => command.type !== "thread.delete"));
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4115     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:4025:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+4025     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4026       const dispatchedCommands: Array<OrchestrationCommand> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4114       assertTrue(dispatchedCommands.every((command) => command.type !== "thread.delete"));
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4115     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:4041:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+4041       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+4042         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+4057         },
+     ~~~~~~~~~~
+4058       });
+     ~~~~~~~~
+
+src/server.test.ts:4119:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+4119     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4120       const dispatchedCommands: Array<OrchestrationCommand> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4233       assertTrue(dispatchedCommands.every((command) => command.type !== "thread.delete"));
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4234     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:4119:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+4119     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4120       const dispatchedCommands: Array<OrchestrationCommand> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4233       assertTrue(dispatchedCommands.every((command) => command.type !== "thread.delete"));
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4234     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:4142:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+4142       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+4143         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+4174         },
+     ~~~~~~~~~~
+4175       });
+     ~~~~~~~~
+
+src/server.test.ts:4238:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+4238     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4239       const dispatchedCommands: Array<OrchestrationCommand> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4307       );
+     ~~~~~~~~
+4308     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:4238:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+4238     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4239       const dispatchedCommands: Array<OrchestrationCommand> = [];
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4307       );
+     ~~~~~~~~
+4308     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:4245:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+4245       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+4246         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+4258         },
+     ~~~~~~~~~~
+4259       });
+     ~~~~~~~~
+
+src/server.test.ts:4312:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+4312     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4313       const snapshot = {
+     ~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4402       );
+     ~~~~~~~~
+4403     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:4312:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+4312     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4313       const snapshot = {
+     ~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4402       );
+     ~~~~~~~~
+4403     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:4326:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+4326       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+4327         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+4336         },
+     ~~~~~~~~~~
+4337       });
+     ~~~~~~~~
+
+src/server.test.ts:4407:5 - error TS1: Missing 'unknown' in the expected Effect context.    effect(missingEffectContext)
+
+4407     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4408       const terminalError = new TerminalNotRunningError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4431       assertFailure(result, terminalError);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4432     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/server.test.ts:4407:5 - error TS2375: Type 'Effect<void, unknown, unknown>' is not assignable to type 'Effect<void, unknown, Scope | NodeServices>' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.
+  Type 'unknown' is not assignable to type 'Scope | NodeServices'.
+
+4407     Effect.gen(function* () {
+         ~~~~~~~~~~~~~~~~~~~~~~~~~
+4408       const terminalError = new TerminalNotRunningError({
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ ...
+4431       assertFailure(result, terminalError);
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+4432     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  ../../node_modules/.bun/@effect+vitest@4.0.0-beta.59+3c5ef32afe602f2f/node_modules/@effect/vitest/dist/index.d.ts:26:15
+    26     interface TestFunction<A, E, R, TestArgs extends Array<any>> {
+                     ~~~~~~~~~~~~
+    The expected type comes from the return type of this signature.
+
+src/server.test.ts:4412:14 - error TS28: This has unknown in the requirements channel and unknown in the error channel which is not recommended.
+Only service identifiers should appear in the requirements channel.
+Having an unknown or any error type is not useful. Consider instead using specific error types baked by Data.TaggedError for example.    effect(anyUnknownInErrorContext)
+
+4412       yield* buildAppUnderTest({
+                  ~~~~~~~~~~~~~~~~~~~
+4413         layers: {
+     ~~~~~~~~~~~~~~~~~
+ ...
+4417         },
+     ~~~~~~~~~~
+4418       });
+     ~~~~~~~~
+
+src/syntaxThemes.ts:27:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+27   Cache,
+     ~~~~~
+
+src/syntaxThemes.ts:28:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+28   Context,
+     ~~~~~~~
+
+src/syntaxThemes.ts:29:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+29   Deferred,
+     ~~~~~~~~
+
+src/syntaxThemes.ts:30:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+30   Duration,
+     ~~~~~~~~
+
+src/syntaxThemes.ts:31:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+31   Effect,
+     ~~~~~~
+
+src/syntaxThemes.ts:32:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+32   Exit,
+     ~~~~
+
+src/syntaxThemes.ts:33:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+33   Fiber,
+     ~~~~~
+
+src/syntaxThemes.ts:34:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+34   FileSystem,
+     ~~~~~~~~~~
+
+src/syntaxThemes.ts:35:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+35   Layer,
+     ~~~~~
+
+src/syntaxThemes.ts:36:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+36   Path,
+     ~~~~
+
+src/syntaxThemes.ts:37:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+37   PubSub,
+     ~~~~~~
+
+src/syntaxThemes.ts:38:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+38   Ref,
+     ~~~
+
+src/syntaxThemes.ts:39:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+39   Schema,
+     ~~~~~~
+
+src/syntaxThemes.ts:40:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+40   Scope,
+     ~~~~~
+
+src/syntaxThemes.ts:41:3 - error TS12: Importing from barrel module effect is not allowed.    effect(importFromBarrel)
+
+41   Stream,
+     ~~~~~~
+
+src/syntaxThemes.ts:158:7 - message TS15: Avoid using try/catch inside Effect generators. Use Effect's error handling mechanisms instead (e.g. Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag).    effect(tryCatchInEffectGen)
+
+158       try {
+          ~~~~~
+159         parsed = parseLenientJson(raw);
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+...
+164         };
+    ~~~~~~~~~~
+165       }
+    ~~~~~~~
+
+src/syntaxThemes.ts:198:9 - error TS56: Prefer using Effect.logError or Logger instead of console.error inside Effect generators.    effect(globalConsoleInEffect)
+
+198         console.error("[SyntaxThemes] decode FAILED for", filePath, decoded);
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/ws.ts:1167:29 - error TS55: Prefer using Clock or DateTime from Effect instead of Date.now() inside Effect generators.    effect(globalDateInEffect)
+
+1167                 const now = Date.now();
+                                 ~~~~~~~~~~
+
+src/ws.ts:1176:34 - error TS55: Prefer using DateTime from Effect instead of new Date() inside Effect generators.    effect(globalDateInEffect)
+
+1176                       createdAt: new Date().toISOString(),
+                                      ~~~~~~~~~~
+
+
+Found 251 errors in 11 files.
+
+Errors  Files
+     3  src/claudeHooks.test.ts:59
+     9  src/claudeHooksStore.test.ts:597
+     3  src/claudeHooksStore.ts:157
+     1  src/orchestration/Layers/ProviderCommandReactor.ts:26
+     9  src/orchestration/Layers/ProviderRuntimeIngestion.test.ts:760
+     3  src/orchestration/Layers/ProviderRuntimeIngestion.ts:1495
+     2  src/provider/Layers/ProviderSessionReaper.test.ts:218
+     5  src/provider/Layers/ProviderSessionReaper.ts:138
+   198  src/server.test.ts:707
+    16  src/syntaxThemes.ts:27
+     2  src/ws.ts:1167
+server[tweaks*] %

@@ -1,4 +1,4 @@
-import { Schema } from "effect";
+import * as Schema from "effect/Schema";
 import { TrimmedNonEmptyString } from "./baseSchemas.ts";
 
 export const EditorLaunchStyle = Schema.Literals(["direct-path", "goto", "line-column"]);
@@ -33,19 +33,33 @@ export const EDITORS = [
   },
   { id: "antigravity", label: "Antigravity", commands: ["agy"], launchStyle: "goto" },
   { id: "idea", label: "IntelliJ IDEA", commands: ["idea"], launchStyle: "line-column" },
+  { id: "aqua", label: "Aqua", commands: ["aqua"], launchStyle: "line-column" },
+  { id: "clion", label: "CLion", commands: ["clion"], launchStyle: "line-column" },
+  { id: "datagrip", label: "DataGrip", commands: ["datagrip"], launchStyle: "line-column" },
+  { id: "dataspell", label: "DataSpell", commands: ["dataspell"], launchStyle: "line-column" },
+  { id: "goland", label: "GoLand", commands: ["goland"], launchStyle: "line-column" },
+  { id: "phpstorm", label: "PhpStorm", commands: ["phpstorm"], launchStyle: "line-column" },
+  { id: "pycharm", label: "PyCharm", commands: ["pycharm"], launchStyle: "line-column" },
+  { id: "rider", label: "Rider", commands: ["rider"], launchStyle: "line-column" },
+  { id: "rubymine", label: "RubyMine", commands: ["rubymine"], launchStyle: "line-column" },
+  { id: "rustrover", label: "RustRover", commands: ["rustrover"], launchStyle: "line-column" },
+  { id: "webstorm", label: "WebStorm", commands: ["webstorm"], launchStyle: "line-column" },
   { id: "file-manager", label: "File Manager", commands: null, launchStyle: "direct-path" },
 ] as const satisfies ReadonlyArray<EditorDefinition>;
 
 export const EditorId = Schema.Literals(EDITORS.map((e) => e.id));
 export type EditorId = typeof EditorId.Type;
 
-export const OpenInEditorInput = Schema.Struct({
+export const LaunchEditorInput = Schema.Struct({
   cwd: TrimmedNonEmptyString,
   editor: EditorId,
 });
-export type OpenInEditorInput = typeof OpenInEditorInput.Type;
+export type LaunchEditorInput = typeof LaunchEditorInput.Type;
 
-export class OpenError extends Schema.TaggedErrorClass<OpenError>()("OpenError", {
-  message: Schema.String,
-  cause: Schema.optional(Schema.Defect),
-}) {}
+export class ExternalLauncherError extends Schema.TaggedErrorClass<ExternalLauncherError>()(
+  "ExternalLauncherError",
+  {
+    message: Schema.String,
+    cause: Schema.optional(Schema.Defect),
+  },
+) {}

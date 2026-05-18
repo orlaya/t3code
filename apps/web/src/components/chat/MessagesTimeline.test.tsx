@@ -1,32 +1,28 @@
 import { EnvironmentId, MessageId } from "@t3tools/contracts";
-import { createRef } from "react";
+import { createRef, type ReactNode, type Ref } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { LegendListRef } from "@legendapp/list/react";
 
 vi.mock("@legendapp/list/react", async () => {
-  const React = await import("react");
+  const legendListTestId = "legend-list";
 
-  const LegendList = React.forwardRef(function MockLegendList(
-    props: {
-      data: Array<{ id: string }>;
-      keyExtractor: (item: { id: string }) => string;
-      renderItem: (args: { item: { id: string } }) => React.ReactNode;
-      ListHeaderComponent?: React.ReactNode;
-      ListFooterComponent?: React.ReactNode;
-    },
-    _ref: React.ForwardedRef<LegendListRef>,
-  ) {
-    return (
-      <div data-testid="legend-list">
-        {props.ListHeaderComponent}
-        {props.data.map((item) => (
-          <div key={props.keyExtractor(item)}>{props.renderItem({ item })}</div>
-        ))}
-        {props.ListFooterComponent}
-      </div>
-    );
-  });
+  const LegendList = (props: {
+    data: Array<{ id: string }>;
+    keyExtractor: (item: { id: string }) => string;
+    renderItem: (args: { item: { id: string } }) => ReactNode;
+    ListHeaderComponent?: ReactNode;
+    ListFooterComponent?: ReactNode;
+    ref?: Ref<LegendListRef>;
+  }) => (
+    <div data-testid={legendListTestId}>
+      {props.ListHeaderComponent}
+      {props.data.map((item) => (
+        <div key={props.keyExtractor(item)}>{props.renderItem({ item })}</div>
+      ))}
+      {props.ListFooterComponent}
+    </div>
+  );
 
   return { LegendList };
 });
@@ -89,6 +85,7 @@ afterAll(() => {
 });
 
 const ACTIVE_THREAD_ENVIRONMENT_ID = EnvironmentId.make("environment-local");
+const MESSAGE_CREATED_AT = "2026-03-17T19:12:28.000Z";
 
 function buildProps() {
   return {
@@ -119,6 +116,27 @@ function buildProps() {
   };
 }
 
+function buildLongUserMessageText(tail = "deep hidden detail only after expand") {
+  return Array.from({ length: 9 }, (_, index) =>
+    index === 8 ? tail : `Line ${index + 1}: ${"verbose prompt content ".repeat(8).trim()}`,
+  ).join("\n");
+}
+
+function buildUserTimelineEntry(text: string) {
+  return {
+    id: "entry-1",
+    kind: "message" as const,
+    createdAt: MESSAGE_CREATED_AT,
+    message: {
+      id: MessageId.make("message-1"),
+      role: "user" as const,
+      text,
+      createdAt: MESSAGE_CREATED_AT,
+      streaming: false,
+    },
+  };
+}
+
 describe("MessagesTimeline", () => {
   it("renders inline terminal labels with the composer chip UI", async () => {
     const { MessagesTimeline } = await import("./MessagesTimeline");
@@ -126,26 +144,17 @@ describe("MessagesTimeline", () => {
       <MessagesTimeline
         {...buildProps()}
         timelineEntries={[
-          {
-            id: "entry-1",
-            kind: "message",
-            createdAt: "2026-03-17T19:12:28.000Z",
-            message: {
-              id: MessageId.make("message-2"),
-              role: "user",
-              text: [
-                "yoo what's @terminal-1:1-5 mean",
-                "",
-                "<terminal_context>",
-                "- Terminal 1 lines 1-5:",
-                "  1 | julius@mac effect-http-ws-cli % bun i",
-                "  2 | bun install v1.3.9 (cf6cdbbb)",
-                "</terminal_context>",
-              ].join("\n"),
-              createdAt: "2026-03-17T19:12:28.000Z",
-              streaming: false,
-            },
-          },
+          buildUserTimelineEntry(
+            [
+              buildLongUserMessageText("yoo what's @terminal-1:1-5 mean"),
+              "",
+              "<terminal_context>",
+              "- Terminal 1 lines 1-5:",
+              "  1 | julius@mac effect-http-ws-cli % bun i",
+              "  2 | bun install v1.3.9 (cf6cdbbb)",
+              "</terminal_context>",
+            ].join("\n"),
+          ),
         ]}
       />,
     );

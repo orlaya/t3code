@@ -23,7 +23,12 @@ import {
   type UnmanagedHooks,
 } from "@t3tools/contracts";
 import { fingerprintAction, stableStringify } from "@t3tools/shared/claudeHooksFingerprint";
-import { Effect, FileSystem, Path, Schema } from "effect";
+import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
+import * as Clock from "effect/Clock";
+import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
+import * as Schema from "effect/Schema";
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 
@@ -91,11 +96,19 @@ export const newHookId = (): string => randomUUID();
 
 // ── Read hooks-claude.json ─────────────────────────────────────────
 
-const readJsonFileIfExists = (filePath: string) =>
+/** Arbitrary settings-file object: we only manage `hooks`, everything else round-trips untouched. */
+const SettingsObject = Schema.Record(Schema.String, Schema.Unknown);
+
+const decodeHooksClaudeFileJson = Schema.decodeUnknownEffect(fromLenientJson(HooksClaudeFile));
+const decodeSettingsObjectJson = Schema.decodeUnknownEffect(fromLenientJson(SettingsObject));
+const encodeHooksClaudeFileJson = Schema.encodeUnknownEffect(fromJsonStringPretty(HooksClaudeFile));
+const encodeSettingsObjectJson = Schema.encodeUnknownEffect(fromJsonStringPretty(SettingsObject));
+
+const readFileStringIfExists = (filePath: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const exists = yield* fs.exists(filePath).pipe(Effect.orElseSucceed(() => false));
-    if (!exists) return null as Record<string, unknown> | null;
+    if (!exists) return null as string | null;
 
     const raw = yield* fs
       .readFileString(filePath)
@@ -104,12 +117,7 @@ const readJsonFileIfExists = (filePath: string) =>
           (cause) => new ClaudeHooksError({ filePath, detail: "failed to read file", cause }),
         ),
       );
-    if (raw.trim() === "") return null as Record<string, unknown> | null;
-
-    return yield* Effect.try({
-      try: () => JSON.parse(raw) as Record<string, unknown>,
-      catch: (cause) => new ClaudeHooksError({ filePath, detail: "failed to parse JSON", cause }),
-    });
+    return raw.trim() === "" ? null : raw;
   });
 
 /**
@@ -122,10 +130,10 @@ export const readHooksClaudeFile = (stateDir: string) =>
   Effect.gen(function* () {
     const pathService = yield* Path.Path;
     const filePath = hooksClaudeFilePath(pathService, stateDir);
-    const parsed = yield* readJsonFileIfExists(filePath);
-    if (parsed === null) return emptyFile();
+    const raw = yield* readFileStringIfExists(filePath);
+    if (raw === null) return emptyFile();
 
-    return yield* Schema.decodeUnknownEffect(HooksClaudeFile)(parsed).pipe(
+    return yield* decodeHooksClaudeFileJson(raw).pipe(
       Effect.mapError(
         (cause) =>
           new ClaudeHooksError({
@@ -151,7 +159,8 @@ const writeFileAtomically = (filePath: string, contents: string) =>
             new ClaudeHooksError({ filePath, detail: "failed to create directory", cause }),
         ),
       );
-    const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+    const nowMs = yield* Clock.currentTimeMillis;
+    const tempPath = `${filePath}.${process.pid}.${nowMs}.tmp`;
     yield* fs.writeFileString(tempPath, contents).pipe(
       Effect.flatMap(() => fs.rename(tempPath, filePath)),
       Effect.ensuring(fs.remove(tempPath, { force: true }).pipe(Effect.ignore({ log: true }))),
@@ -166,8 +175,13 @@ export const writeHooksClaudeFile = (stateDir: string, data: HooksClaudeFile) =>
   Effect.gen(function* () {
     const pathService = yield* Path.Path;
     const filePath = hooksClaudeFilePath(pathService, stateDir);
-    const encoded = `${JSON.stringify(data, null, 2)}\n`;
-    yield* writeFileAtomically(filePath, encoded);
+    const json = yield* encodeHooksClaudeFileJson(data).pipe(
+      Effect.mapError(
+        (cause) =>
+          new ClaudeHooksError({ filePath, detail: "failed to encode hooks-claude.json", cause }),
+      ),
+    );
+    yield* writeFileAtomically(filePath, `${json}\n`);
   });
 
 // ── Startup migration: realpath project keys ──────────────────────
@@ -412,11 +426,12 @@ export const syncSettingsFile = (
           ),
         );
       if (raw.trim() !== "") {
-        existing = yield* Effect.try({
-          try: () => JSON.parse(raw) as Record<string, unknown>,
-          catch: (cause) =>
-            new ClaudeHooksError({ filePath, detail: "failed to parse JSON", cause }),
-        });
+        const decoded = yield* decodeSettingsObjectJson(raw).pipe(
+          Effect.mapError(
+            (cause) => new ClaudeHooksError({ filePath, detail: "failed to parse JSON", cause }),
+          ),
+        );
+        existing = { ...decoded };
       }
     }
 
@@ -450,8 +465,12 @@ export const syncSettingsFile = (
       return;
     }
 
-    const encoded = `${JSON.stringify(existing, null, 2)}\n`;
-    yield* writeFileAtomically(filePath, encoded);
+    const json = yield* encodeSettingsObjectJson(existing).pipe(
+      Effect.mapError(
+        (cause) => new ClaudeHooksError({ filePath, detail: "failed to encode JSON", cause }),
+      ),
+    );
+    yield* writeFileAtomically(filePath, `${json}\n`);
   });
 
 // ── Convenience: sync both committed + local for a level ───────────

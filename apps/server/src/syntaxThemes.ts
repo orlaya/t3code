@@ -23,23 +23,21 @@ import {
   SyntaxThemesConfigError,
   type ServerConfigIssue,
 } from "@t3tools/contracts";
-import {
-  Cache,
-  Context,
-  Deferred,
-  Duration,
-  Effect,
-  Exit,
-  Fiber,
-  FileSystem,
-  Layer,
-  Path,
-  PubSub,
-  Ref,
-  Schema,
-  Scope,
-  Stream,
-} from "effect";
+import * as Cache from "effect/Cache";
+import * as Context from "effect/Context";
+import * as Deferred from "effect/Deferred";
+import * as Duration from "effect/Duration";
+import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
+import * as Fiber from "effect/Fiber";
+import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
+import * as Path from "effect/Path";
+import * as PubSub from "effect/PubSub";
+import * as Ref from "effect/Ref";
+import * as Schema from "effect/Schema";
+import * as Scope from "effect/Scope";
+import * as Stream from "effect/Stream";
 import * as Semaphore from "effect/Semaphore";
 import { fromLenientJson } from "@t3tools/shared/schemaJson";
 import { ServerSettingsService } from "./serverSettings.ts";
@@ -77,6 +75,9 @@ export class SyntaxThemes extends Context.Service<SyntaxThemes, SyntaxThemesShap
 // ── Schema for lenient JSONC parsing ────────────────────────────
 
 const PartialDiffThemeJson = fromLenientJson(PartialDiffTheme);
+const decodePartialDiffThemeJson = Schema.decodeUnknownExit(PartialDiffThemeJson);
+const LenientJsonValue = fromLenientJson(Schema.Unknown);
+const decodeLenientJsonValue = Schema.decodeUnknownExit(LenientJsonValue);
 
 // ── Implementation ──────────────────────────────────────────────
 
@@ -84,14 +85,6 @@ interface ThemePaths {
   readonly syntaxThemeDarkPath: string;
   readonly syntaxThemeLightPath: string;
   readonly diffThemePath: string;
-}
-
-/**
- * Lenient JSONC parse — strips single-line comments and trailing commas.
- * Used for Shiki themes which are often VS Code theme files with comments.
- */
-function parseLenientJson(raw: string): unknown {
-  return JSON.parse(raw.replace(/\/\/.*$/gm, "").replace(/,\s*([\]}])/g, "$1"));
 }
 
 const makeIssue = (message: string, issuePath: string): ServerConfigIssue => ({
@@ -154,17 +147,15 @@ const makeSyntaxThemes = Effect.gen(function* () {
         };
       }
 
-      let parsed: unknown;
-      try {
-        parsed = parseLenientJson(raw);
-      } catch {
+      const parsed = decodeLenientJsonValue(raw);
+      if (parsed._tag === "Failure") {
         return {
           theme: null as unknown | null,
           issues: [makeIssue(`Failed to parse ${label} at ${filePath}`, filePath)],
         };
       }
 
-      return { theme: parsed as unknown | null, issues: [] as ServerConfigIssue[] };
+      return { theme: parsed.value as unknown | null, issues: [] as ServerConfigIssue[] };
     });
 
   /**
@@ -193,9 +184,9 @@ const makeSyntaxThemes = Effect.gen(function* () {
         };
       }
 
-      const decoded = Schema.decodeUnknownExit(PartialDiffThemeJson)(raw);
+      const decoded = decodePartialDiffThemeJson(raw);
       if (decoded._tag === "Failure") {
-        console.error("[SyntaxThemes] decode FAILED for", filePath, decoded);
+        yield* Effect.logError("[SyntaxThemes] decode FAILED for", { filePath, decoded });
         return {
           theme: null as DiffTheme | null,
           issues: [makeIssue(`Failed to parse diff theme at ${filePath}`, filePath)],

@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { ProviderDriverKind } from "@t3tools/contracts";
 
 import type { ComposerCommandItem } from "./ComposerCommandMenu";
 import { searchSlashCommandItems } from "./composerSlashCommandSearch";
 
 describe("searchSlashCommandItems", () => {
+  const claudeDriver = ProviderDriverKind.make("claudeAgent");
+
   it("moves exact provider command matches ahead of broader description matches", () => {
     const items = [
       {
         id: "provider-slash-command:claudeAgent:ui",
         type: "provider-slash-command",
-        provider: "claudeAgent",
+        provider: claudeDriver,
         command: { name: "ui" },
         label: "/ui",
         description: "Explore, build, and refine UI.",
@@ -17,7 +20,7 @@ describe("searchSlashCommandItems", () => {
       {
         id: "provider-slash-command:claudeAgent:frontend-design",
         type: "provider-slash-command",
-        provider: "claudeAgent",
+        provider: claudeDriver,
         command: { name: "frontend-design" },
         label: "/frontend-design",
         description: "Create distinctive, production-grade frontend interfaces",
@@ -34,7 +37,7 @@ describe("searchSlashCommandItems", () => {
       {
         id: "provider-slash-command:claudeAgent:gh-fix-ci",
         type: "provider-slash-command",
-        provider: "claudeAgent",
+        provider: claudeDriver,
         command: { name: "gh-fix-ci" },
         label: "/gh-fix-ci",
         description: "Fix failing GitHub Actions",
@@ -42,7 +45,7 @@ describe("searchSlashCommandItems", () => {
       {
         id: "provider-slash-command:claudeAgent:github",
         type: "provider-slash-command",
-        provider: "claudeAgent",
+        provider: claudeDriver,
         command: { name: "github" },
         label: "/github",
         description: "General GitHub help",
