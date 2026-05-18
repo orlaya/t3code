@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -7,6 +7,8 @@ import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import type * as PlatformError from "effect/PlatformError";
+import * as Semaphore from "effect/Semaphore";
 import { ChildProcessSpawner } from "effect/unstable/process";
 
 import {
@@ -29,6 +31,7 @@ import {
 import * as GitVcsDriverCore from "./GitVcsDriverCore.ts";
 import * as VcsDriver from "./VcsDriver.ts";
 import * as VcsProcess from "./VcsProcess.ts";
+import { ServerConfig } from "../config.ts";
 
 export interface ExecuteGitInput {
   readonly operation: string;
@@ -344,10 +347,17 @@ const gitCommand = (
       : {}),
   });
 
+const shadowGitArgs = (
+  repo: { readonly repoDir: string; readonly root: string },
+  args: ReadonlyArray<string>,
+) => [`--git-dir=${repo.repoDir}`, `--work-tree=${repo.root}`, ...args];
+
 export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* () {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const vcsProcess = yield* VcsProcess.VcsProcess;
+  const serverConfig = yield* ServerConfig;
+  const shadowRepoInitSemaphore = yield* Semaphore.make(1);
   const capabilities = {
     kind: "git" as const,
     supportsWorktrees: true,
@@ -573,22 +583,6 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
       allowNonZeroExit: true,
     }).pipe(Effect.map((result) => result.exitCode === 0));
 
-  const resolveCheckpointCommit = (cwd: string, checkpointRef: string) =>
-    execute({
-      operation: "GitVcsDriver.checkpoints.resolveCheckpointCommit",
-      cwd,
-      args: ["rev-parse", "--verify", "--quiet", `${checkpointRef}^{commit}`],
-      allowNonZeroExit: true,
-    }).pipe(
-      Effect.map((result) => {
-        if (result.exitCode !== 0) {
-          return null;
-        }
-        const commit = result.stdout.trim();
-        return commit.length > 0 ? commit : null;
-      }),
-    );
-
   const resolveGitCommonDir = (cwd: string) =>
     Effect.gen(function* () {
       const result = yield* execute({
@@ -600,11 +594,179 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
       return path.isAbsolute(gitCommonDir) ? gitCommonDir : path.resolve(cwd, gitCommonDir);
     });
 
+  const resolveGitRoot = (cwd: string) =>
+    execute({
+      operation: "GitVcsDriver.checkpoints.resolveGitRoot",
+      cwd,
+      args: ["rev-parse", "--show-toplevel"],
+    }).pipe(Effect.map((result) => result.stdout.trim()));
+
+  const shadowCheckpointRepo = Effect.fn("GitVcsDriver.checkpoints.shadowRepo")(function* (
+    cwd: string,
+  ) {
+    const [root, gitCommonDir] = yield* Effect.all([resolveGitRoot(cwd), resolveGitCommonDir(cwd)]);
+    const repoKey = createHash("sha256")
+      .update(root)
+      .update("\0")
+      .update(gitCommonDir)
+      .digest("hex")
+      .slice(0, 32);
+    const repoDir = path.join(serverConfig.checkpointsDir, repoKey, "repo.git");
+    return { root, repoDir };
+  });
+
+  const mapCheckpointFileSystemError =
+    (operation: string, cwd: string, detail: string) => (error: PlatformError.PlatformError) =>
+      new VcsProcessExitError({
+        operation,
+        command: "filesystem",
+        cwd,
+        exitCode: ChildProcessSpawner.ExitCode(1),
+        detail: `${detail}: ${error.message}`,
+      });
+
+  const ensureShadowCheckpointRepo = Effect.fn("GitVcsDriver.checkpoints.ensureShadowRepo")(
+    function* (cwd: string) {
+      const repo = yield* shadowCheckpointRepo(cwd);
+      return yield* shadowRepoInitSemaphore.withPermit(
+        Effect.gen(function* () {
+          const headPath = path.join(repo.repoDir, "HEAD");
+          const exists = yield* fileSystem.exists(headPath).pipe(Effect.orElseSucceed(() => false));
+          if (!exists) {
+            yield* fileSystem
+              .makeDirectory(repo.repoDir, { recursive: true })
+              .pipe(
+                Effect.mapError(
+                  mapCheckpointFileSystemError(
+                    "GitVcsDriver.checkpoints.ensureShadowRepo",
+                    cwd,
+                    "Failed to create shadow checkpoint repository directory",
+                  ),
+                ),
+              );
+            yield* execute({
+              operation: "GitVcsDriver.checkpoints.ensureShadowRepo",
+              cwd,
+              args: ["-c", "init.templateDir=", "init", "--bare", repo.repoDir],
+              timeoutMs: 10_000,
+              maxOutputBytes: 64 * 1024,
+            });
+          }
+          return repo;
+        }),
+      );
+    },
+  );
+
+  const executeShadowGit = (
+    operation: string,
+    repo: { readonly repoDir: string; readonly root: string },
+    args: ReadonlyArray<string>,
+    options?: {
+      readonly env?: NodeJS.ProcessEnv;
+      readonly allowNonZeroExit?: boolean;
+      readonly timeoutMs?: number;
+      readonly maxOutputBytes?: number;
+    },
+  ) =>
+    execute({
+      operation,
+      cwd: repo.root,
+      args: shadowGitArgs(repo, args),
+      ...(options?.env !== undefined ? { env: options.env } : {}),
+      ...(options?.allowNonZeroExit !== undefined
+        ? { allowNonZeroExit: options.allowNonZeroExit }
+        : {}),
+      ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+      ...(options?.maxOutputBytes !== undefined ? { maxOutputBytes: options.maxOutputBytes } : {}),
+    });
+
+  const resolveShadowCheckpointCommit = (
+    repo: { readonly repoDir: string; readonly root: string },
+    checkpointRef: string,
+  ) =>
+    executeShadowGit(
+      "GitVcsDriver.checkpoints.resolveShadowCheckpointCommit",
+      repo,
+      ["rev-parse", "--verify", "--quiet", `${checkpointRef}^{commit}`],
+      { allowNonZeroExit: true },
+    ).pipe(
+      Effect.map((result) => {
+        if (result.exitCode !== 0) {
+          return null;
+        }
+        const commit = result.stdout.trim();
+        return commit.length > 0 ? commit : null;
+      }),
+    );
+
+  const listShadowCommitFiles = Effect.fn("GitVcsDriver.checkpoints.listShadowCommitFiles")(
+    function* (repo: { readonly repoDir: string; readonly root: string }, commitOid: string) {
+      const result = yield* executeShadowGit(
+        "GitVcsDriver.checkpoints.listShadowCommitFiles",
+        repo,
+        ["ls-tree", "-r", "-z", "--name-only", commitOid],
+      );
+      return splitNullSeparatedPaths(result.stdout, result.stdoutTruncated);
+    },
+  );
+
+  const listProjectWorkspaceFiles = Effect.fn("GitVcsDriver.checkpoints.listProjectWorkspaceFiles")(
+    function* (cwd: string) {
+      const result = yield* execute({
+        operation: "GitVcsDriver.checkpoints.listProjectWorkspaceFiles",
+        cwd,
+        args: ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        maxOutputBytes: WORKSPACE_FILES_MAX_OUTPUT_BYTES,
+      });
+      return splitNullSeparatedPaths(result.stdout, result.stdoutTruncated);
+    },
+  );
+
+  const removeProjectFilesMissingFromCheckpoint = Effect.fn(
+    "GitVcsDriver.checkpoints.removeProjectFilesMissingFromCheckpoint",
+  )(function* (
+    repo: { readonly repoDir: string; readonly root: string },
+    checkpointFiles: ReadonlySet<string>,
+  ) {
+    const currentFiles = yield* listProjectWorkspaceFiles(repo.root);
+    yield* Effect.forEach(
+      currentFiles,
+      (relativePath) => {
+        if (checkpointFiles.has(relativePath)) {
+          return Effect.void;
+        }
+        return fileSystem
+          .remove(path.join(repo.root, relativePath), { force: true, recursive: true })
+          .pipe(Effect.ignore);
+      },
+      { discard: true },
+    );
+  });
+
+  const protectCheckpointFilesInProjectIndex = Effect.fn(
+    "GitVcsDriver.checkpoints.protectCheckpointFilesInProjectIndex",
+  )(function* (cwd: string, checkpointFiles: ReadonlyArray<string>) {
+    if (checkpointFiles.length === 0) {
+      return;
+    }
+    yield* execute({
+      operation: "GitVcsDriver.checkpoints.protectCheckpointFilesInProjectIndex",
+      cwd,
+      args: ["add", "-A", "--pathspec-from-file=-", "--pathspec-file-nul"],
+      stdin: `${checkpointFiles.join("\0")}\0`,
+    });
+  });
+
   const checkpoints: VcsDriver.VcsCheckpointOps = {
     captureCheckpoint: Effect.fn("GitVcsDriver.checkpoints.captureCheckpoint")(function* (input) {
       const operation = "GitVcsDriver.checkpoints.captureCheckpoint";
-      const gitCommonDir = yield* resolveGitCommonDir(input.cwd);
-      const tempIndexPath = path.join(gitCommonDir, `t3-checkpoint-index-${randomUUID()}`);
+      const repo = yield* ensureShadowCheckpointRepo(input.cwd);
+      const tempIndexPath = path.join(
+        repo.repoDir,
+        "t3-indexes",
+        `checkpoint-index-${randomUUID()}`,
+      );
       const commitEnv: NodeJS.ProcessEnv = {
         ...process.env,
         GIT_INDEX_FILE: tempIndexPath,
@@ -619,27 +781,23 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
         .pipe(Effect.ignore);
 
       yield* Effect.gen(function* () {
-        const headExists = yield* hasHeadCommit(input.cwd);
-        if (headExists) {
-          yield* execute({
-            operation,
-            cwd: input.cwd,
-            args: ["read-tree", "HEAD"],
-            env: commitEnv,
-          });
-        }
+        yield* fileSystem
+          .makeDirectory(path.dirname(tempIndexPath), { recursive: true })
+          .pipe(
+            Effect.mapError(
+              mapCheckpointFileSystemError(
+                operation,
+                input.cwd,
+                "Failed to create shadow checkpoint temporary index directory",
+              ),
+            ),
+          );
 
-        yield* execute({
-          operation,
-          cwd: input.cwd,
-          args: ["add", "-A", "--", "."],
+        yield* executeShadowGit(operation, repo, ["add", "-A", "--", "."], {
           env: commitEnv,
         });
 
-        const writeTreeResult = yield* execute({
-          operation,
-          cwd: input.cwd,
-          args: ["write-tree"],
+        const writeTreeResult = yield* executeShadowGit(operation, repo, ["write-tree"], {
           env: commitEnv,
         });
         const treeOid = writeTreeResult.stdout.trim();
@@ -654,12 +812,12 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
         }
 
         const message = `t3 checkpoint ref=${input.checkpointRef}`;
-        const commitTreeResult = yield* execute({
+        const commitTreeResult = yield* executeShadowGit(
           operation,
-          cwd: input.cwd,
-          args: ["commit-tree", treeOid, "-m", message],
-          env: commitEnv,
-        });
+          repo,
+          ["commit-tree", treeOid, "-m", message],
+          { env: commitEnv },
+        );
         const commitOid = commitTreeResult.stdout.trim();
         if (commitOid.length === 0) {
           return yield* new VcsProcessExitError({
@@ -671,37 +829,46 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
           });
         }
 
-        yield* execute({
-          operation,
-          cwd: input.cwd,
-          args: ["update-ref", input.checkpointRef, commitOid],
-        });
+        yield* executeShadowGit(operation, repo, ["update-ref", input.checkpointRef, commitOid]);
       }).pipe(Effect.ensuring(cleanupTempIndex));
     }),
 
     hasCheckpointRef: (input) =>
-      resolveCheckpointCommit(input.cwd, input.checkpointRef).pipe(
-        Effect.map((commit) => commit !== null),
-      ),
+      Effect.gen(function* () {
+        const repo = yield* ensureShadowCheckpointRepo(input.cwd);
+        const shadowCommit = yield* resolveShadowCheckpointCommit(repo, input.checkpointRef);
+        return shadowCommit !== null;
+      }),
 
     restoreCheckpoint: Effect.fn("GitVcsDriver.checkpoints.restoreCheckpoint")(function* (input) {
       const operation = "GitVcsDriver.checkpoints.restoreCheckpoint";
+      const repo = yield* ensureShadowCheckpointRepo(input.cwd);
 
-      let commitOid = yield* resolveCheckpointCommit(input.cwd, input.checkpointRef);
+      let commitOid = yield* resolveShadowCheckpointCommit(repo, input.checkpointRef);
+      let restoreFromShadow = true;
 
       if (!commitOid && input.fallbackToHead === true) {
         commitOid = yield* resolveHeadCommit(input.cwd);
+        restoreFromShadow = false;
       }
 
       if (!commitOid) {
         return false;
       }
 
-      yield* execute({
-        operation,
-        cwd: input.cwd,
-        args: ["restore", "--source", commitOid, "--worktree", "--staged", "--", "."],
-      });
+      if (restoreFromShadow) {
+        const checkpointFiles = yield* listShadowCommitFiles(repo, commitOid);
+        const checkpointFileSet = new Set(checkpointFiles);
+        yield* removeProjectFilesMissingFromCheckpoint(repo, checkpointFileSet);
+        yield* executeShadowGit(operation, repo, ["checkout", commitOid, "--", "."]);
+        yield* protectCheckpointFilesInProjectIndex(input.cwd, checkpointFiles);
+      } else {
+        yield* execute({
+          operation,
+          cwd: input.cwd,
+          args: ["restore", "--source", commitOid, "--worktree", "--staged", "--", "."],
+        });
+      }
       yield* execute({
         operation,
         cwd: input.cwd,
@@ -731,14 +898,15 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
       });
 
       let fromRevision: string = input.fromCheckpointRef;
+      const repo = yield* ensureShadowCheckpointRepo(input.cwd);
+      const shadowFromCommit = yield* resolveShadowCheckpointCommit(repo, input.fromCheckpointRef);
+      if (shadowFromCommit) {
+        fromRevision = shadowFromCommit;
+      }
+
       if (input.fallbackFromToHead === true) {
-        const resolvedFromCommit = yield* resolveCheckpointCommit(
-          input.cwd,
-          input.fromCheckpointRef,
-        );
-        if (resolvedFromCommit) {
-          fromRevision = resolvedFromCommit;
-        } else {
+        const resolvedFromCommit = yield* resolveShadowCheckpointCommit(repo, fromRevision);
+        if (!resolvedFromCommit) {
           const headCommit = yield* resolveHeadCommit(input.cwd);
           if (!headCommit) {
             return yield* new VcsProcessExitError({
@@ -753,19 +921,21 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
         }
       }
 
-      const result = yield* execute({
-        operation,
-        cwd: input.cwd,
-        args: [
-          "diff",
-          "--patch",
-          "--no-color",
-          "--no-ext-diff",
-          "--no-textconv",
-          ...(input.ignoreWhitespace ? ["--ignore-all-space"] : []),
-          `${fromRevision}^{commit}`,
-          `${input.toCheckpointRef}^{commit}`,
-        ],
+      const toShadowCommit = yield* resolveShadowCheckpointCommit(repo, input.toCheckpointRef);
+      const toRevision = toShadowCommit ?? input.toCheckpointRef;
+
+      const diffArgs = [
+        "diff",
+        "--patch",
+        "--no-color",
+        "--no-ext-diff",
+        "--no-textconv",
+        ...(input.ignoreWhitespace ? ["--ignore-all-space"] : []),
+        `${fromRevision}^{commit}`,
+        `${toRevision}^{commit}`,
+      ];
+
+      const result = yield* executeShadowGit(operation, repo, diffArgs, {
         allowNonZeroExit: true,
         maxOutputBytes: CHECKPOINT_DIFF_MAX_OUTPUT_BYTES,
       });
@@ -788,11 +958,16 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
         yield* Effect.forEach(
           input.checkpointRefs,
           (checkpointRef) =>
-            execute({
-              operation: "GitVcsDriver.checkpoints.deleteCheckpointRefs",
-              cwd: input.cwd,
-              args: ["update-ref", "-d", checkpointRef],
-              allowNonZeroExit: true,
+            Effect.gen(function* () {
+              const repo = yield* ensureShadowCheckpointRepo(input.cwd);
+              yield* executeShadowGit(
+                "GitVcsDriver.checkpoints.deleteCheckpointRefs",
+                repo,
+                ["update-ref", "-d", checkpointRef],
+                {
+                  allowNonZeroExit: true,
+                },
+              );
             }),
           { discard: true },
         );

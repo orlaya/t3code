@@ -11,6 +11,7 @@ import {
   ProviderInstanceId,
 } from "@t3tools/contracts";
 import {
+  CheckpointRef,
   CommandId,
   DEFAULT_PROVIDER_INTERACTION_MODE,
   EventId,
@@ -226,23 +227,46 @@ function gitRefExists(cwd: string, ref: string): boolean {
   }
 }
 
-function gitShowFileAtRef(cwd: string, ref: string, filePath: string): string {
-  return runGit(cwd, ["show", `${ref}:${filePath}`]);
-}
-
-async function waitForGitRefExists(cwd: string, ref: string, timeoutMs = 15_000) {
+async function waitForCheckpointRefExists(
+  checkpointStore: CheckpointStore["Service"],
+  cwd: string,
+  ref: CheckpointRef,
+  timeoutMs = 15_000,
+) {
   const deadline = (await Effect.runPromise(Clock.currentTimeMillis)) + timeoutMs;
   const poll = async (): Promise<void> => {
-    if (gitRefExists(cwd, ref)) {
+    const exists = await Effect.runPromise(
+      checkpointStore.hasCheckpointRef({
+        cwd,
+        checkpointRef: ref,
+      }),
+    );
+    if (exists) {
       return;
     }
     if ((await Effect.runPromise(Clock.currentTimeMillis)) >= deadline) {
-      throw new Error(`Timed out waiting for git ref '${ref}'.`);
+      throw new Error(`Timed out waiting for checkpoint ref '${ref}'.`);
     }
     await Effect.runPromise(Effect.sleep("10 millis"));
     return poll();
   };
   return poll();
+}
+
+async function readFileAtCheckpoint(
+  checkpointStore: CheckpointStore["Service"],
+  cwd: string,
+  ref: CheckpointRef,
+  filePath: string,
+) {
+  const restored = await Effect.runPromise(
+    checkpointStore.restoreCheckpoint({
+      cwd,
+      checkpointRef: ref,
+    }),
+  );
+  expect(restored).toBe(true);
+  return fs.readFileSync(path.join(cwd, filePath), "utf8");
 }
 
 describe("CheckpointReactor", () => {
@@ -411,6 +435,7 @@ describe("CheckpointReactor", () => {
       engine,
       readModel: () => Effect.runPromise(snapshotQuery.getSnapshot()),
       provider,
+      checkpointStore,
       cwd,
       drain,
     };
@@ -447,7 +472,8 @@ describe("CheckpointReactor", () => {
       threadId: ThreadId.make("thread-1"),
       turnId: asTurnId("turn-1"),
     });
-    await waitForGitRefExists(
+    await waitForCheckpointRefExists(
+      harness.checkpointStore,
       harness.cwd,
       checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
     );
@@ -471,20 +497,35 @@ describe("CheckpointReactor", () => {
     );
     expect(thread.checkpoints[0]?.checkpointTurnCount).toBe(1);
     expect(
+      await Effect.runPromise(
+        harness.checkpointStore.hasCheckpointRef({
+          cwd: harness.cwd,
+          checkpointRef: checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      await Effect.runPromise(
+        harness.checkpointStore.hasCheckpointRef({
+          cwd: harness.cwd,
+          checkpointRef: checkpointRefForThreadTurn(ThreadId.make("thread-1"), 1),
+        }),
+      ),
+    ).toBe(true);
+    expect(
       gitRefExists(harness.cwd, checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0)),
-    ).toBe(true);
+    ).toBe(false);
     expect(
-      gitRefExists(harness.cwd, checkpointRefForThreadTurn(ThreadId.make("thread-1"), 1)),
-    ).toBe(true);
-    expect(
-      gitShowFileAtRef(
+      await readFileAtCheckpoint(
+        harness.checkpointStore,
         harness.cwd,
         checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
         "README.md",
       ),
     ).toBe("v1\n");
     expect(
-      gitShowFileAtRef(
+      await readFileAtCheckpoint(
+        harness.checkpointStore,
         harness.cwd,
         checkpointRefForThreadTurn(ThreadId.make("thread-1"), 1),
         "README.md",
@@ -545,7 +586,8 @@ describe("CheckpointReactor", () => {
       threadId: ThreadId.make("thread-1"),
       turnId: asTurnId("turn-main"),
     });
-    await waitForGitRefExists(
+    await waitForCheckpointRefExists(
+      harness.checkpointStore,
       harness.cwd,
       checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
     );
@@ -619,7 +661,8 @@ describe("CheckpointReactor", () => {
       threadId: ThreadId.make("thread-1"),
       turnId: asTurnId("turn-claude-1"),
     });
-    await waitForGitRefExists(
+    await waitForCheckpointRefExists(
+      harness.checkpointStore,
       harness.cwd,
       checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
     );
@@ -643,7 +686,12 @@ describe("CheckpointReactor", () => {
 
     expect(thread.checkpoints[0]?.checkpointTurnCount).toBe(1);
     expect(
-      gitRefExists(harness.cwd, checkpointRefForThreadTurn(ThreadId.make("thread-1"), 1)),
+      await Effect.runPromise(
+        harness.checkpointStore.hasCheckpointRef({
+          cwd: harness.cwd,
+          checkpointRef: checkpointRefForThreadTurn(ThreadId.make("thread-1"), 1),
+        }),
+      ),
     ).toBe(true);
   });
 
@@ -718,12 +766,14 @@ describe("CheckpointReactor", () => {
       }),
     );
 
-    await waitForGitRefExists(
+    await waitForCheckpointRefExists(
+      harness.checkpointStore,
       harness.cwd,
       checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
     );
     expect(
-      gitShowFileAtRef(
+      await readFileAtCheckpoint(
+        harness.checkpointStore,
         harness.cwd,
         checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
         "README.md",
@@ -771,10 +821,16 @@ describe("CheckpointReactor", () => {
 
     await waitForEvent(harness.engine, (event) => event.type === "thread.turn-diff-completed");
     expect(
-      gitRefExists(harness.cwd, checkpointRefForThreadTurn(ThreadId.make("thread-1"), 1)),
+      await Effect.runPromise(
+        harness.checkpointStore.hasCheckpointRef({
+          cwd: harness.cwd,
+          checkpointRef: checkpointRefForThreadTurn(ThreadId.make("thread-1"), 1),
+        }),
+      ),
     ).toBe(true);
     expect(
-      gitShowFileAtRef(
+      await readFileAtCheckpoint(
+        harness.checkpointStore,
         harness.cwd,
         checkpointRefForThreadTurn(ThreadId.make("thread-1"), 1),
         "README.md",
@@ -875,12 +931,18 @@ describe("CheckpointReactor", () => {
       turnId: asTurnId("turn-after-runtime-failure"),
     });
 
-    await waitForGitRefExists(
+    await waitForCheckpointRefExists(
+      harness.checkpointStore,
       harness.cwd,
       checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
     );
     expect(
-      gitRefExists(harness.cwd, checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0)),
+      await Effect.runPromise(
+        harness.checkpointStore.hasCheckpointRef({
+          cwd: harness.cwd,
+          checkpointRef: checkpointRefForThreadTurn(ThreadId.make("thread-1"), 0),
+        }),
+      ),
     ).toBe(true);
   });
 

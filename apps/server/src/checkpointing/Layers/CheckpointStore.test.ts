@@ -71,6 +71,33 @@ function git(
   });
 }
 
+function gitExitCode(
+  cwd: string,
+  args: ReadonlyArray<string>,
+): Effect.Effect<number, VcsError, VcsProcess.VcsProcess> {
+  return Effect.gen(function* () {
+    const process = yield* VcsProcess.VcsProcess;
+    const result = yield* process.run({
+      operation: "CheckpointStore.test.gitExitCode",
+      command: "git",
+      cwd,
+      args,
+      allowNonZeroExit: true,
+      timeoutMs: 10_000,
+    });
+    return result.exitCode;
+  });
+}
+
+function readTextFile(
+  filePath: string,
+): Effect.Effect<string, PlatformError.PlatformError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
+    const fileSystem = yield* FileSystem.FileSystem;
+    return yield* fileSystem.readFileString(filePath);
+  });
+}
+
 function initRepoWithCommit(
   cwd: string,
 ): Effect.Effect<
@@ -95,6 +122,102 @@ function buildLargeText(lineCount = 5_000): string {
 }
 
 it.layer(TestLayer)("CheckpointStoreLive", (it) => {
+  it.effect("stores checkpoint refs outside the project git repository", () =>
+    Effect.gen(function* () {
+      const tmp = yield* makeTmpDir();
+      yield* initRepoWithCommit(tmp);
+      const checkpointStore = yield* CheckpointStore;
+      const threadId = ThreadId.make("thread-shadow-checkpoint-store");
+      const checkpointRef = checkpointRefForThreadTurn(threadId, 0);
+
+      yield* writeTextFile(path.join(tmp, "README.md"), "# changed\n");
+      yield* checkpointStore.captureCheckpoint({
+        cwd: tmp,
+        checkpointRef,
+      });
+
+      const projectRefExitCode = yield* gitExitCode(tmp, [
+        "show-ref",
+        "--verify",
+        "--quiet",
+        checkpointRef,
+      ]);
+      const hasCheckpoint = yield* checkpointStore.hasCheckpointRef({
+        cwd: tmp,
+        checkpointRef,
+      });
+
+      expect(projectRefExitCode).toBe(1);
+      expect(hasCheckpoint).toBe(true);
+    }),
+  );
+
+  it.effect("restores a shadow checkpoint including removed files", () =>
+    Effect.gen(function* () {
+      const tmp = yield* makeTmpDir();
+      yield* initRepoWithCommit(tmp);
+      const checkpointStore = yield* CheckpointStore;
+      const threadId = ThreadId.make("thread-shadow-checkpoint-restore");
+      const checkpointRef = checkpointRefForThreadTurn(threadId, 0);
+      const readmePath = path.join(tmp, "README.md");
+      const keptPath = path.join(tmp, "kept.txt");
+      const laterPath = path.join(tmp, "later.txt");
+
+      yield* writeTextFile(readmePath, "# checkpoint\n");
+      yield* writeTextFile(keptPath, "keep\n");
+      yield* checkpointStore.captureCheckpoint({
+        cwd: tmp,
+        checkpointRef,
+      });
+
+      yield* writeTextFile(readmePath, "# changed\n");
+      yield* writeTextFile(laterPath, "remove me\n");
+      const restored = yield* checkpointStore.restoreCheckpoint({
+        cwd: tmp,
+        checkpointRef,
+      });
+      const fileSystem = yield* FileSystem.FileSystem;
+
+      expect(restored).toBe(true);
+      expect(yield* readTextFile(readmePath)).toBe("# checkpoint\n");
+      expect(yield* readTextFile(keptPath)).toBe("keep\n");
+      expect(yield* fileSystem.exists(laterPath)).toBe(false);
+    }),
+  );
+
+  it.effect("deletes shadow checkpoint refs without touching project refs", () =>
+    Effect.gen(function* () {
+      const tmp = yield* makeTmpDir();
+      yield* initRepoWithCommit(tmp);
+      const checkpointStore = yield* CheckpointStore;
+      const threadId = ThreadId.make("thread-shadow-checkpoint-delete");
+      const checkpointRef = checkpointRefForThreadTurn(threadId, 0);
+
+      yield* checkpointStore.captureCheckpoint({
+        cwd: tmp,
+        checkpointRef,
+      });
+      yield* checkpointStore.deleteCheckpointRefs({
+        cwd: tmp,
+        checkpointRefs: [checkpointRef],
+      });
+
+      const hasCheckpoint = yield* checkpointStore.hasCheckpointRef({
+        cwd: tmp,
+        checkpointRef,
+      });
+      const projectRefExitCode = yield* gitExitCode(tmp, [
+        "show-ref",
+        "--verify",
+        "--quiet",
+        checkpointRef,
+      ]);
+
+      expect(hasCheckpoint).toBe(false);
+      expect(projectRefExitCode).toBe(1);
+    }),
+  );
+
   describe("diffCheckpoints", () => {
     it.effect("returns full oversized checkpoint diffs without truncation", () =>
       Effect.gen(function* () {

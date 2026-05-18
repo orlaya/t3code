@@ -15,7 +15,7 @@ import { runVcsDriverContractSuite } from "./testing/VcsDriverContractHarness.ts
 
 const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
   prefix: "t3-git-vcs-contract-",
-});
+}).pipe(Layer.provide(NodeServices.layer));
 const GitContractLayer = Layer.mergeAll(GitVcsDriver.vcsLayer, GitVcsDriver.layer).pipe(
   Layer.provide(ServerConfigLayer),
   Layer.provideMerge(VcsProcess.layer),
@@ -90,6 +90,7 @@ it.effect("GitVcsDriver forwards execute env to the VCS process", () => {
     Effect.provide(
       Layer.mergeAll(
         NodeServices.layer,
+        ServerConfigLayer,
         Layer.mock(VcsProcess.VcsProcess)({
           run: (input) =>
             Effect.sync(() => {

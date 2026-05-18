@@ -26,7 +26,6 @@ import * as Schema from "effect/Schema";
 import type { TestTurnResponse } from "./TestProviderAdapter.integration.ts";
 import {
   gitRefExists,
-  gitShowFileAtRef,
   makeOrchestrationIntegrationHarness,
   type OrchestrationIntegrationHarness,
 } from "./OrchestrationEngineHarness.integration.ts";
@@ -49,6 +48,29 @@ const APPROVAL_REQUEST_ID = asApprovalRequestId("req-approval-1");
 type IntegrationProvider = ProviderDriverKind;
 const CODEX_PROVIDER = ProviderDriverKind.make("codex");
 const CLAUDE_AGENT_PROVIDER = ProviderDriverKind.make("claudeAgent");
+
+const checkpointExists = (
+  harness: OrchestrationIntegrationHarness,
+  checkpointRef: ReturnType<typeof checkpointRefForThreadTurn>,
+) =>
+  harness.checkpointStore.hasCheckpointRef({
+    cwd: harness.workspaceDir,
+    checkpointRef,
+  });
+
+const readFileAtCheckpoint = (
+  harness: OrchestrationIntegrationHarness,
+  checkpointRef: ReturnType<typeof checkpointRefForThreadTurn>,
+  filePath: string,
+) =>
+  Effect.gen(function* () {
+    const restored = yield* harness.checkpointStore.restoreCheckpoint({
+      cwd: harness.workspaceDir,
+      checkpointRef,
+    });
+    assert.equal(restored, true);
+    return fs.readFileSync(path.join(harness.workspaceDir, filePath), "utf8");
+  });
 
 function nowIso() {
   return "2026-05-01T00:00:00.000Z";
@@ -258,10 +280,12 @@ it.live("runs a single turn end-to-end and persists checkpoint state in sqlite +
 
       const ref0 = checkpointRefForThreadTurn(THREAD_ID, 0);
       const ref1 = checkpointRefForThreadTurn(THREAD_ID, 1);
-      assert.equal(gitRefExists(harness.workspaceDir, ref0), true);
-      assert.equal(gitRefExists(harness.workspaceDir, ref1), true);
-      assert.equal(gitShowFileAtRef(harness.workspaceDir, ref0, "README.md"), "v1\n");
-      assert.equal(gitShowFileAtRef(harness.workspaceDir, ref1, "README.md"), "v1\n");
+      assert.equal(yield* checkpointExists(harness, ref0), true);
+      assert.equal(yield* checkpointExists(harness, ref1), true);
+      assert.equal(gitRefExists(harness.workspaceDir, ref0), false);
+      assert.equal(gitRefExists(harness.workspaceDir, ref1), false);
+      assert.equal(yield* readFileAtCheckpoint(harness, ref0, "README.md"), "v1\n");
+      assert.equal(yield* readFileAtCheckpoint(harness, ref1, "README.md"), "v1\n");
     }),
   ),
 );
@@ -525,19 +549,11 @@ it.live("runs multi-turn file edits and persists checkpoint diffs", () =>
       assert.equal(fullDiff.includes("README.md"), true);
 
       assert.equal(
-        gitShowFileAtRef(
-          harness.workspaceDir,
-          checkpointRefForThreadTurn(THREAD_ID, 1),
-          "README.md",
-        ),
+        yield* readFileAtCheckpoint(harness, checkpointRefForThreadTurn(THREAD_ID, 1), "README.md"),
         "v2\n",
       );
       assert.equal(
-        gitShowFileAtRef(
-          harness.workspaceDir,
-          checkpointRefForThreadTurn(THREAD_ID, 2),
-          "README.md",
-        ),
+        yield* readFileAtCheckpoint(harness, checkpointRefForThreadTurn(THREAD_ID, 2), "README.md"),
         "v3\n",
       );
     }),
@@ -697,8 +713,12 @@ it.live("records failed turn runtime state and checkpoint status as error", () =
         assert.equal(checkpointRow.value.status, "error");
       }
       assert.equal(
-        gitRefExists(harness.workspaceDir, checkpointRefForThreadTurn(THREAD_ID, 1)),
+        yield* checkpointExists(harness, checkpointRefForThreadTurn(THREAD_ID, 1)),
         true,
+      );
+      assert.equal(
+        gitRefExists(harness.workspaceDir, checkpointRefForThreadTurn(THREAD_ID, 1)),
+        false,
       );
     }),
   ),
@@ -1424,11 +1444,15 @@ it.live("reverts claudeAgent turns and rolls back provider conversation state", 
         );
         assert.equal(revertedThread.checkpoints[0]?.checkpointTurnCount, 1);
         assert.equal(
-          gitRefExists(harness.workspaceDir, checkpointRefForThreadTurn(THREAD_ID, 1)),
+          yield* checkpointExists(harness, checkpointRefForThreadTurn(THREAD_ID, 1)),
           true,
         );
         assert.equal(
-          gitRefExists(harness.workspaceDir, checkpointRefForThreadTurn(THREAD_ID, 2)),
+          yield* checkpointExists(harness, checkpointRefForThreadTurn(THREAD_ID, 2)),
+          false,
+        );
+        assert.equal(
+          gitRefExists(harness.workspaceDir, checkpointRefForThreadTurn(THREAD_ID, 1)),
           false,
         );
         assert.deepEqual(harness.adapterHarness!.getRollbackCalls(THREAD_ID), [1]);

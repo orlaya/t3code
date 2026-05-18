@@ -33,6 +33,7 @@ export interface ServerDerivedPaths {
   readonly t3HooksPath: string;
   readonly providerStatusCacheDir: string;
   readonly worktreesDir: string;
+  readonly checkpointsDir: string;
   readonly attachmentsDir: string;
   readonly logsDir: string;
   readonly serverLogPath: string;
@@ -95,6 +96,7 @@ export const deriveServerPaths = Effect.fn(function* (
     t3HooksPath: join(stateDir, "hooks-claude.json"),
     providerStatusCacheDir,
     worktreesDir: join(baseDir, "worktrees"),
+    checkpointsDir: join(baseDir, "checkpoints"),
     attachmentsDir,
     logsDir,
     serverLogPath: join(logsDir, "server.log"),
@@ -121,6 +123,7 @@ export const ensureServerDirectories = Effect.fn(function* (derivedPaths: Server
       fs.makeDirectory(derivedPaths.terminalLogsDir, { recursive: true }),
       fs.makeDirectory(derivedPaths.attachmentsDir, { recursive: true }),
       fs.makeDirectory(derivedPaths.worktreesDir, { recursive: true }),
+      fs.makeDirectory(derivedPaths.checkpointsDir, { recursive: true }),
       fs.makeDirectory(path.dirname(derivedPaths.keybindingsConfigPath), { recursive: true }),
       fs.makeDirectory(path.dirname(derivedPaths.settingsPath), { recursive: true }),
       fs.makeDirectory(path.dirname(derivedPaths.t3HooksPath), { recursive: true }),

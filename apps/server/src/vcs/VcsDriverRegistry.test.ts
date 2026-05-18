@@ -7,6 +7,11 @@ import { ChildProcessSpawner } from "effect/unstable/process";
 import * as VcsProcess from "./VcsProcess.ts";
 import * as VcsProjectConfig from "./VcsProjectConfig.ts";
 import * as VcsDriverRegistry from "./VcsDriverRegistry.ts";
+import { ServerConfig } from "../config.ts";
+
+const ServerConfigLayer = ServerConfig.layerTest(process.cwd(), {
+  prefix: "t3-vcs-driver-registry-test-",
+}).pipe(Layer.provide(NodeServices.layer));
 
 const processOutput = (stdout: string): VcsProcess.VcsProcessOutput => ({
   exitCode: ChildProcessSpawner.ExitCode(0),
@@ -33,6 +38,7 @@ describe("VcsDriverRegistry", () => {
           run: () => Effect.succeed(processOutput("")),
         }),
       ),
+      Layer.provideMerge(ServerConfigLayer),
     );
 
     return Effect.gen(function* () {
@@ -73,6 +79,7 @@ describe("VcsDriverRegistry", () => {
             }),
         }),
       ),
+      Layer.provideMerge(ServerConfigLayer),
     );
 
     return Effect.gen(function* () {
