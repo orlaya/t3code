@@ -36,7 +36,7 @@ import { selectProjectByRef, useStore } from "../store";
 import { createThreadSelectorByRef } from "../storeSelectors";
 import { buildThreadRouteParams, resolveThreadRouteRef } from "../threadRoutes";
 import { useSettings } from "../hooks/useSettings";
-import { formatTimestamp } from "../timestampFormat";
+import type { TurnDiffSummary } from "../types";
 import { DiffPanelLoadingState, DiffPanelShell, type DiffPanelMode } from "./DiffPanelShell";
 import { ToggleGroup, Toggle } from "./ui/toggle-group";
 
@@ -113,6 +113,21 @@ function getDiffCollapseIconClassName(fileDiff: FileDiffMetadata): string {
   }
 }
 
+function getTurnDiffFileChangeWeight(file: TurnDiffSummary["files"][number]): number {
+  return (file.additions ?? 0) + (file.deletions ?? 0);
+}
+
+function getPrimaryTurnDiffFile(summary: TurnDiffSummary): TurnDiffSummary["files"][number] {
+  return summary.files.reduce((primary, file) =>
+    getTurnDiffFileChangeWeight(file) > getTurnDiffFileChangeWeight(primary) ? file : primary,
+  );
+}
+
+function getTurnDiffChipPrimaryFileName(summary: TurnDiffSummary): string {
+  const primaryFile = getPrimaryTurnDiffFile(summary);
+  return primaryFile.path.split("/").at(-1) ?? primaryFile.path;
+}
+
 interface DiffPanelProps {
   mode?: DiffPanelMode;
 }
@@ -173,16 +188,18 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
     useTurnDiffSummaries(activeThread);
   const orderedTurnDiffSummaries = useMemo(
     () =>
-      [...turnDiffSummaries].toSorted((left, right) => {
-        const leftTurnCount =
-          left.checkpointTurnCount ?? inferredCheckpointTurnCountByTurnId[left.turnId] ?? 0;
-        const rightTurnCount =
-          right.checkpointTurnCount ?? inferredCheckpointTurnCountByTurnId[right.turnId] ?? 0;
-        if (leftTurnCount !== rightTurnCount) {
-          return rightTurnCount - leftTurnCount;
-        }
-        return right.completedAt.localeCompare(left.completedAt);
-      }),
+      turnDiffSummaries
+        .filter((summary) => summary.files.length > 0)
+        .toSorted((left, right) => {
+          const leftTurnCount =
+            left.checkpointTurnCount ?? inferredCheckpointTurnCountByTurnId[left.turnId] ?? 0;
+          const rightTurnCount =
+            right.checkpointTurnCount ?? inferredCheckpointTurnCountByTurnId[right.turnId] ?? 0;
+          if (leftTurnCount !== rightTurnCount) {
+            return rightTurnCount - leftTurnCount;
+          }
+          return right.completedAt.localeCompare(left.completedAt);
+        }),
     [inferredCheckpointTurnCountByTurnId, turnDiffSummaries],
   );
 
@@ -498,14 +515,13 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
               >
                 <div className="flex items-center gap-1">
                   <span className="text-[10px] leading-tight font-medium">
-                    Turn{" "}
-                    {summary.checkpointTurnCount ??
-                      inferredCheckpointTurnCountByTurnId[summary.turnId] ??
-                      "?"}
+                    {getTurnDiffChipPrimaryFileName(summary)}
                   </span>
-                  <span className="text-[9px] leading-tight opacity-70">
-                    {formatTimestamp(summary.completedAt, settings.timestampFormat)}
-                  </span>
+                  {summary.files.length > 1 ? (
+                    <span className="text-[10px] leading-tight font-bold text-muted-foreground/99">
+                      &nbsp;+{summary.files.length - 1}
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </button>
@@ -572,7 +588,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
         </div>
       ) : orderedTurnDiffSummaries.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-5 text-center text-xs text-muted-foreground/70">
-          No completed turns yet.
+          No turn changes yet.
         </div>
       ) : (
         <>
