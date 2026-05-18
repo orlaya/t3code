@@ -1,14 +1,12 @@
-import { scopeProjectRef, scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime";
+import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime";
 import type { VcsStatusResult } from "@t3tools/contracts";
 import { CloudIcon, GitPullRequestIcon, TerminalIcon } from "lucide-react";
-import { useMemo } from "react";
 import { usePrimaryEnvironmentId } from "../environments/primary";
 import {
   useSavedEnvironmentRegistryStore,
   useSavedEnvironmentRuntimeStore,
 } from "../environments/runtime";
 import { useGitStatus } from "../lib/gitStatusState";
-import { type AppState, selectProjectByRef, useStore } from "../store";
 import { selectThreadTerminalState, useTerminalStateStore } from "../terminalStateStore";
 import { useUiStateStore } from "../uiStateStore";
 import { resolveChangeRequestPresentation } from "../sourceControlPresentation";
@@ -80,6 +78,12 @@ export function resolveThreadPr(
   return gitStatus.pr ?? null;
 }
 
+export function resolveThreadStatusCwd(
+  thread: Pick<SidebarThreadSummary, "worktreePath">,
+): string | null {
+  return thread.worktreePath ?? null;
+}
+
 export function terminalStatusFromRunningIds(
   runningTerminalIds: string[],
 ): TerminalStatusIndicator | null {
@@ -141,15 +145,7 @@ export function ThreadRowLeadingStatus({ thread }: { thread: SidebarThreadSummar
   const lastVisitedAt = useUiStateStore(
     (state) => state.threadLastVisitedAtById[scopedThreadKey(threadRef)],
   );
-  const threadProjectCwd = useStore(
-    useMemo(
-      () => (state: AppState) =>
-        selectProjectByRef(state, scopeProjectRef(thread.environmentId, thread.projectId))?.cwd ??
-        null,
-      [thread.environmentId, thread.projectId],
-    ),
-  );
-  const gitCwd = thread.worktreePath ?? threadProjectCwd;
+  const gitCwd = resolveThreadStatusCwd(thread);
   const gitStatus = useGitStatus({
     environmentId: thread.environmentId,
     cwd: thread.branch != null ? gitCwd : null,
