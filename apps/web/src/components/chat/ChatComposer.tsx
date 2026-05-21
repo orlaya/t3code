@@ -752,9 +752,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const [isComposerFooterSemiCompact, setIsComposerFooterSemiCompact] = useState(false);
   const [isComposerFooterUltraCompact, setIsComposerFooterUltraCompact] = useState(false);
   const [isComposerPrimaryActionsCompact, setIsComposerPrimaryActionsCompact] = useState(false);
-  const [isComposerFocused, setIsComposerFocused] = useState(false);
+  const [, setIsComposerFocused] = useState(false);
   const isMobileViewport = useMediaQuery("max-sm");
-  const isComposerCollapsedMobile = isMobileViewport && !isComposerFocused;
+  // T3 fork: never collapse the composer at narrow widths. We often use the app
+  // in a skinny desktop window, and the upstream mobile blur-collapse is too jumpy.
+  const isComposerCollapsedMobile = false;
 
   // ------------------------------------------------------------------
   // Refs
