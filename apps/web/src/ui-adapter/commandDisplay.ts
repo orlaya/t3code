@@ -13,8 +13,9 @@ export interface DisplayCommand {
 
 export interface ParsedReadCommand {
   kind: "read";
-  tool: "sed";
-  filePath: string;
+  tool: "sed" | "cat";
+  filePath?: string;
+  filePaths?: ReadonlyArray<string>;
   lineStart?: number;
   lineEnd?: number;
 }
@@ -206,6 +207,9 @@ function parseSedRange(script: string): Pick<ParsedReadCommand, "lineStart" | "l
 }
 
 function parseReadCommand(command: string, words: ReadonlyArray<string>): ParsedReadCommand | null {
+  const catRead = parseCatReadCommand(words);
+  if (catRead) return catRead;
+
   if (!words || words.length < 4) return null;
 
   const executable = executableBasename(words[0]!);
@@ -242,6 +246,25 @@ function parseReadCommand(command: string, words: ReadonlyArray<string>): Parsed
     tool: "sed",
     filePath,
     ...range,
+  };
+}
+
+function parseCatReadCommand(words: ReadonlyArray<string>): ParsedReadCommand | null {
+  if (words.length < 2) return null;
+  const executable = executableBasename(words[0]!);
+  if (executable !== "cat") return null;
+
+  const filePaths = words.slice(1);
+  if (filePaths.length === 0) return null;
+  if (filePaths.some((word) => word.length === 0 || word.startsWith("-") || word === "-")) {
+    return null;
+  }
+
+  return {
+    kind: "read",
+    tool: "cat",
+    ...(filePaths.length === 1 ? { filePath: filePaths[0]! } : {}),
+    filePaths,
   };
 }
 

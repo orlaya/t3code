@@ -36,6 +36,31 @@ describe("command display", () => {
     });
   });
 
+  it("parses plain cat file commands as whole-file reads", () => {
+    expect(parseCommandForDisplay("cat AGENTS.md")).toEqual({
+      kind: "read",
+      tool: "cat",
+      filePath: "AGENTS.md",
+      filePaths: ["AGENTS.md"],
+    });
+  });
+
+  it("parses plain cat multi-file commands as whole-file reads", () => {
+    expect(parseCommandForDisplay("cat AGENTS.md CLAUDE.local.md")).toEqual({
+      kind: "read",
+      tool: "cat",
+      filePaths: ["AGENTS.md", "CLAUDE.local.md"],
+    });
+  });
+
+  it("does not parse cat commands with flags as plain reads", () => {
+    expect(parseCommandForDisplay("cat -n AGENTS.md")).toBeNull();
+  });
+
+  it("does not parse cat stdin as a plain read", () => {
+    expect(parseCommandForDisplay("cat -")).toBeNull();
+  });
+
   it("parses ripgrep commands as grep display commands", () => {
     expect(parseCommandForDisplay('rg "AssembledWorkGroup" apps/web/src -n')).toEqual({
       kind: "grep",

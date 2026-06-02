@@ -59,25 +59,39 @@ export const AssembledCommandRow = memo(function AssembledCommandRow({
   const handleResultClose = useCallback((open: boolean) => setResultDialogOpen(open), []);
   const handleOpenParsedFile = useCallback(() => {
     if (!parsedReadCommand) return;
+    const filePath = parsedReadCommand.filePath;
+    if (!filePath) return;
     const api = readLocalApi();
     if (!api) return;
     void openInPreferredEditor(
       api,
-      resolveEditorTargetPath(
-        parsedReadCommand.filePath,
-        workspaceRoot,
-        parsedReadCommand.lineStart,
-      ),
+      resolveEditorTargetPath(filePath, workspaceRoot, parsedReadCommand.lineStart),
     );
   }, [parsedReadCommand, workspaceRoot]);
+  const handleOpenReadPath = useCallback(
+    (filePath: string) => {
+      const api = readLocalApi();
+      if (!api) return;
+      void openInPreferredEditor(api, resolveEditorTargetPath(filePath, workspaceRoot, undefined));
+    },
+    [workspaceRoot],
+  );
 
   if (parsedReadCommand) {
-    const displayPath = formatWorkspaceRelativePath(parsedReadCommand.filePath, workspaceRoot);
+    const readPaths = parsedReadCommand.filePaths ?? [];
+    const displayPath =
+      parsedReadCommand.filePath != null
+        ? formatWorkspaceRelativePath(parsedReadCommand.filePath, workspaceRoot)
+        : readPaths
+            .map((filePath) => formatWorkspaceRelativePath(filePath, workspaceRoot))
+            .join(" ");
     const range = formatLineRange(parsedReadCommand.lineStart, parsedReadCommand.lineEnd);
     const parsedHeading = `Read${toolHeadingSuffix(tool.state)}`;
-    const parsedDisplayText = `${parsedHeading} – ${parsedReadCommand.tool} · ${displayPath}${
+    const parsedDisplayText = `${parsedHeading} – ${parsedReadCommand.tool} ${displayPath}${
       range ? ` (${range})` : ""
     }`;
+    const canOpenReadFile = parsedReadCommand.filePath != null;
+    const showPathList = !canOpenReadFile && readPaths.length > 0;
 
     return (
       <>
@@ -99,25 +113,51 @@ export const AssembledCommandRow = memo(function AssembledCommandRow({
                 >
                   <p className="truncate text-xs leading-5 text-muted-foreground/85">
                     <span>{parsedHeading}</span>
-                    <span> – {parsedReadCommand.tool} · </span>
-                    <span
-                      className="hover:underline"
-                      role="button"
-                      tabIndex={0}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleOpenParsedFile();
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        handleOpenParsedFile();
-                      }}
-                    >
-                      {displayPath}
-                    </span>
-                    {range && <span className="text-muted-foreground/70"> ({range})</span>}
+                    <span> – {parsedReadCommand.tool} </span>
+                    {showPathList ? (
+                      readPaths.map((filePath, index) => (
+                        <span key={filePath}>
+                          {index > 0 && " "}
+                          <span
+                            className="hover:underline"
+                            role="button"
+                            tabIndex={0}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleOpenReadPath(filePath);
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key !== "Enter" && event.key !== " ") return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                              handleOpenReadPath(filePath);
+                            }}
+                          >
+                            {formatWorkspaceRelativePath(filePath, workspaceRoot)}
+                          </span>
+                        </span>
+                      ))
+                    ) : (
+                      <span
+                        className={cn(canOpenReadFile && "hover:underline")}
+                        role={canOpenReadFile ? "button" : undefined}
+                        tabIndex={canOpenReadFile ? 0 : undefined}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (canOpenReadFile) handleOpenParsedFile();
+                        }}
+                        onKeyDown={(event) => {
+                          if (!canOpenReadFile) return;
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleOpenParsedFile();
+                        }}
+                      >
+                        {displayPath}
+                      </span>
+                    )}
+                    {range && <span className="text-muted-foreground/85"> ({range})</span>}
                   </p>
                 </TooltipTrigger>
                 <TooltipPopup className="max-w-[min(720px,calc(100vw-2rem))]">
