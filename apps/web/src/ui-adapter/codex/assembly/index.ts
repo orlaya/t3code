@@ -21,8 +21,10 @@ import type {
 } from "@t3tools/contracts";
 
 import { extractCodexToolData, extractCodexInlineDiffs } from "../extraction";
+import { formatCommandForDisplay } from "../../commandDisplay";
 import {
   extractItemType,
+  extractProviderItemId,
   extractCommandString,
   extractToolCallId,
   extractAggregatedOutput,
@@ -30,91 +32,6 @@ import {
   extractDetail,
   extractFileChanges,
 } from "./shared";
-
-// ---------------------------------------------------------------------------
-// Shell wrapper unwrapping (same logic as Claude — Codex wraps commands too)
-// ---------------------------------------------------------------------------
-
-function trimMatchingOuterQuotes(value: string): string {
-  const trimmed = value.trim();
-  if (
-    (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
-    (trimmed.startsWith('"') && trimmed.endsWith('"'))
-  ) {
-    const unquoted = trimmed.slice(1, -1).trim();
-    return unquoted.length > 0 ? unquoted : trimmed;
-  }
-  return trimmed;
-}
-
-function executableBasename(value: string): string | null {
-  const trimmed = trimMatchingOuterQuotes(value);
-  if (trimmed.length === 0) return null;
-  const normalized = trimmed.replace(/\\/g, "/");
-  const segments = normalized.split("/");
-  const last = segments.at(-1)?.trim() ?? "";
-  return last.length > 0 ? last.toLowerCase() : null;
-}
-
-function splitExecutableAndRest(value: string): { executable: string; rest: string } | null {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) return null;
-
-  if (trimmed.startsWith('"') || trimmed.startsWith("'")) {
-    const quote = trimmed.charAt(0);
-    const closeIndex = trimmed.indexOf(quote, 1);
-    if (closeIndex <= 0) return null;
-    return {
-      executable: trimmed.slice(0, closeIndex + 1),
-      rest: trimmed.slice(closeIndex + 1).trim(),
-    };
-  }
-
-  const firstWhitespace = trimmed.search(/\s/);
-  if (firstWhitespace < 0) return { executable: trimmed, rest: "" };
-
-  return {
-    executable: trimmed.slice(0, firstWhitespace),
-    rest: trimmed.slice(firstWhitespace).trim(),
-  };
-}
-
-const SHELL_WRAPPER_SPECS = [
-  {
-    executables: ["pwsh", "pwsh.exe", "powershell", "powershell.exe"],
-    wrapperFlagPattern: /(?:^|\s)-command\s+/i,
-  },
-  {
-    executables: ["cmd", "cmd.exe"],
-    wrapperFlagPattern: /(?:^|\s)\/c\s+/i,
-  },
-  {
-    executables: ["bash", "sh", "zsh"],
-    wrapperFlagPattern: /(?:^|\s)-(?:l)?c\s+/i,
-  },
-] as const;
-
-function unwrapShellCommand(value: string): string {
-  const split = splitExecutableAndRest(value);
-  if (!split || split.rest.length === 0) return value;
-
-  const shell = executableBasename(split.executable);
-  if (!shell) return value;
-
-  const spec = SHELL_WRAPPER_SPECS.find((s) =>
-    (s.executables as ReadonlyArray<string>).includes(shell),
-  );
-  if (!spec) return value;
-
-  const match = spec.wrapperFlagPattern.exec(split.rest);
-  if (!match) return value;
-
-  const command = split.rest.slice(match.index + match[0].length).trim();
-  if (command.length === 0) return value;
-
-  const unwrapped = trimMatchingOuterQuotes(command);
-  return unwrapped.length > 0 ? unwrapped : value;
-}
 
 // ---------------------------------------------------------------------------
 // Invocation accumulators
@@ -139,20 +56,24 @@ function assembleCommand(inv: ToolInvocation): AssembledCommand | null {
   if (!first) return null;
 
   if (!completed) {
+    const rawCommand = extractDetail(first.payload);
+    const formatted = rawCommand ? formatCommandForDisplay(rawCommand) : { command: "" };
     // Only tool.started — emit "starting" placeholder
-    return {
+    const assembled: AssembledCommand = {
       kind: "command",
       id: first.id,
       createdAt: first.createdAt,
       turnId: inv.turnId,
       state: "starting",
       heading: "Command",
-      command: extractDetail(first.payload) ?? "",
+      command: formatted.command,
     };
+    if (formatted.rawCommand) assembled.rawCommand = formatted.rawCommand;
+    return assembled;
   }
 
   const rawCommand = extractCommandString(completed.payload) ?? extractDetail(completed.payload);
-  const displayCommand = rawCommand ? unwrapShellCommand(rawCommand) : "";
+  const formatted = rawCommand ? formatCommandForDisplay(rawCommand) : { command: "" };
   const output = extractAggregatedOutput(completed.payload);
   const exitCode = extractExitCode(completed.payload);
 
@@ -165,12 +86,10 @@ function assembleCommand(inv: ToolInvocation): AssembledCommand | null {
     turnId: inv.turnId,
     state,
     heading: "Command",
-    command: displayCommand,
+    command: formatted.command,
   };
 
-  if (rawCommand && displayCommand !== rawCommand) {
-    assembled.rawCommand = rawCommand;
-  }
+  if (formatted.rawCommand) assembled.rawCommand = formatted.rawCommand;
   const toolCallId = extractToolCallId(completed.payload);
   if (toolCallId) assembled.toolCallId = toolCallId;
   if (output) assembled.resultContent = output;
@@ -321,9 +240,11 @@ export interface CodexAssemblyResult {
 export function assembleCodexTools(
   activities: ReadonlyArray<OrchestrationThreadActivity>,
 ): CodexAssemblyResult {
-  // Group tool lifecycle activities into invocations by FIFO matching
+  // Group normal Codex lifecycle activities by the stable provider item id.
+  // Anonymous legacy events fall back to FIFO by item type.
   const invocations: ToolInvocation[] = [];
-  const startedQueue = new Map<string, ToolInvocation[]>();
+  const invocationsByProviderItemId = new Map<string, ToolInvocation>();
+  const anonymousStartedQueue = new Map<string, ToolInvocation[]>();
 
   for (const activity of activities) {
     if (
@@ -336,6 +257,31 @@ export function assembleCodexTools(
 
     const itemType = extractItemType(activity.payload);
     if (itemType === "unknown") continue;
+    const providerItemId = extractProviderItemId(activity.payload);
+
+    if (providerItemId) {
+      let inv = invocationsByProviderItemId.get(providerItemId);
+      if (!inv) {
+        inv = {
+          itemType,
+          turnId: activity.turnId,
+          activities: [],
+          hasStarted: false,
+          hasCompleted: false,
+        };
+        invocationsByProviderItemId.set(providerItemId, inv);
+        invocations.push(inv);
+      }
+
+      inv.activities.push(activity);
+      if (activity.kind === "tool.started") {
+        inv.hasStarted = true;
+      }
+      if (activity.kind === "tool.completed") {
+        inv.hasCompleted = true;
+      }
+      continue;
+    }
 
     if (activity.kind === "tool.started") {
       const inv: ToolInvocation = {
@@ -347,17 +293,18 @@ export function assembleCodexTools(
       };
       invocations.push(inv);
 
-      let queue = startedQueue.get(itemType);
+      let queue = anonymousStartedQueue.get(itemType);
       if (!queue) {
         queue = [];
-        startedQueue.set(itemType, queue);
+        anonymousStartedQueue.set(itemType, queue);
       }
       queue.push(inv);
       continue;
     }
 
-    // tool.updated or tool.completed — try to marry to earliest unmatched started
-    const queue = startedQueue.get(itemType);
+    // Anonymous tool.updated or tool.completed — try to marry to the earliest
+    // unmatched anonymous started event for compatibility with old payloads.
+    const queue = anonymousStartedQueue.get(itemType);
     const pending = queue?.find((inv) => !inv.hasCompleted);
 
     if (pending) {

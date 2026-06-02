@@ -13,6 +13,11 @@ export function extractItemType(payload: unknown): string {
   return typeof payload.itemType === "string" ? payload.itemType : "unknown";
 }
 
+export function extractProviderItemId(payload: unknown): string | undefined {
+  if (!isRecord(payload)) return undefined;
+  return typeof payload.providerItemId === "string" ? payload.providerItemId : undefined;
+}
+
 function getItem(payload: unknown): Record<string, unknown> | null {
   if (!isRecord(payload)) return null;
   const data = isRecord(payload.data) ? payload.data : null;
@@ -25,6 +30,8 @@ export function extractCommandString(payload: unknown): string | undefined {
 }
 
 export function extractToolCallId(payload: unknown): string | undefined {
+  const providerItemId = extractProviderItemId(payload);
+  if (providerItemId) return providerItemId;
   const item = getItem(payload);
   return item && typeof item.id === "string" ? item.id : undefined;
 }

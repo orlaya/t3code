@@ -28,7 +28,13 @@ function AssembledToolRow({
 }) {
   switch (tool.kind) {
     case "command":
-      return <AssembledCommandRow tool={tool} {...(suppressAlertBg && { suppressAlertBg })} />;
+      return (
+        <AssembledCommandRow
+          tool={tool}
+          workspaceRoot={workspaceRoot}
+          {...(suppressAlertBg && { suppressAlertBg })}
+        />
+      );
     case "file-read":
       return <AssembledFileReadRow tool={tool} workspaceRoot={workspaceRoot} />;
     case "file-search":
