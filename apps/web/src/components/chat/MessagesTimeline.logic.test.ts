@@ -381,6 +381,95 @@ describe("deriveMessagesTimelineRows", () => {
     expect(userRow?.revertTurnCount).toBe(1);
     expect(assistantRow?.assistantTurnDiffSummary).toBe(assistantTurnDiffSummary);
   });
+
+  it("hides assistant diff summaries for the active in-progress turn", () => {
+    const assistantTurnDiffSummary = {
+      turnId: "turn-1" as never,
+      completedAt: "2026-01-01T00:00:30Z",
+      assistantMessageId: "assistant-1" as never,
+      checkpointTurnCount: 1,
+      files: [{ path: "src/index.ts", additions: 3, deletions: 1 }],
+    };
+
+    const rows = deriveMessagesTimelineRows({
+      timelineEntries: [
+        {
+          id: "assistant-entry",
+          kind: "message",
+          createdAt: "2026-01-01T00:00:20Z",
+          message: {
+            id: "assistant-1" as never,
+            role: "assistant",
+            text: "Nearly done",
+            turnId: "turn-1" as never,
+            createdAt: "2026-01-01T00:00:20Z",
+            streaming: false,
+          },
+        },
+      ],
+      completionDividerBeforeEntryId: null,
+      isWorking: true,
+      activeTurnInProgress: true,
+      activeTurnId: "turn-1" as never,
+      activeTurnStartedAt: null,
+      turnDiffSummaryByAssistantMessageId: new Map([
+        ["assistant-1" as never, assistantTurnDiffSummary],
+      ]),
+      revertTurnCountByUserMessageId: new Map(),
+    });
+
+    const assistantRow = rows.find(
+      (row): row is Extract<(typeof rows)[number], { kind: "message" }> =>
+        row.kind === "message" && row.message.role === "assistant",
+    );
+
+    expect(assistantRow?.assistantTurnDiffSummary).toBeUndefined();
+  });
+
+  it("shows assistant diff summaries once the active turn has settled", () => {
+    const assistantTurnDiffSummary = {
+      turnId: "turn-1" as never,
+      completedAt: "2026-01-01T00:00:30Z",
+      assistantMessageId: "assistant-1" as never,
+      checkpointTurnCount: 1,
+      files: [{ path: "src/index.ts", additions: 3, deletions: 1 }],
+    };
+
+    const rows = deriveMessagesTimelineRows({
+      timelineEntries: [
+        {
+          id: "assistant-entry",
+          kind: "message",
+          createdAt: "2026-01-01T00:00:20Z",
+          message: {
+            id: "assistant-1" as never,
+            role: "assistant",
+            text: "Done",
+            turnId: "turn-1" as never,
+            createdAt: "2026-01-01T00:00:20Z",
+            completedAt: "2026-01-01T00:00:30Z",
+            streaming: false,
+          },
+        },
+      ],
+      completionDividerBeforeEntryId: null,
+      isWorking: false,
+      activeTurnInProgress: false,
+      activeTurnId: "turn-1" as never,
+      activeTurnStartedAt: null,
+      turnDiffSummaryByAssistantMessageId: new Map([
+        ["assistant-1" as never, assistantTurnDiffSummary],
+      ]),
+      revertTurnCountByUserMessageId: new Map(),
+    });
+
+    const assistantRow = rows.find(
+      (row): row is Extract<(typeof rows)[number], { kind: "message" }> =>
+        row.kind === "message" && row.message.role === "assistant",
+    );
+
+    expect(assistantRow?.assistantTurnDiffSummary).toBe(assistantTurnDiffSummary);
+  });
 });
 
 describe("computeStableMessagesTimelineRows", () => {

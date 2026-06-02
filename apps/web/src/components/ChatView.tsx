@@ -3929,6 +3929,7 @@ export default function ChatView(props: ChatViewProps) {
                       runtimeMode={runtimeMode}
                       interactionMode={interactionMode}
                       lockedProvider={lockedProvider}
+                      providerName={providerName}
                       providerStatuses={providerStatuses as ServerProvider[]}
                       activeProjectDefaultModelSelection={activeProject?.defaultModelSelection}
                       activeThreadModelSelection={activeThread?.modelSelection}

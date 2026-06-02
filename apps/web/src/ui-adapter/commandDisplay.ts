@@ -19,6 +19,21 @@ export interface ParsedReadCommand {
   lineEnd?: number;
 }
 
+export interface ParsedGrepCommand {
+  kind: "grep";
+  tool: "rg";
+  heading: "Grep";
+  command: string;
+}
+
+export interface ParsedOutlineCommand {
+  kind: "outline";
+  heading: "Outline";
+  detail: string;
+}
+
+export type ParsedDisplayCommand = ParsedReadCommand | ParsedGrepCommand | ParsedOutlineCommand;
+
 function trimMatchingOuterQuotes(value: string): string {
   const trimmed = value.trim();
   if (
@@ -190,8 +205,7 @@ function parseSedRange(script: string): Pick<ParsedReadCommand, "lineStart" | "l
   return null;
 }
 
-export function parseCommandForDisplay(command: string): ParsedReadCommand | null {
-  const words = parseShellWords(formatCommandForDisplay(command).command);
+function parseReadCommand(command: string, words: ReadonlyArray<string>): ParsedReadCommand | null {
   if (!words || words.length < 4) return null;
 
   const executable = executableBasename(words[0]!);
@@ -229,4 +243,43 @@ export function parseCommandForDisplay(command: string): ParsedReadCommand | nul
     filePath,
     ...range,
   };
+}
+
+function parseGrepCommand(command: string, words: ReadonlyArray<string>): ParsedGrepCommand | null {
+  const executable = executableBasename(words[0] ?? "");
+  if (executable !== "rg" && executable !== "ripgrep") return null;
+
+  return {
+    kind: "grep",
+    tool: "rg",
+    heading: "Grep",
+    command,
+  };
+}
+
+function parseOutlineCommand(words: ReadonlyArray<string>): ParsedOutlineCommand | null {
+  const executable = executableBasename(words[0] ?? "");
+  if (executable !== "frank") return null;
+  if (words[1] !== "outline") return null;
+
+  const detail = words.slice(2).join(" ").trim();
+  if (detail.length === 0) return null;
+
+  return {
+    kind: "outline",
+    heading: "Outline",
+    detail,
+  };
+}
+
+export function parseCommandForDisplay(command: string): ParsedDisplayCommand | null {
+  const displayCommand = formatCommandForDisplay(command).command;
+  const words = parseShellWords(displayCommand);
+  if (!words || words.length === 0) return null;
+
+  return (
+    parseReadCommand(displayCommand, words) ??
+    parseGrepCommand(displayCommand, words) ??
+    parseOutlineCommand(words)
+  );
 }

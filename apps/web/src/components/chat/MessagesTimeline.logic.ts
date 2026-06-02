@@ -333,6 +333,10 @@ export function deriveMessagesTimelineRows(input: {
       input.activeTurnInProgress === true &&
       input.activeTurnId != null &&
       timelineEntry.message.turnId === input.activeTurnId;
+    const assistantTurnDiffSummary =
+      timelineEntry.message.role === "assistant" && !assistantTurnStillInProgress
+        ? input.turnDiffSummaryByAssistantMessageId.get(timelineEntry.message.id)
+        : undefined;
 
     const showCompletionDivider =
       timelineEntry.message.role === "assistant" &&
@@ -351,10 +355,7 @@ export function deriveMessagesTimelineRows(input: {
         timelineEntry.message.role === "assistant" &&
         terminalAssistantMessageIds.has(timelineEntry.message.id),
       assistantCopyStreaming: timelineEntry.message.streaming || assistantTurnStillInProgress,
-      assistantTurnDiffSummary:
-        timelineEntry.message.role === "assistant"
-          ? input.turnDiffSummaryByAssistantMessageId.get(timelineEntry.message.id)
-          : undefined,
+      assistantTurnDiffSummary,
       revertTurnCount:
         timelineEntry.message.role === "user"
           ? input.revertTurnCountByUserMessageId.get(timelineEntry.message.id)

@@ -47,6 +47,7 @@ export const AssembledCommandRow = memo(function AssembledCommandRow({
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const hasResult = !!tool.resultContent;
   const parsedCommand = parseCommandForDisplay(tool.command);
+  const parsedReadCommand = parsedCommand?.kind === "read" ? parsedCommand : null;
 
   const handleClick = hasResult ? () => setResultDialogOpen(true) : undefined;
 
@@ -57,20 +58,24 @@ export const AssembledCommandRow = memo(function AssembledCommandRow({
 
   const handleResultClose = useCallback((open: boolean) => setResultDialogOpen(open), []);
   const handleOpenParsedFile = useCallback(() => {
-    if (!parsedCommand) return;
+    if (!parsedReadCommand) return;
     const api = readLocalApi();
     if (!api) return;
     void openInPreferredEditor(
       api,
-      resolveEditorTargetPath(parsedCommand.filePath, workspaceRoot, parsedCommand.lineStart),
+      resolveEditorTargetPath(
+        parsedReadCommand.filePath,
+        workspaceRoot,
+        parsedReadCommand.lineStart,
+      ),
     );
-  }, [parsedCommand, workspaceRoot]);
+  }, [parsedReadCommand, workspaceRoot]);
 
-  if (parsedCommand) {
-    const displayPath = formatWorkspaceRelativePath(parsedCommand.filePath, workspaceRoot);
-    const range = formatLineRange(parsedCommand.lineStart, parsedCommand.lineEnd);
+  if (parsedReadCommand) {
+    const displayPath = formatWorkspaceRelativePath(parsedReadCommand.filePath, workspaceRoot);
+    const range = formatLineRange(parsedReadCommand.lineStart, parsedReadCommand.lineEnd);
     const parsedHeading = `Read${toolHeadingSuffix(tool.state)}`;
-    const parsedDisplayText = `${parsedHeading} · ${parsedCommand.tool} · ${displayPath}${
+    const parsedDisplayText = `${parsedHeading} – ${parsedReadCommand.tool} · ${displayPath}${
       range ? ` (${range})` : ""
     }`;
 
@@ -94,7 +99,7 @@ export const AssembledCommandRow = memo(function AssembledCommandRow({
                 >
                   <p className="truncate text-xs leading-5 text-muted-foreground/85">
                     <span>{parsedHeading}</span>
-                    <span> – {parsedCommand.tool} · </span>
+                    <span> – {parsedReadCommand.tool} · </span>
                     <span
                       className="hover:underline"
                       role="button"
@@ -113,6 +118,57 @@ export const AssembledCommandRow = memo(function AssembledCommandRow({
                       {displayPath}
                     </span>
                     {range && <span className="text-muted-foreground/70"> ({range})</span>}
+                  </p>
+                </TooltipTrigger>
+                <TooltipPopup className="max-w-[min(720px,calc(100vw-2rem))]">
+                  <p className="whitespace-pre-wrap wrap-break-word text-xs leading-5">
+                    {tool.rawCommand ?? tool.command}
+                  </p>
+                </TooltipPopup>
+              </Tooltip>
+            </div>
+          </div>
+        </div>
+        {hasResult && (
+          <ToolResultDialog
+            open={resultDialogOpen}
+            onOpenChange={handleResultClose}
+            heading={parsedHeading}
+            command={tool.rawCommand ?? tool.command}
+            resultContent={tool.resultContent!}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (parsedCommand && parsedCommand.kind !== "read") {
+    const parsedHeading = `${parsedCommand.heading}${toolHeadingSuffix(tool.state)}`;
+    const parsedDetail =
+      parsedCommand.kind === "grep" ? parsedCommand.command : parsedCommand.detail;
+    const parsedDisplayText = `${parsedHeading} – ${parsedDetail}`;
+
+    return (
+      <>
+        <div
+          className={cn(
+            "rounded-lg px-0.25 py-1",
+            isAlert && !suppressAlertBg && "bg-destructive/5",
+            hasResult && "group/file cursor-pointer",
+          )}
+          onClick={handleClick}
+        >
+          <div className="flex items-center gap-1 transition-[opacity,translate] duration-200">
+            <ToolRowIcon state={tool.state} restIcon={TerminalIcon} hook={tool.hook} />
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <Tooltip>
+                <TooltipTrigger
+                  className="block min-w-0 w-full text-left"
+                  aria-label={parsedDisplayText}
+                >
+                  <p className="truncate text-xs leading-5 text-muted-foreground/85">
+                    <span>{parsedHeading}</span>
+                    <span> – {parsedDetail}</span>
                   </p>
                 </TooltipTrigger>
                 <TooltipPopup className="max-w-[min(720px,calc(100vw-2rem))]">

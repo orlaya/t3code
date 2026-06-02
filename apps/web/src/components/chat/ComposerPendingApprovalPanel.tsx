@@ -5,23 +5,27 @@ import { formatWorkspaceRelativePath } from "../../filePathDisplay";
 import { readLocalApi } from "~/localApi";
 import { openInPreferredEditor } from "../../editorPreferences";
 import { parseToolCallDetail } from "./toolCallDisplay";
-import { extractInlineDiffsFromApprovalArgs } from "../../ui-adapter";
+import { extractApprovalInlineDiffs } from "../../ui-adapter";
 
 interface ComposerPendingApprovalPanelProps {
   approval: PendingApproval;
   pendingCount: number;
+  providerName: string;
   workspaceRoot: string | undefined;
   resolvedTheme: "light" | "dark";
 }
 
-function extractEditDiffEntry(approval: PendingApproval) {
-  const args = approval.args;
-  if (!args?.input || approval.requestKind !== "file-change") return null;
-  const diff = extractInlineDiffsFromApprovalArgs({
-    ...(args.toolName !== undefined ? { toolName: args.toolName } : {}),
-    input: args.input,
-    ...(args.toolUseId !== undefined ? { toolUseId: args.toolUseId } : {}),
-  })[0];
+function extractEditDiffEntry(approval: PendingApproval, providerName: string) {
+  if (approval.requestKind !== "file-change") return null;
+  const diff = extractApprovalInlineDiffs(
+    {
+      requestId: approval.requestId,
+      requestKind: approval.requestKind,
+      ...(approval.detail ? { detail: approval.detail } : {}),
+      ...(approval.args ? { args: approval.args } : {}),
+    },
+    providerName,
+  )[0];
   if (!diff) return null;
 
   return {
@@ -53,10 +57,14 @@ function extractFilePath(approval: PendingApproval): string | null {
 export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprovalPanel({
   approval,
   pendingCount: _pendingCount,
+  providerName,
   workspaceRoot,
   resolvedTheme,
 }: ComposerPendingApprovalPanelProps) {
-  const editEntry = useMemo(() => extractEditDiffEntry(approval), [approval]);
+  const editEntry = useMemo(
+    () => extractEditDiffEntry(approval, providerName),
+    [approval, providerName],
+  );
   const rawFilePath = useMemo(() => extractFilePath(approval), [approval]);
 
   const handleOpenInEditor = useCallback(() => {
@@ -131,7 +139,8 @@ export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprova
     );
   }
 
-  // file-read (or any other non-handled type)
+  // file-read / file-change without preview (or any other non-handled type)
+  const fallbackLabel = approval.requestKind === "file-change" ? "EDIT" : "READ";
   const displayDetail = approval.detail
     ? formatWorkspaceRelativePath(approval.detail, workspaceRoot)
     : "";
@@ -142,7 +151,7 @@ export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprova
       onClick={rawFilePath ? handleOpenInEditor : undefined}
     >
       <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] text-foreground/70">
-        READ
+        {fallbackLabel}
       </span>
       <span className="min-w-0 truncate font-mono text-[11px] text-foreground/70">
         {displayDetail}

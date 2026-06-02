@@ -217,4 +217,49 @@ describe("MessagesTimeline", () => {
     expect(markup).toContain("t3code/apps/web/src/session-logic.ts");
     expect(markup).not.toContain("C:/Users/mike/dev-stuff/t3code/apps/web/src/session-logic.ts");
   });
+
+  it("hides assistant changed files while the active turn is still in progress", async () => {
+    const { MessagesTimeline } = await import("./MessagesTimeline");
+    const turnDiffSummary = {
+      turnId: "turn-1" as never,
+      completedAt: "2026-03-17T19:13:28.000Z",
+      assistantMessageId: MessageId.make("assistant-1"),
+      checkpointTurnCount: 1,
+      files: [{ path: "src/session-logic.ts", additions: 12, deletions: 2 }],
+    };
+    const timelineEntries = [
+      {
+        id: "assistant-entry",
+        kind: "message" as const,
+        createdAt: MESSAGE_CREATED_AT,
+        message: {
+          id: MessageId.make("assistant-1"),
+          role: "assistant" as const,
+          text: "Working on it",
+          turnId: "turn-1" as never,
+          createdAt: MESSAGE_CREATED_AT,
+          streaming: false,
+        },
+      },
+    ];
+    const sharedProps = {
+      ...buildProps(),
+      activeTurnId: "turn-1" as never,
+      timelineEntries,
+      turnDiffSummaryByAssistantMessageId: new Map([
+        [MessageId.make("assistant-1"), turnDiffSummary],
+      ]),
+      agentEditedFilesByTurnId: new Map([["turn-1" as never, new Set(["src/session-logic.ts"])]]),
+    };
+
+    const inProgressMarkup = renderToStaticMarkup(
+      <MessagesTimeline {...sharedProps} isWorking={true} activeTurnInProgress={true} />,
+    );
+    const settledMarkup = renderToStaticMarkup(
+      <MessagesTimeline {...sharedProps} isWorking={false} activeTurnInProgress={false} />,
+    );
+
+    expect(inProgressMarkup).not.toContain("Changed files");
+    expect(settledMarkup).toContain("Changed files");
+  });
 });

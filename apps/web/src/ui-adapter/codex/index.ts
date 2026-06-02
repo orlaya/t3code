@@ -5,6 +5,10 @@
  * functions for the Codex provider.
  */
 
-export { extractCodexToolData, extractCodexInlineDiffs } from "./extraction";
+export {
+  extractCodexToolData,
+  extractCodexInlineDiffs,
+  extractCodexApprovalInlineDiffs,
+} from "./extraction";
 
 export { assembleCodexTools, type CodexAssemblyResult } from "./assembly";

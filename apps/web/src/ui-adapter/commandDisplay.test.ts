@@ -35,4 +35,48 @@ describe("command display", () => {
       lineEnd: 260,
     });
   });
+
+  it("parses ripgrep commands as grep display commands", () => {
+    expect(parseCommandForDisplay('rg "AssembledWorkGroup" apps/web/src -n')).toEqual({
+      kind: "grep",
+      tool: "rg",
+      heading: "Grep",
+      command: 'rg "AssembledWorkGroup" apps/web/src -n',
+    });
+  });
+
+  it("parses wrapped ripgrep commands as grep display commands", () => {
+    expect(
+      parseCommandForDisplay(`/bin/zsh -lc 'rg "AssembledWorkGroup" apps/web/src -n'`),
+    ).toEqual({
+      kind: "grep",
+      tool: "rg",
+      heading: "Grep",
+      command: 'rg "AssembledWorkGroup" apps/web/src -n',
+    });
+  });
+
+  it("parses frank outline commands as outline display commands", () => {
+    expect(
+      parseCommandForDisplay(
+        "frank outline ___dandy/cli/tests/compare.rs ___dandy/cli/tests/ts_runtime.rs",
+      ),
+    ).toEqual({
+      kind: "outline",
+      heading: "Outline",
+      detail: "___dandy/cli/tests/compare.rs ___dandy/cli/tests/ts_runtime.rs",
+    });
+  });
+
+  it("parses wrapped frank outline commands as outline display commands", () => {
+    expect(
+      parseCommandForDisplay(
+        "/bin/zsh -lc 'frank outline ___dandy/cli/tests/compare.rs ___dandy/cli/tests/ts_runtime.rs'",
+      ),
+    ).toEqual({
+      kind: "outline",
+      heading: "Outline",
+      detail: "___dandy/cli/tests/compare.rs ___dandy/cli/tests/ts_runtime.rs",
+    });
+  });
 });

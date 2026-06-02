@@ -277,3 +277,111 @@ export function extractCodexInlineDiffs(payload: unknown): CanonicalInlineDiff[]
     ];
   });
 }
+
+function extractApprovalChangeKind(
+  change: Record<string, unknown>,
+): CanonicalInlineDiff["changeKind"] {
+  const kind = isRecord(change.kind) ? change.kind : undefined;
+  return asChangeKind(kind?.type ?? change.type);
+}
+
+function extractApprovalChangeDiff(change: Record<string, unknown>): string | undefined {
+  return asString(change.diff) ?? asString(change.unified_diff);
+}
+
+export function extractCodexApprovalInlineDiffs(payload: unknown): CanonicalInlineDiff[] {
+  if (!isRecord(payload)) {
+    return [];
+  }
+
+  const args = isRecord(payload.args) ? payload.args : payload;
+  const changes = asArray(args.changes) ?? approvalFileChangesToArray(args.fileChanges);
+  if (changes.length === 0) {
+    return [];
+  }
+
+  const toolCallId = asString(args.callId) ?? asString(args.itemId);
+
+  return changes.flatMap<CanonicalInlineDiff>((entry): CanonicalInlineDiff[] => {
+    const change = isRecord(entry) ? entry : undefined;
+    const filePath = asString(change?.path);
+    if (!change || !filePath) {
+      return [];
+    }
+
+    const changeKind = extractApprovalChangeKind(change);
+    const movePath =
+      asString(isRecord(change.kind) ? change.kind.move_path : undefined) ??
+      asString(change.move_path) ??
+      asString(change.movePath);
+    const diff = extractApprovalChangeDiff(change);
+
+    if (changeKind === "add") {
+      const content = asString(change.content) ?? diff;
+      if (typeof content !== "string") {
+        return [];
+      }
+      return [
+        {
+          filePath,
+          ...(toolCallId ? { toolCallId } : {}),
+          toolName: "ApplyPatch",
+          changeKind,
+          source: "before_after",
+          oldString: "",
+          newString: content,
+          anchorLine: 1,
+        },
+      ];
+    }
+
+    if (changeKind === "delete") {
+      const content = asString(change.content);
+      if (typeof content === "string") {
+        return [
+          {
+            filePath,
+            ...(toolCallId ? { toolCallId } : {}),
+            toolName: "ApplyPatch",
+            changeKind,
+            source: "before_after",
+            oldString: content,
+            newString: "",
+            anchorLine: 1,
+          },
+        ];
+      }
+    }
+
+    const unifiedPatch =
+      typeof diff === "string" && diff.length > 0
+        ? toUnifiedPatch(filePath, changeKind, diff)
+        : undefined;
+    if (!unifiedPatch) {
+      return [];
+    }
+
+    const anchorLine = extractFirstAnchorLine(unifiedPatch);
+    return [
+      {
+        filePath,
+        ...(toolCallId ? { toolCallId } : {}),
+        toolName: "ApplyPatch",
+        changeKind,
+        source: "patch",
+        unifiedPatch,
+        ...(movePath ? { movePath } : {}),
+        ...(anchorLine !== undefined ? { anchorLine } : {}),
+      },
+    ];
+  });
+}
+
+function approvalFileChangesToArray(value: unknown): ReadonlyArray<unknown> {
+  if (!isRecord(value)) {
+    return [];
+  }
+  return Object.entries(value).map(([path, change]) =>
+    isRecord(change) ? Object.assign({}, change, { path }) : change,
+  );
+}

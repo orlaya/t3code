@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractApprovalInlineDiffs,
   extractInlineDiffs,
   extractInlineDiffsFromApprovalArgs,
   extractToolData,
@@ -77,6 +78,58 @@ describe("extractInlineDiffsFromApprovalArgs", () => {
         newString: "after",
       },
     ]);
+  });
+});
+
+describe("extractApprovalInlineDiffs dispatcher", () => {
+  it("extracts Codex apply-patch approval diffs from fileChanges", () => {
+    expect(
+      extractApprovalInlineDiffs(
+        {
+          requestId: "approval-1",
+          requestKind: "file-change",
+          args: {
+            callId: "call-1",
+            conversationId: "thread-1",
+            fileChanges: {
+              "/tmp/example.ts": {
+                type: "update",
+                unified_diff: "@@ -1 +1 @@\n-before\n+after\n",
+              },
+            },
+          },
+        },
+        "codex",
+      ),
+    ).toEqual([
+      {
+        filePath: "/tmp/example.ts",
+        toolCallId: "call-1",
+        toolName: "ApplyPatch",
+        changeKind: "update",
+        source: "patch",
+        unifiedPatch:
+          "diff --git a/tmp/example.ts b/tmp/example.ts\n--- a/tmp/example.ts\n+++ b/tmp/example.ts\n@@ -1 +1 @@\n-before\n+after\n",
+        anchorLine: 1,
+      },
+    ]);
+  });
+
+  it("returns no Codex approval diff when the file-change request has no fileChanges", () => {
+    expect(
+      extractApprovalInlineDiffs(
+        {
+          requestId: "approval-1",
+          requestKind: "file-change",
+          args: {
+            itemId: "item-1",
+            threadId: "thread-1",
+            turnId: "turn-1",
+          },
+        },
+        "codex",
+      ),
+    ).toEqual([]);
   });
 });
 

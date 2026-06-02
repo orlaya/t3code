@@ -19,7 +19,11 @@ import {
   extractClaudeApprovalDecision,
   extractClaudeInlineDiffs,
 } from "./claude/extraction.ts";
-import { extractCodexInlineDiffs, extractCodexToolData } from "./codex/index.ts";
+import {
+  extractCodexApprovalInlineDiffs,
+  extractCodexInlineDiffs,
+  extractCodexToolData,
+} from "./codex/index.ts";
 import { extractOpenCodeToolData } from "./opencode.ts";
 import { extractCursorToolData } from "./cursor.ts";
 
@@ -146,6 +150,7 @@ type ApprovalInlineDiffExtractor = (payload: unknown) => CanonicalInlineDiff[];
 
 const approvalInlineDiffExtractorsByProvider: Record<string, ApprovalInlineDiffExtractor> = {
   claudeAgent: extractClaudeApprovalInlineDiffs,
+  codex: extractCodexApprovalInlineDiffs,
 };
 
 const approvalDecisionExtractorsByProvider: Record<string, ApprovalDecisionExtractor> = {

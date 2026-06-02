@@ -321,7 +321,7 @@ function GitQuickActionIcon({
   quickAction: GitQuickAction;
   SourceControlIcon: ReturnType<typeof getSourceControlPresentation>["Icon"];
 }) {
-  const iconClassName = "size-3.5";
+  const iconClassName = "size-3";
   if (quickAction.kind === "open_pr") return <SourceControlIcon className={iconClassName} />;
   if (quickAction.kind === "open_publish") return <CloudUploadIcon className={iconClassName} />;
   if (quickAction.kind === "run_pull") return <InfoIcon className={iconClassName} />;
@@ -1590,7 +1590,14 @@ export default function GitActionsControl({
           }}
         >
           <MenuTrigger
-            render={<Button aria-label="Git actions" variant="outline" size="xs" />}
+            render={
+              <Button
+                aria-label="Git actions"
+                variant="outline"
+                size="xs"
+                className="h-6 min-w-6 @max-3xl/header-actions:w-6 @max-3xl/header-actions:px-0"
+              />
+            }
             disabled={isGitActionRunning || quickAction.disabled}
           >
             <GitQuickActionIcon quickAction={quickAction} SourceControlIcon={SourceControlIcon} />
