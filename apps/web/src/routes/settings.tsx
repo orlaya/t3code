@@ -1,4 +1,4 @@
-import { ChevronRightIcon, PlusIcon, RotateCcwIcon } from "lucide-react";
+import { ChevronRightIcon, PlusIcon } from "lucide-react";
 import {
   Link,
   Outlet,
@@ -8,9 +8,8 @@ import {
   useLocation,
   useNavigate,
 } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
-import { useSettingsRestore } from "../components/settings/SettingsPanels";
 import { Button } from "../components/ui/button";
 import { SidebarInset, SidebarTrigger } from "../components/ui/sidebar";
 import { isElectron } from "../env";
@@ -121,37 +120,18 @@ function BreadcrumbNav({ crumbs }: { crumbs: Crumb[] }) {
   );
 }
 
-function RestoreDefaultsButton({ onRestored }: { onRestored: () => void }) {
-  const { changedSettingLabels, restoreDefaults } = useSettingsRestore(onRestored);
-
-  return (
-    <Button
-      size="xs"
-      variant="outline"
-      disabled={changedSettingLabels.length === 0}
-      onClick={() => void restoreDefaults()}
-    >
-      <RotateCcwIcon className="size-3.5" />
-      Restore defaults
-    </Button>
-  );
-}
-
 function SettingsContentLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
-  const [restoreSignal, setRestoreSignal] = useState(0);
   const showAddHook =
     location.pathname === "/settings/hooks" || location.pathname === "/settings/hooks/";
   const showCancelHook = location.pathname.startsWith("/settings/hooks/") && !showAddHook;
   const showAddCommand =
     location.pathname === "/settings/commands" || location.pathname === "/settings/commands/";
   const showCancelCommand = location.pathname.startsWith("/settings/commands/") && !showAddCommand;
-  const showRestoreDefaults = location.pathname === "/settings/general";
   const { crumbs, upPath } = useBreadcrumbs(location.pathname);
 
-  const handleRestored = () => setRestoreSignal((value) => value + 1);
   const navigateBackWithinApp = useCallback(() => {
     if (upPath !== "/") {
       void navigate({ to: upPath, replace: true });
@@ -181,7 +161,6 @@ function SettingsContentLayout() {
 
   const actionButtons = (
     <>
-      {showRestoreDefaults ? <RestoreDefaultsButton onRestored={handleRestored} /> : null}
       {showAddHook ? (
         <Button size="xs" variant="outline" render={<Link to="/settings/hooks/new" />}>
           <PlusIcon className="size-3" />
@@ -206,8 +185,7 @@ function SettingsContentLayout() {
       ) : null}
     </>
   );
-  const hasActions =
-    showRestoreDefaults || showAddHook || showCancelHook || showAddCommand || showCancelCommand;
+  const hasActions = showAddHook || showCancelHook || showAddCommand || showCancelCommand;
 
   return (
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground isolate">
@@ -233,7 +211,7 @@ function SettingsContentLayout() {
           </div>
         )}
 
-        <div key={restoreSignal} className="min-h-0 flex flex-1 flex-col">
+        <div className="min-h-0 flex flex-1 flex-col">
           <Outlet />
         </div>
       </div>
