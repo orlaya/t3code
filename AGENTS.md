@@ -36,9 +36,11 @@ T3 Code is currently Codex-first. The server starts `codex app-server` (JSON-RPC
 
 How we use it in this codebase:
 
-- Session startup/resume and turn lifecycle are brokered in `apps/server/src/codexAppServerManager.ts`.
-- Provider dispatch and thread event logging are coordinated in `apps/server/src/providerManager.ts`.
-- WebSocket server routes NativeApi methods in `apps/server/src/wsServer.ts`.
+- Codex provider availability, account/model probing, and app-server initialization params live in `apps/server/src/provider/Layers/CodexProvider.ts`.
+- Session startup/resume, turn payload construction, stdout/stderr handling, and JSON-RPC calls to `codex app-server` live in `apps/server/src/provider/Layers/CodexSessionRuntime.ts`.
+- The provider adapter boundary and Codex event-to-runtime-event mapping live in `apps/server/src/provider/Layers/CodexAdapter.ts`.
+- Provider dispatch, session bindings, and runtime event routing live in `apps/server/src/provider/Layers/ProviderService.ts`.
+- WebSocket RPC routing lives in `apps/server/src/ws.ts`.
 - Web app consumes orchestration domain events via WebSocket push on channel `orchestration.domainEvent` (provider runtime activity is projected into orchestration events server-side).
 
 Docs:

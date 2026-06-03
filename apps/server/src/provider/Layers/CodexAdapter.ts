@@ -29,6 +29,7 @@ import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
 import * as Queue from "effect/Queue";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
@@ -36,6 +37,7 @@ import { ChildProcessSpawner } from "effect/unstable/process";
 import * as CodexErrors from "effect-codex-app-server/errors";
 import * as EffectCodexSchema from "effect-codex-app-server/schema";
 
+import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 import {
   getModelSelectionBooleanOptionValue,
   getModelSelectionStringOptionValue,
@@ -144,6 +146,58 @@ function readPayload<A>(
 function trimText(value: string | undefined | null): string | undefined {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
+}
+
+function readRecord(value: unknown): Record<string, unknown> | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function readStringField(
+  record: Record<string, unknown> | undefined,
+  key: string,
+): string | undefined {
+  const value = record?.[key];
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function readStatusField(record: Record<string, unknown> | undefined): string | undefined {
+  const value = record?.status;
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
+  }
+  return undefined;
+}
+
+const decodeUnknownJson = decodeJsonResult(Schema.Unknown);
+
+function parseJsonRecord(value: string): Record<string, unknown> | undefined {
+  const parsed = decodeUnknownJson(value);
+  return Result.isSuccess(parsed) ? readRecord(parsed.success) : undefined;
+}
+
+function formatStructuredRuntimeErrorMessage(message: string): string {
+  const root = parseJsonRecord(message);
+  if (!root) {
+    return message;
+  }
+
+  const nestedError = readRecord(root.error);
+  const detail =
+    readStringField(nestedError, "message") ??
+    readStringField(root, "message") ??
+    readStringField(nestedError, "code") ??
+    readStringField(root, "code");
+  const status = readStatusField(root) ?? readStatusField(nestedError);
+
+  if (status && detail) {
+    return `${status}: ${detail}`;
+  }
+  return detail ?? status ?? message;
 }
 
 const FATAL_CODEX_STDERR_SNIPPETS = ["failed to connect to websocket"];
@@ -493,12 +547,13 @@ function mapToRuntimeEvents(
     if (!event.message) {
       return [];
     }
+    const message = formatStructuredRuntimeErrorMessage(event.message);
     return [
       {
         ...runtimeEventBase(event, canonicalThreadId),
         type: "runtime.error",
         payload: {
-          message: event.message,
+          message,
           class: "provider_error",
           ...(event.payload !== undefined ? { detail: event.payload } : {}),
         },
@@ -1240,7 +1295,8 @@ function mapToRuntimeEvents(
 
   if (event.method === "error") {
     const payload = readPayload(EffectCodexSchema.V2ErrorNotification, event.payload);
-    const message = payload?.error.message ?? event.message ?? "Provider runtime error";
+    const rawMessage = payload?.error.message ?? event.message ?? "Provider runtime error";
+    const message = formatStructuredRuntimeErrorMessage(rawMessage);
     const willRetry = payload?.willRetry === true;
     return [
       {

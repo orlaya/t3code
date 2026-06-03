@@ -639,6 +639,47 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
     }),
   );
 
+  it.effect("summarizes structured Codex runtime error messages", () =>
+    Effect.gen(function* () {
+      const { adapter, runtime } = yield* startLifecycleRuntime();
+      const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
+      const structuredMessage = `{"type":"error","error":{"type":"image_generation_user_error","code":"invalid_value","message":"The model 'gpt-image-2' does not exist.","param":"tools"},"status":400}`;
+
+      yield* runtime.emit({
+        id: asEventId("evt-structured-error"),
+        kind: "notification",
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-1"),
+        createdAt: "2026-01-01T00:00:00.000Z",
+        method: "error",
+        turnId: asTurnId("turn-1"),
+        payload: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          error: {
+            message: structuredMessage,
+          },
+          willRetry: false,
+        },
+      } satisfies ProviderEvent);
+
+      const firstEvent = yield* Fiber.join(firstEventFiber);
+
+      assert.equal(firstEvent._tag, "Some");
+      if (firstEvent._tag !== "Some") {
+        return;
+      }
+      assert.equal(firstEvent.value.type, "runtime.error");
+      if (firstEvent.value.type !== "runtime.error") {
+        return;
+      }
+      assert.equal(
+        firstEvent.value.payload.message,
+        "400: The model 'gpt-image-2' does not exist.",
+      );
+    }),
+  );
+
   it.effect("maps process stderr notifications to runtime.warning", () =>
     Effect.gen(function* () {
       const { adapter, runtime } = yield* startLifecycleRuntime();
