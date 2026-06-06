@@ -53,6 +53,28 @@ describe("command display", () => {
     });
   });
 
+  it("parses nl -ba file commands as whole-file reads", () => {
+    expect(parseCommandForDisplay("nl -ba AGENTS.md")).toEqual({
+      kind: "read",
+      tool: "nl -ba",
+      filePath: "AGENTS.md",
+      filePaths: ["AGENTS.md"],
+    });
+  });
+
+  it("parses nl -b a file commands as whole-file reads", () => {
+    expect(parseCommandForDisplay("nl -b a -- AGENTS.md")).toEqual({
+      kind: "read",
+      tool: "nl -ba",
+      filePath: "AGENTS.md",
+      filePaths: ["AGENTS.md"],
+    });
+  });
+
+  it("does not parse nl commands without all-line numbering as plain reads", () => {
+    expect(parseCommandForDisplay("nl AGENTS.md")).toBeNull();
+  });
+
   it("does not parse cat commands with flags as plain reads", () => {
     expect(parseCommandForDisplay("cat -n AGENTS.md")).toBeNull();
   });

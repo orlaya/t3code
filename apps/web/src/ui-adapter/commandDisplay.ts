@@ -13,7 +13,7 @@ export interface DisplayCommand {
 
 export interface ParsedReadCommand {
   kind: "read";
-  tool: "sed" | "cat";
+  tool: "sed" | "cat" | "nl -ba";
   filePath?: string;
   filePaths?: ReadonlyArray<string>;
   lineStart?: number;
@@ -210,6 +210,9 @@ function parseReadCommand(command: string, words: ReadonlyArray<string>): Parsed
   const catRead = parseCatReadCommand(words);
   if (catRead) return catRead;
 
+  const nlRead = parseNlReadCommand(words);
+  if (nlRead) return nlRead;
+
   if (!words || words.length < 4) return null;
 
   const executable = executableBasename(words[0]!);
@@ -246,6 +249,36 @@ function parseReadCommand(command: string, words: ReadonlyArray<string>): Parsed
     tool: "sed",
     filePath,
     ...range,
+  };
+}
+
+function parseNlReadCommand(words: ReadonlyArray<string>): ParsedReadCommand | null {
+  if (words.length < 3) return null;
+  const executable = executableBasename(words[0]!);
+  if (executable !== "nl") return null;
+
+  let index = 1;
+  if (words[index] === "--") index += 1;
+
+  if (words[index] === "-ba") {
+    index += 1;
+  } else if (words[index] === "-b" && words[index + 1] === "a") {
+    index += 2;
+  } else {
+    return null;
+  }
+
+  if (words[index] === "--") index += 1;
+
+  const filePath = words[index];
+  if (!filePath || filePath.length === 0 || filePath.startsWith("-")) return null;
+  if (words.length !== index + 1) return null;
+
+  return {
+    kind: "read",
+    tool: "nl -ba",
+    filePath,
+    filePaths: [filePath],
   };
 }
 
