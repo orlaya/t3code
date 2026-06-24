@@ -434,7 +434,61 @@ const projectRenameCommand = Command.make("rename", {
   ),
 );
 
+const projectMoveCommand = Command.make("move", {
+  ...projectLocationFlags,
+  project: Argument.string("project").pipe(
+    Argument.withDescription("Project id or workspace root to move."),
+  ),
+  workspaceRoot: Argument.string("workspace-root").pipe(
+    Argument.withDescription("New workspace root path for the project."),
+  ),
+}).pipe(
+  Command.withDescription("Move a project to a different workspace root."),
+  Command.withHandler((flags) =>
+    runProjectMutation(
+      flags,
+      Effect.fn("projectMoveMutation")(function* ({
+        snapshot,
+        dispatch,
+      }: {
+        readonly snapshot: OrchestrationReadModel;
+        readonly dispatch: (
+          command: ProjectCliDispatchCommand,
+        ) => Effect.Effect<void, Error, FileSystem.FileSystem | HttpClient.HttpClient | Path.Path>;
+      }) {
+        const project = yield* findActiveProjectTarget({
+          snapshot,
+          identifier: flags.project,
+        });
+        const nextWorkspaceRoot = yield* normalizeWorkspaceRootForProjectCommand(
+          flags.workspaceRoot,
+        );
+        if (nextWorkspaceRoot === project.workspaceRoot) {
+          return `Project ${project.id} is already at '${nextWorkspaceRoot}'.`;
+        }
+
+        const conflicting = snapshot.projects.find(
+          (p) => p.deletedAt === null && p.workspaceRoot === nextWorkspaceRoot,
+        );
+        if (conflicting) {
+          return yield* new ProjectCommandError({
+            message: `An active project already exists for '${nextWorkspaceRoot}'.`,
+          });
+        }
+
+        yield* dispatch({
+          type: "project.meta.update",
+          commandId: CommandId.make(crypto.randomUUID()),
+          projectId: project.id,
+          workspaceRoot: nextWorkspaceRoot,
+        });
+        return `Moved project ${project.id} (${project.title}) to ${nextWorkspaceRoot}.`;
+      }),
+    ),
+  ),
+);
+
 export const projectCommand = Command.make("project").pipe(
   Command.withDescription("Manage projects."),
-  Command.withSubcommands([projectAddCommand, projectRemoveCommand, projectRenameCommand]),
+  Command.withSubcommands([projectAddCommand, projectRemoveCommand, projectRenameCommand, projectMoveCommand]),
 );

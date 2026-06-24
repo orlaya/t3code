@@ -1110,6 +1110,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
     null,
   );
   const [projectRenameTitle, setProjectRenameTitle] = useState("");
+  const [projectRenameCwd, setProjectRenameCwd] = useState("");
   const [projectGroupingTarget, setProjectGroupingTarget] =
     useState<SidebarProjectGroupMember | null>(null);
   const [projectGroupingSelection, setProjectGroupingSelection] = useState<
@@ -1335,6 +1336,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const openProjectRenameDialog = useCallback((member: SidebarProjectGroupMember) => {
     setProjectRenameTarget(member);
     setProjectRenameTitle(member.name);
+    setProjectRenameCwd(member.cwd);
   }, []);
 
   const openProjectGroupingDialog = useCallback(
@@ -1944,6 +1946,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
   const closeProjectRenameDialog = useCallback(() => {
     setProjectRenameTarget(null);
     setProjectRenameTitle("");
+    setProjectRenameCwd("");
   }, []);
 
   const submitProjectRename = useCallback(async () => {
@@ -1951,8 +1954,8 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       return;
     }
 
-    const trimmed = projectRenameTitle.trim();
-    if (trimmed.length === 0) {
+    const trimmedTitle = projectRenameTitle.trim();
+    if (trimmedTitle.length === 0) {
       toastManager.add({
         type: "warning",
         title: "Project title cannot be empty",
@@ -1960,7 +1963,19 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       return;
     }
 
-    if (trimmed === projectRenameTarget.name) {
+    const trimmedCwd = projectRenameCwd.trim();
+    if (trimmedCwd.length === 0) {
+      toastManager.add({
+        type: "warning",
+        title: "Project path cannot be empty",
+      });
+      return;
+    }
+
+    const titleChanged = trimmedTitle !== projectRenameTarget.name;
+    const cwdChanged = trimmedCwd !== projectRenameTarget.cwd;
+
+    if (!titleChanged && !cwdChanged) {
       closeProjectRenameDialog();
       return;
     }
@@ -1970,7 +1985,7 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Failed to rename project",
+          title: "Failed to update project",
           description: "Project API unavailable.",
         }),
       );
@@ -1982,19 +1997,20 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
         type: "project.meta.update",
         commandId: newCommandId(),
         projectId: projectRenameTarget.id,
-        title: trimmed,
+        ...(titleChanged ? { title: trimmedTitle } : {}),
+        ...(cwdChanged ? { workspaceRoot: trimmedCwd } : {}),
       });
       closeProjectRenameDialog();
     } catch (error) {
       toastManager.add(
         stackedThreadToast({
           type: "error",
-          title: "Failed to rename project",
+          title: "Failed to update project",
           description: error instanceof Error ? error.message : "An error occurred.",
         }),
       );
     }
-  }, [closeProjectRenameDialog, projectRenameTarget, projectRenameTitle]);
+  }, [closeProjectRenameDialog, projectRenameTarget, projectRenameTitle, projectRenameCwd]);
 
   const closeProjectGroupingDialog = useCallback(() => {
     setProjectGroupingTarget(null);
@@ -2271,11 +2287,11 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
       >
         <DialogPopup className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Rename project</DialogTitle>
+            <DialogTitle>Edit project</DialogTitle>
             <DialogDescription>
               {projectRenameTarget
-                ? `Update the title for ${projectRenameTarget.cwd}.`
-                : "Update the project title."}
+                ? `Update the title or path for ${projectRenameTarget.cwd}.`
+                : "Update the project settings."}
             </DialogDescription>
           </DialogHeader>
           <DialogPanel className="space-y-4">
@@ -2285,6 +2301,20 @@ const SidebarProjectItem = memo(function SidebarProjectItem(props: SidebarProjec
                 aria-label="Project title"
                 value={projectRenameTitle}
                 onChange={(event) => setProjectRenameTitle(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void submitProjectRename();
+                  }
+                }}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <span className="text-xs font-medium text-foreground">Workspace path</span>
+              <Input
+                aria-label="Workspace path"
+                value={projectRenameCwd}
+                onChange={(event) => setProjectRenameCwd(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();

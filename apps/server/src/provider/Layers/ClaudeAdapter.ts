@@ -2505,6 +2505,7 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         });
         return;
       default:
+        if ((message.subtype as string) === "thinking_tokens") return;
         yield* emitRuntimeWarning(
           context,
           `Unhandled Claude system message subtype '${message.subtype}'.`,
