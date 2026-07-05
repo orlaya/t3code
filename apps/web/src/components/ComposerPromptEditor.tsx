@@ -198,7 +198,7 @@ class ComposerMentionNode extends DecoratorNode<React.ReactElement> {
   }
 
   override getTextContent(): string {
-    return `@${this.__path}`;
+    return this.__path;
   }
 
   override isInline(): true {
@@ -507,6 +507,7 @@ function getExpandedAbsoluteOffsetForInlineTokenPoint(
 function findSelectionPointForInlineToken(
   node: ComposerInlineTokenNode,
   remainingRef: { value: number },
+  tokenLength: number = getComposerInlineTokenTextLength(node),
 ): { key: string; offset: number; type: "element" } | null {
   const parent = node.getParent();
   if (!parent || !$isElementNode(parent)) return null;
@@ -518,14 +519,14 @@ function findSelectionPointForInlineToken(
       type: "element",
     };
   }
-  if (remainingRef.value === getComposerInlineTokenTextLength(node)) {
+  if (remainingRef.value === tokenLength) {
     return {
       key: parent.getKey(),
       offset: index + 1,
       type: "element",
     };
   }
-  remainingRef.value -= getComposerInlineTokenTextLength(node);
+  remainingRef.value -= tokenLength;
   return null;
 }
 
@@ -654,9 +655,12 @@ function getExpandedAbsoluteOffsetForPoint(node: LexicalNode, pointOffset: numbe
 function findSelectionPointAtOffset(
   node: LexicalNode,
   remainingRef: { value: number },
+  lengthForInlineToken: (
+    node: ComposerInlineTokenNode,
+  ) => number = getComposerInlineTokenTextLength,
 ): { key: string; offset: number; type: "text" | "element" } | null {
   if (isComposerInlineTokenNode(node)) {
-    return findSelectionPointForInlineToken(node, remainingRef);
+    return findSelectionPointForInlineToken(node, remainingRef, lengthForInlineToken(node));
   }
 
   if ($isTextNode(node)) {
@@ -697,7 +701,7 @@ function findSelectionPointAtOffset(
   if ($isElementNode(node)) {
     const children = node.getChildren();
     for (const child of children) {
-      const point = findSelectionPointAtOffset(child, remainingRef);
+      const point = findSelectionPointAtOffset(child, remainingRef, lengthForInlineToken);
       if (point) {
         return point;
       }
@@ -749,6 +753,37 @@ function $setSelectionRangeAtComposerOffsets(startOffset: number, endOffset: num
     type: "element" as const,
   };
   const focusPoint = findSelectionPointAtOffset(root, focusRemainingRef) ?? {
+    key: root.getKey(),
+    offset: root.getChildren().length,
+    type: "element" as const,
+  };
+  const selection = $createRangeSelection();
+  selection.anchor.set(anchorPoint.key, anchorPoint.offset, anchorPoint.type);
+  selection.focus.set(focusPoint.key, focusPoint.offset, focusPoint.type);
+  $setSelection(selection);
+}
+
+function $setSelectionRangeAtExpandedComposerOffsets(startOffset: number, endOffset: number): void {
+  const root = $getRoot();
+  const expandedLength = root.getTextContent().length;
+  const boundedStart = Math.max(0, Math.min(startOffset, expandedLength));
+  const boundedEnd = Math.max(0, Math.min(endOffset, expandedLength));
+  const anchorRemainingRef = { value: boundedStart };
+  const focusRemainingRef = { value: boundedEnd };
+  const anchorPoint = findSelectionPointAtOffset(
+    root,
+    anchorRemainingRef,
+    getComposerInlineTokenExpandedTextLength,
+  ) ?? {
+    key: root.getKey(),
+    offset: root.getChildren().length,
+    type: "element" as const,
+  };
+  const focusPoint = findSelectionPointAtOffset(
+    root,
+    focusRemainingRef,
+    getComposerInlineTokenExpandedTextLength,
+  ) ?? {
     key: root.getKey(),
     offset: root.getChildren().length,
     type: "element" as const,
@@ -869,6 +904,12 @@ export interface ComposerPromptEditorHandle {
   focus: () => void;
   focusAt: (cursor: number) => void;
   focusAtEnd: () => void;
+  replaceRangeWithMention: (
+    rangeStart: number,
+    rangeEnd: number,
+    path: string,
+    options?: { expectedText?: string },
+  ) => boolean;
   readSnapshot: () => {
     value: string;
     cursor: number;
@@ -1535,6 +1576,76 @@ function ComposerPromptEditorInner({
     return snapshot;
   }, [editor]);
 
+  const replaceRangeWithMention = useCallback(
+    (
+      rangeStart: number,
+      rangeEnd: number,
+      path: string,
+      options?: { expectedText?: string },
+    ): boolean => {
+      const result: {
+        snapshot: {
+          value: string;
+          cursor: number;
+          expandedCursor: number;
+          terminalContextIds: string[];
+        } | null;
+      } = { snapshot: null };
+
+      editor.update(() => {
+        const root = $getRoot();
+        const currentText = root.getTextContent();
+        const safeStart = Math.max(0, Math.min(currentText.length, rangeStart));
+        const safeEnd = Math.max(safeStart, Math.min(currentText.length, rangeEnd));
+        if (
+          options?.expectedText !== undefined &&
+          currentText.slice(safeStart, safeEnd) !== options.expectedText
+        ) {
+          return;
+        }
+
+        $setSelectionRangeAtExpandedComposerOffsets(safeStart, safeEnd);
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) {
+          return;
+        }
+
+        selection.insertNodes([$createComposerMentionNode(path), $createTextNode(" ")]);
+        const nextValue = root.getTextContent();
+        const nextCursor = clampCollapsedComposerCursor(
+          nextValue,
+          $readSelectionOffsetFromEditorState(snapshotRef.current.cursor),
+        );
+        const nextExpandedCursor = clampExpandedCursor(
+          nextValue,
+          $readExpandedSelectionOffsetFromEditorState(snapshotRef.current.expandedCursor),
+        );
+        result.snapshot = {
+          value: nextValue,
+          cursor: nextCursor,
+          expandedCursor: nextExpandedCursor,
+          terminalContextIds: collectTerminalContextIds(root),
+        };
+        snapshotRef.current = result.snapshot;
+      });
+
+      const nextSnapshot = result.snapshot;
+      if (!nextSnapshot) {
+        return false;
+      }
+
+      onChangeRef.current(
+        nextSnapshot.value,
+        nextSnapshot.cursor,
+        nextSnapshot.expandedCursor,
+        false,
+        nextSnapshot.terminalContextIds,
+      );
+      return true;
+    },
+    [editor],
+  );
+
   useImperativeHandle(
     editorRef,
     () => ({
@@ -1550,9 +1661,10 @@ function ComposerPromptEditorInner({
           ),
         );
       },
+      replaceRangeWithMention,
       readSnapshot,
     }),
-    [focusAt, readSnapshot],
+    [focusAt, readSnapshot, replaceRangeWithMention],
   );
 
   const handleEditorChange = useCallback((editorState: EditorState) => {

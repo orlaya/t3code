@@ -490,5 +490,10 @@ const projectMoveCommand = Command.make("move", {
 
 export const projectCommand = Command.make("project").pipe(
   Command.withDescription("Manage projects."),
-  Command.withSubcommands([projectAddCommand, projectRemoveCommand, projectRenameCommand, projectMoveCommand]),
+  Command.withSubcommands([
+    projectAddCommand,
+    projectRemoveCommand,
+    projectRenameCommand,
+    projectMoveCommand,
+  ]),
 );

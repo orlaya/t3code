@@ -45,7 +45,6 @@ import { isElectron } from "../env";
 import { readLocalApi } from "../localApi";
 import { parseDiffRouteSearch, stripDiffSearchParams } from "../diffRouteSearch";
 import { collapseExpandedComposerCursor } from "../composer-logic";
-import { resolveMentionsToAbsolutePaths } from "../composer-editor-mentions";
 import {
   deriveCompletionDividerBeforeEntryId,
   derivePendingApprovals,
@@ -2876,9 +2875,7 @@ export default function ChatView(props: ChatViewProps) {
       selectedPromptEffort: ctxSelectedPromptEffort,
       selectedModelSelection: ctxSelectedModelSelection,
     } = sendCtx;
-    const promptForSend = gitCwd
-      ? resolveMentionsToAbsolutePaths(promptRef.current, gitCwd)
-      : promptRef.current;
+    const promptForSend = promptRef.current;
     const {
       trimmedPrompt: trimmed,
       sendableTerminalContexts: sendableComposerTerminalContexts,

@@ -1,32 +1,27 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  resolveMentionsToAbsolutePaths,
   selectionTouchesMentionBoundary,
   splitPromptIntoComposerSegments,
 } from "./composer-editor-mentions";
 import { INLINE_TERMINAL_CONTEXT_PLACEHOLDER } from "./lib/terminalContext";
 
 describe("splitPromptIntoComposerSegments", () => {
-  it("splits mention tokens followed by whitespace into mention segments", () => {
+  it("keeps typed at-symbol file-looking text as plain text", () => {
     expect(splitPromptIntoComposerSegments("Inspect @AGENTS.md please")).toEqual([
-      { type: "text", text: "Inspect " },
-      { type: "mention", path: "AGENTS.md" },
-      { type: "text", text: " please" },
+      { type: "text", text: "Inspect @AGENTS.md please" },
     ]);
   });
 
-  it("does not convert an incomplete trailing mention token", () => {
-    expect(splitPromptIntoComposerSegments("Inspect @AGENTS.md")).toEqual([
-      { type: "text", text: "Inspect @AGENTS.md" },
+  it("keeps typed npm scope paths as plain text", () => {
+    expect(splitPromptIntoComposerSegments("Use @orlaya/gist/cue here")).toEqual([
+      { type: "text", text: "Use @orlaya/gist/cue here" },
     ]);
   });
 
-  it("keeps newlines around mention tokens", () => {
+  it("keeps newlines around typed at-symbol text", () => {
     expect(splitPromptIntoComposerSegments("one\n@src/index.ts \ntwo")).toEqual([
-      { type: "text", text: "one\n" },
-      { type: "mention", path: "src/index.ts" },
-      { type: "text", text: " \ntwo" },
+      { type: "text", text: "one\n@src/index.ts \ntwo" },
     ]);
   });
 
@@ -52,8 +47,7 @@ describe("splitPromptIntoComposerSegments", () => {
     ).toEqual([
       { type: "text", text: "Inspect " },
       { type: "terminal-context", context: null },
-      { type: "mention", path: "AGENTS.md" },
-      { type: "text", text: " please" },
+      { type: "text", text: "@AGENTS.md please" },
     ]);
   });
 
@@ -69,7 +63,7 @@ describe("splitPromptIntoComposerSegments", () => {
     ]);
   });
 
-  it("keeps skill parsing alongside mentions and terminal placeholders", () => {
+  it("keeps skill parsing alongside typed at-symbol text and terminal placeholders", () => {
     expect(
       splitPromptIntoComposerSegments(
         `Inspect ${INLINE_TERMINAL_CONTEXT_PLACEHOLDER}$review-follow-up after @AGENTS.md `,
@@ -78,32 +72,30 @@ describe("splitPromptIntoComposerSegments", () => {
       { type: "text", text: "Inspect " },
       { type: "terminal-context", context: null },
       { type: "skill", name: "review-follow-up" },
-      { type: "text", text: " after " },
-      { type: "mention", path: "AGENTS.md" },
-      { type: "text", text: " " },
+      { type: "text", text: " after @AGENTS.md " },
     ]);
   });
 });
 
 describe("selectionTouchesMentionBoundary", () => {
-  it("returns true when selection includes the whitespace after a mention", () => {
+  it("returns false for typed at-symbol text", () => {
     expect(
       selectionTouchesMentionBoundary(
         "hi @package.json there",
         "hi @package.json".length,
         "hi @package.json there".length,
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("returns true when selection includes the whitespace before a mention", () => {
+  it("returns false when selection includes whitespace before typed at-symbol text", () => {
     expect(
       selectionTouchesMentionBoundary(
         "hi there @package.json later",
         "hi there".length,
         "hi there ".length,
       ),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("returns false when selection starts after the mention boundary whitespace", () => {
@@ -116,7 +108,7 @@ describe("selectionTouchesMentionBoundary", () => {
     ).toBe(false);
   });
 
-  it("returns true when selection includes whitespace after a mention following a terminal placeholder", () => {
+  it("returns false for typed at-symbol text following a terminal placeholder", () => {
     const prompt = `${INLINE_TERMINAL_CONTEXT_PLACEHOLDER}@AGENTS.md there`;
     expect(
       selectionTouchesMentionBoundary(
@@ -124,34 +116,6 @@ describe("selectionTouchesMentionBoundary", () => {
         `${INLINE_TERMINAL_CONTEXT_PLACEHOLDER}@AGENTS.md`.length,
         prompt.length,
       ),
-    ).toBe(true);
-  });
-});
-
-describe("resolveMentionsToAbsolutePaths", () => {
-  it("replaces @mention with absolute path, stripping the @", () => {
-    expect(
-      resolveMentionsToAbsolutePaths("look at @src/index.ts please", "/Users/me/project"),
-    ).toBe("look at /Users/me/project/src/index.ts please");
-  });
-
-  it("handles multiple mentions", () => {
-    expect(resolveMentionsToAbsolutePaths("@foo.ts and @bar/baz.ts done", "/cwd")).toBe(
-      "/cwd/foo.ts and /cwd/bar/baz.ts done",
-    );
-  });
-
-  it("handles cwd with trailing slash", () => {
-    expect(resolveMentionsToAbsolutePaths("see @README.md end", "/cwd/")).toBe(
-      "see /cwd/README.md end",
-    );
-  });
-
-  it("does not touch incomplete trailing mention (no trailing whitespace)", () => {
-    expect(resolveMentionsToAbsolutePaths("see @README.md", "/cwd")).toBe("see @README.md");
-  });
-
-  it("leaves text without mentions unchanged", () => {
-    expect(resolveMentionsToAbsolutePaths("just some text", "/cwd")).toBe("just some text");
+    ).toBe(false);
   });
 });

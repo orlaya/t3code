@@ -118,9 +118,9 @@ describe("detectComposerTrigger", () => {
     });
   });
 
-  it("detects trigger with true cursor even when regex-based mention detection would false-match", () => {
-    // MENTION_TOKEN_REGEX can false-match plain text like "@in" as a mention.
-    // The fix bypasses it by computing the expanded cursor from the Lexical node tree.
+  it("detects trigger with true cursor in the middle of typed at-symbol text", () => {
+    // The editor computes the expanded cursor from the Lexical node tree rather
+    // than assuming all at-symbol text has collapsed into a mention chip.
     const text = "Please inspect @in this sentence";
     const cursorAfterAt = "Please inspect @".length;
 
@@ -146,22 +146,24 @@ describe("expandCollapsedComposerCursor", () => {
     expect(expandCollapsedComposerCursor("plain text", 5)).toBe(5);
   });
 
-  it("maps collapsed mention cursor to expanded text cursor", () => {
+  it("keeps typed at-symbol file-looking text cursor unchanged", () => {
     const text = "what's in my @AGENTS.md fsfdas";
-    const collapsedCursorAfterMention = "what's in my ".length + 2;
-    const expandedCursorAfterMention = "what's in my @AGENTS.md ".length;
+    const cursorAfterAt = "what's in my @".length;
 
-    expect(expandCollapsedComposerCursor(text, collapsedCursorAfterMention)).toBe(
-      expandedCursorAfterMention,
-    );
+    expect(expandCollapsedComposerCursor(text, cursorAfterAt)).toBe(cursorAfterAt);
   });
 
-  it("allows path trigger detection to close after selecting a mention", () => {
+  it("keeps path trigger detection open for typed at-symbol text", () => {
     const text = "what's in my @AGENTS.md ";
-    const collapsedCursorAfterMention = "what's in my ".length + 2;
-    const expandedCursor = expandCollapsedComposerCursor(text, collapsedCursorAfterMention);
+    const cursorAfterAt = "what's in my @".length;
+    const expandedCursor = expandCollapsedComposerCursor(text, cursorAfterAt);
 
-    expect(detectComposerTrigger(text, expandedCursor)).toBeNull();
+    expect(detectComposerTrigger(text, expandedCursor)).toEqual({
+      kind: "path",
+      query: "",
+      rangeStart: "what's in my ".length,
+      rangeEnd: cursorAfterAt,
+    });
   });
 
   it("maps collapsed skill cursor to expanded text cursor", () => {
@@ -180,22 +182,21 @@ describe("collapseExpandedComposerCursor", () => {
     expect(collapseExpandedComposerCursor("plain text", 5)).toBe(5);
   });
 
-  it("maps expanded mention cursor back to collapsed cursor", () => {
+  it("keeps typed at-symbol file-looking text expanded cursor unchanged", () => {
     const text = "what's in my @AGENTS.md fsfdas";
-    const collapsedCursorAfterMention = "what's in my ".length + 2;
     const expandedCursorAfterMention = "what's in my @AGENTS.md ".length;
 
     expect(collapseExpandedComposerCursor(text, expandedCursorAfterMention)).toBe(
-      collapsedCursorAfterMention,
+      expandedCursorAfterMention,
     );
   });
 
-  it("keeps replacement cursors aligned when another mention already exists earlier", () => {
+  it("keeps replacement cursors aligned around typed at-symbol file-looking text", () => {
     const text = "open @AGENTS.md then @src/index.ts ";
     const expandedCursor = text.length;
     const collapsedCursor = collapseExpandedComposerCursor(text, expandedCursor);
 
-    expect(collapsedCursor).toBe("open ".length + 1 + " then ".length + 2);
+    expect(collapsedCursor).toBe(expandedCursor);
     expect(expandCollapsedComposerCursor(text, collapsedCursor)).toBe(expandedCursor);
   });
 
@@ -211,15 +212,11 @@ describe("collapseExpandedComposerCursor", () => {
 });
 
 describe("clampCollapsedComposerCursor", () => {
-  it("clamps to collapsed prompt length when mentions are present", () => {
+  it("clamps to prompt length for typed at-symbol file-looking text", () => {
     const text = "open @AGENTS.md then ";
 
-    expect(clampCollapsedComposerCursor(text, text.length)).toBe(
-      "open ".length + 1 + " then ".length,
-    );
-    expect(clampCollapsedComposerCursor(text, Number.POSITIVE_INFINITY)).toBe(
-      "open ".length + 1 + " then ".length,
-    );
+    expect(clampCollapsedComposerCursor(text, text.length)).toBe(text.length);
+    expect(clampCollapsedComposerCursor(text, Number.POSITIVE_INFINITY)).toBe(text.length);
   });
 });
 
@@ -255,22 +252,22 @@ describe("isCollapsedCursorAdjacentToInlineToken", () => {
     expect(isCollapsedCursorAdjacentToInlineToken(text, text.length, "right")).toBe(false);
   });
 
-  it("detects left adjacency only when cursor is directly after a mention", () => {
+  it("does not treat typed at-symbol file-looking text as a left-adjacent inline token", () => {
     const text = "open @AGENTS.md next";
     const mentionStart = "open ".length;
     const mentionEnd = mentionStart + 1;
 
-    expect(isCollapsedCursorAdjacentToInlineToken(text, mentionEnd, "left")).toBe(true);
+    expect(isCollapsedCursorAdjacentToInlineToken(text, mentionEnd, "left")).toBe(false);
     expect(isCollapsedCursorAdjacentToInlineToken(text, mentionStart, "left")).toBe(false);
     expect(isCollapsedCursorAdjacentToInlineToken(text, mentionEnd + 1, "left")).toBe(false);
   });
 
-  it("detects right adjacency only when cursor is directly before a mention", () => {
+  it("does not treat typed at-symbol file-looking text as a right-adjacent inline token", () => {
     const text = "open @AGENTS.md next";
     const mentionStart = "open ".length;
     const mentionEnd = mentionStart + 1;
 
-    expect(isCollapsedCursorAdjacentToInlineToken(text, mentionStart, "right")).toBe(true);
+    expect(isCollapsedCursorAdjacentToInlineToken(text, mentionStart, "right")).toBe(false);
     expect(isCollapsedCursorAdjacentToInlineToken(text, mentionEnd, "right")).toBe(false);
     expect(isCollapsedCursorAdjacentToInlineToken(text, mentionStart - 1, "right")).toBe(false);
   });

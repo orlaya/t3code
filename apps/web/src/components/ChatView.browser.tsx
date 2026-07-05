@@ -3478,7 +3478,48 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
-  it("surrounds text after a mention using the correct expanded offsets", async () => {
+  it("inserts picker-selected file mentions as absolute-path chips", async () => {
+    customWsRpcResolver = (body) => {
+      if (body._tag === WS_METHODS.projectsSearchEntries) {
+        return {
+          entries: [{ path: "package.json", kind: "file" as const }],
+          truncated: false,
+        };
+      }
+      return undefined;
+    };
+
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotForTargetUser({
+        targetMessageId: "msg-user-picker-file-mention" as MessageId,
+        targetText: "picker file mention",
+      }),
+    });
+
+    try {
+      const composerEditor = await waitForComposerEditor();
+      composerEditor.focus();
+      await pressComposerKey("@");
+      await pressComposerKey("p");
+      await pressComposerKey("a");
+      await pressComposerKey("c");
+
+      const packageItem = await waitForComposerMenuItem("path:file:package.json");
+      packageItem.click();
+
+      await waitForComposerText("/repo/project/package.json ");
+      await waitForElement(
+        () => document.querySelector<HTMLElement>('[data-composer-mention-chip="true"]'),
+        "Unable to find rendered composer mention chip.",
+      );
+    } finally {
+      customWsRpcResolver = null;
+      await mounted.cleanup();
+    }
+  });
+
+  it("surrounds text after typed at-symbol text using normal offsets", async () => {
     useComposerDraftStore.getState().setPrompt(THREAD_REF, "hi @package.json there");
 
     const mounted = await mountChatView({
@@ -3498,8 +3539,8 @@ describe("ChatView timeline estimator parity (full app)", () => {
       );
       await waitForComposerText("hi @package.json there");
       await setComposerSelectionByTextOffsets({
-        start: "hi package.json ".length,
-        end: "hi package.json there".length,
+        start: "hi @package.json ".length,
+        end: "hi @package.json there".length,
       });
       await pressComposerKey("(");
       await waitForComposerText("hi @package.json (there)");
@@ -3508,7 +3549,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
-  it("falls back to normal replacement when the selection includes a mention token", async () => {
+  it("surrounds selections that include typed at-symbol text", async () => {
     useComposerDraftStore.getState().setPrompt(THREAD_REF, "hi @package.json there ");
 
     const mounted = await mountChatView({
@@ -3528,7 +3569,7 @@ describe("ChatView timeline estimator parity (full app)", () => {
       );
       await selectAllComposerContent();
       await pressComposerKey("(");
-      await waitForComposerText("(");
+      await waitForComposerText("(hi @package.json there )");
     } finally {
       await mounted.cleanup();
     }

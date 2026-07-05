@@ -270,8 +270,11 @@ function normalizeClaudeStreamMessages(
   return squashed.length > 0 ? [squashed] : [];
 }
 
-function getEffectiveClaudeAgentEffort(effort: string | null | undefined): ClaudeSdkEffort | null {
-  const normalized = normalizeClaudeCliEffort(effort);
+function getEffectiveClaudeAgentEffort(
+  model: string | null | undefined,
+  effort: string | null | undefined,
+): ClaudeSdkEffort | null {
+  const normalized = normalizeClaudeCliEffort(model, effort);
   return normalized ? (normalized as ClaudeSdkEffort) : null;
 }
 
@@ -3152,7 +3155,7 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
       const thinking = thinkingSupported
         ? getModelSelectionBooleanOptionValue(modelSelection, "thinking")
         : undefined;
-      const effectiveEffort = getEffectiveClaudeAgentEffort(effort);
+      const effectiveEffort = getEffectiveClaudeAgentEffort(modelSelection?.model, effort);
       const runtimeModeToPermission: Record<string, PermissionMode> = {
         "auto-accept-edits": "acceptEdits",
         "full-access": "bypassPermissions",

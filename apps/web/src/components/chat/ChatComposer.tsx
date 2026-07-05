@@ -30,6 +30,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { projectSearchEntriesQueryOptions } from "~/lib/projectReactQuery";
+import { resolvePathLinkTarget } from "~/terminal-links";
 import {
   clampCollapsedComposerCursor,
   type ComposerTrigger,
@@ -1445,18 +1446,24 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       const { snapshot, trigger } = resolveActiveComposerTrigger();
       if (!trigger) return;
       if (item.type === "path") {
-        const replacement = `@${item.path} `;
+        const mentionPath = gitCwd ? resolvePathLinkTarget(item.path, gitCwd) : item.path;
+        const fallbackReplacement = `${mentionPath} `;
         const replacementRangeEnd = extendReplacementRangeForTrailingSpace(
           snapshot.value,
           trigger.rangeEnd,
-          replacement,
+          fallbackReplacement,
         );
-        const applied = applyPromptReplacement(
-          trigger.rangeStart,
-          replacementRangeEnd,
-          replacement,
-          { expectedText: snapshot.value.slice(trigger.rangeStart, replacementRangeEnd) },
-        );
+        const expectedText = snapshot.value.slice(trigger.rangeStart, replacementRangeEnd);
+        const applied =
+          composerEditorRef.current?.replaceRangeWithMention(
+            trigger.rangeStart,
+            replacementRangeEnd,
+            mentionPath,
+            { expectedText },
+          ) ??
+          applyPromptReplacement(trigger.rangeStart, replacementRangeEnd, fallbackReplacement, {
+            expectedText,
+          });
         if (applied) {
           setComposerHighlightedItemId(null);
         }
@@ -1517,7 +1524,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         return;
       }
     },
-    [applyPromptReplacement, resolveActiveComposerTrigger],
+    [applyPromptReplacement, gitCwd, resolveActiveComposerTrigger],
   );
 
   const onComposerMenuItemHighlighted = useCallback(
