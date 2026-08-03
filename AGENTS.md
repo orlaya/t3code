@@ -53,3 +53,15 @@ Docs:
 - Codex-Monitor (Tauri, feature-complete, strong reference implementation): https://github.com/Dimillian/CodexMonitor
 
 Use these as implementation references when designing protocol handling, UX flows, and operational safeguards.
+
+## Known Shadow Checkpoint Issue
+
+On macOS, Git can be killed with exit code 137 while memory-mapping a rebuilt Mach-O `.node` binary. This makes every T3 checkpoint capture fail and leaves zero-byte temporary index lock files in the shadow repository. A project-local `core.bigFileThreshold` setting does not apply because checkpoint commands use the separate bare shadow repository as their `--git-dir`.
+
+The immediate repair for an affected shadow repository is:
+
+```sh
+git --git-dir=<t3-base-dir>/checkpoints/<project-hash>/repo.git config core.bigFileThreshold 4m
+```
+
+The proper T3 fix belongs in `apps/server/src/vcs/GitVcsDriver.ts`: shadow repository setup should idempotently establish the safe threshold for both existing and newly created repositories. Checkpoint cleanup should also account for `<temporary-index>.lock` when Git dies before removing its own lock. Preserve the separate shadow-repository design described in `tweaks/shadow-checkpoints.md`; do not move checkpoint objects or refs back into project repositories.
