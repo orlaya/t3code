@@ -1,11 +1,8 @@
-/**
- * ClaudeAdapterLive - Scoped live implementation for the Claude Agent provider adapter.
- *
- * Wraps `@anthropic-ai/claude-agent-sdk` query sessions behind the generic
- * provider adapter contract and emits canonical runtime events.
- *
- * @module ClaudeAdapterLive
- */
+//! Bridges Claude Agent SDK query sessions into
+//! provider runtime events. Unknown SDK messages stay
+//! visible as warnings so new Claude behaviour can be
+//! assessed instead of silently disappearing.
+
 import {
   type CanUseTool,
   query,
@@ -104,6 +101,10 @@ type ClaudeSdkEffort = NonNullable<ClaudeQueryOptions["effort"]>;
 function encodeJsonStringForDiagnostics(input: unknown): string | undefined {
   const result = encodeUnknownJsonStringExit(input);
   return Exit.isSuccess(result) ? result.value : undefined;
+}
+
+function sdkMessageDetailForWarning(message: SDKMessage): string {
+  return encodeJsonStringForDiagnostics(message) ?? "[unserializable SDK message]";
 }
 
 type PromptQueueItem =
@@ -276,6 +277,14 @@ function getEffectiveClaudeAgentEffort(
 ): ClaudeSdkEffort | null {
   const normalized = normalizeClaudeCliEffort(model, effort);
   return normalized ? (normalized as ClaudeSdkEffort) : null;
+}
+
+function shouldRequestSummarizedClaudeThinking(model: string | undefined): boolean {
+  return (
+    model?.startsWith("claude-opus-4-7") === true ||
+    model?.startsWith("claude-opus-5-5") === true ||
+    model?.startsWith("claude-fable-5-1") === true
+  );
 }
 
 function isClaudeInterruptedMessage(message: string): boolean {
@@ -2507,12 +2516,14 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
           },
         });
         return;
+      case "commands_changed":
+      case "thinking_tokens":
+        return;
       default:
-        if ((message.subtype as string) === "thinking_tokens") return;
         yield* emitRuntimeWarning(
           context,
           `Unhandled Claude system message subtype '${message.subtype}'.`,
-          message,
+          sdkMessageDetailForWarning(message),
         );
         return;
     }
@@ -2627,7 +2638,7 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         yield* emitRuntimeWarning(
           context,
           `Unhandled Claude SDK message type '${message.type}'.`,
-          message,
+          sdkMessageDetailForWarning(message),
         );
         return;
     }
@@ -3166,12 +3177,11 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
         ...(fastMode ? { fastMode: true } : {}),
       };
 
-      // Opus 4.7 defaults `thinking.display` to `"omitted"` on Anthropic's
-      // side — the thinking block opens, only a signature_delta streams, then
-      // it closes with no `thinking_delta` events. Ask for summarized thinking
-      // explicitly so the fork's thinking UI has text to render.
-      // Opus 4.7 only accepts `type: "adaptive"` (enabled is rejected 400).
-      const isOpus47 = apiModelId?.startsWith("claude-opus-4-7") ?? false;
+      // These models default `thinking.display` to `"omitted"`, which leaves
+      // their thinking and between-tool progress blocks empty. Ask for
+      // summarized adaptive thinking so the fork's thinking UI has text to
+      // render. They reject manually enabled thinking.
+      const requestSummarizedThinking = shouldRequestSummarizedClaudeThinking(apiModelId);
 
       const queryOptions: ClaudeQueryOptions = {
         ...(input.cwd ? { cwd: input.cwd } : {}),
@@ -3186,7 +3196,9 @@ export const makeClaudeAdapter = Effect.fn("makeClaudeAdapter")(function* (
               effort: effectiveEffort as unknown as NonNullable<ClaudeQueryOptions["effort"]>,
             }
           : {}),
-        ...(isOpus47 ? { thinking: { type: "adaptive", display: "summarized" } } : {}),
+        ...(requestSummarizedThinking
+          ? { thinking: { type: "adaptive", display: "summarized" } }
+          : {}),
         ...(permissionMode ? { permissionMode } : {}),
         ...(permissionMode === "bypassPermissions"
           ? { allowDangerouslySkipPermissions: true }

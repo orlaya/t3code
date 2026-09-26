@@ -1,3 +1,7 @@
+//! Projects provider runtime events into thread state.
+//! Runtime warning summaries preserve provider detail so
+//! the UI can show what changed without digging into logs.
+
 import {
   ApprovalRequestId,
   type AssistantDeliveryMode,
@@ -375,7 +379,7 @@ function runtimeEventToActivities(
           createdAt: event.createdAt,
           tone: "info",
           kind: "runtime.warning",
-          summary: "Runtime warning",
+          summary: truncateDetail(event.payload.message),
           payload: {
             message: truncateDetail(event.payload.message),
             ...(event.payload.detail !== undefined ? { detail: event.payload.detail } : {}),

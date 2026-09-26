@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 declare const Bun: {
-  spawnSync(command: ReadonlyArray<string>, options: { readonly stdout: "pipe"; readonly stderr: "pipe" }): {
+  spawnSync(
+    command: ReadonlyArray<string>,
+    options: { readonly stdout: "pipe"; readonly stderr: "pipe" },
+  ): {
     readonly exitCode: number;
     readonly stdout: Uint8Array;
     readonly stderr: Uint8Array;
@@ -217,8 +220,6 @@ const generateProtocolBundle = Effect.fn("generateProtocolBundle")(function* () 
   } satisfies ProtocolBundle;
 });
 
-
-
 function collectSchemaEntries(
   chunk: string,
 ): ReadonlyArray<{ readonly name: string; readonly code: string }> {
@@ -361,10 +362,15 @@ function splitNullableTypeName(rawTypeName: string): {
   readonly nullable: boolean;
 } {
   const match = /^(.*)\s+\|\s+null$/.exec(rawTypeName);
-  return match?.[1] ? { typeName: match[1].trim(), nullable: true } : { typeName: rawTypeName, nullable: false };
+  return match?.[1]
+    ? { typeName: match[1].trim(), nullable: true }
+    : { typeName: rawTypeName, nullable: false };
 }
 
-function resolveSchemaTypeName(rawTypeName: string, generatedSchemaNames: ReadonlySet<string>): string {
+function resolveSchemaTypeName(
+  rawTypeName: string,
+  generatedSchemaNames: ReadonlySet<string>,
+): string {
   const { typeName } = splitNullableTypeName(rawTypeName);
   if (typeName === "undefined") {
     return "undefined";
@@ -863,11 +869,6 @@ const generateFiles = Effect.fn("generateFiles")(function* () {
 
 generateFiles().pipe(
   Effect.scoped,
-  Effect.provide(
-    Layer.mergeAll(
-      Logger.layer([Logger.consolePretty()]),
-      NodeServices.layer,
-    ),
-  ),
+  Effect.provide(Layer.mergeAll(Logger.layer([Logger.consolePretty()]), NodeServices.layer)),
   NodeRuntime.runMain,
 );

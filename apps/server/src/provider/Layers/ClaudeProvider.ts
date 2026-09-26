@@ -51,7 +51,67 @@ const CLAUDE_PRESENTATION = {
 const MINIMUM_CLAUDE_OPUS_4_7_VERSION = "2.1.111";
 const MINIMUM_CLAUDE_OPUS_4_8_VERSION = "2.1.154";
 const MINIMUM_CLAUDE_FABLE_5_VERSION = "2.1.169";
+const MINIMUM_CLAUDE_FABLE_5_1_VERSION = "2.1.257";
+const MINIMUM_CLAUDE_OPUS_5_5_VERSION = "2.1.280";
 const BUILT_IN_MODELS: ReadonlyArray<ServerProviderModel> = [
+  {
+    slug: "claude-fable-5-1",
+    name: "Claude Fable 5.1",
+    isCustom: false,
+    capabilities: createModelCapabilities({
+      optionDescriptors: [
+        buildSelectOptionDescriptor({
+          id: "effort",
+          label: "Reasoning",
+          options: [
+            { value: "low", label: "Low" },
+            { value: "medium", label: "Medium" },
+            { value: "high", label: "High", isDefault: true },
+            { value: "xhigh", label: "Extra High" },
+            { value: "max", label: "Max" },
+            { value: "ultrathink", label: "Ultrathink" },
+          ],
+          promptInjectedValues: ["ultrathink"],
+        }),
+        buildSelectOptionDescriptor({
+          id: "contextWindow",
+          label: "Context Window",
+          options: [{ value: "1m", label: "1M", isDefault: true }],
+        }),
+      ],
+    }),
+  },
+  {
+    slug: "claude-opus-5-5",
+    name: "Claude Opus 5.5",
+    isCustom: false,
+    capabilities: createModelCapabilities({
+      optionDescriptors: [
+        buildSelectOptionDescriptor({
+          id: "effort",
+          label: "Reasoning",
+          options: [
+            { value: "low", label: "Low" },
+            { value: "medium", label: "Medium", isDefault: true },
+            { value: "high", label: "High" },
+            { value: "xhigh", label: "Extra High" },
+            { value: "max", label: "Max" },
+            { value: "ultrathink", label: "Ultrathink" },
+          ],
+          promptInjectedValues: ["ultrathink"],
+        }),
+        buildSelectOptionDescriptor({
+          id: "contextWindow",
+          label: "Context Window",
+          options: [{ value: "1m", label: "1M", isDefault: true }],
+        }),
+        buildBooleanOptionDescriptor({
+          id: "fastMode",
+          label: "Fast Mode",
+        }),
+      ],
+    }),
+  },
   {
     slug: "claude-fable-5",
     name: "Claude Fable 5",
@@ -239,11 +299,23 @@ function supportsClaudeFable5(version: string | null | undefined): boolean {
   return version ? compareSemverVersions(version, MINIMUM_CLAUDE_FABLE_5_VERSION) >= 0 : false;
 }
 
+function supportsClaudeFable51(version: string | null | undefined): boolean {
+  return version ? compareSemverVersions(version, MINIMUM_CLAUDE_FABLE_5_1_VERSION) >= 0 : false;
+}
+
+function supportsClaudeOpus55(version: string | null | undefined): boolean {
+  return version ? compareSemverVersions(version, MINIMUM_CLAUDE_OPUS_5_5_VERSION) >= 0 : false;
+}
+
 function getBuiltInClaudeModelsForVersion(
   version: string | null | undefined,
 ): ReadonlyArray<ServerProviderModel> {
   return BUILT_IN_MODELS.filter((model) => {
     switch (model.slug) {
+      case "claude-fable-5-1":
+        return supportsClaudeFable51(version);
+      case "claude-opus-5-5":
+        return supportsClaudeOpus55(version);
       case "claude-fable-5":
         return supportsClaudeFable5(version);
       case "claude-opus-4-8":
@@ -285,6 +357,20 @@ function formatClaudeUpgradeMessage(version: string | null): string {
       version,
       "Claude Fable 5",
       MINIMUM_CLAUDE_FABLE_5_VERSION,
+    );
+  }
+  if (!supportsClaudeFable51(version)) {
+    return formatClaudeModelUpgradeMessage(
+      version,
+      "Claude Fable 5.1",
+      MINIMUM_CLAUDE_FABLE_5_1_VERSION,
+    );
+  }
+  if (!supportsClaudeOpus55(version)) {
+    return formatClaudeModelUpgradeMessage(
+      version,
+      "Claude Opus 5.5",
+      MINIMUM_CLAUDE_OPUS_5_5_VERSION,
     );
   }
   return "";
