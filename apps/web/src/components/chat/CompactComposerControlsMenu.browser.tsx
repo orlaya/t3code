@@ -136,11 +136,9 @@ async function mountMenu(props?: { modelSelection?: ModelSelection; prompt?: str
   const screen = await render(
     <CompactComposerControlsMenu
       activePlan={false}
-      interactionMode="default"
       planSidebarLabel="Plan"
       planSidebarOpen={false}
       runtimeMode="approval-required"
-      showInteractionModeToggle
       traitsMenuContent={
         <TraitsMenuContent
           provider={provider}
@@ -152,7 +150,6 @@ async function mountMenu(props?: { modelSelection?: ModelSelection; prompt?: str
           onPromptChange={onPromptChange}
         />
       }
-      onToggleInteractionMode={vi.fn()}
       onTogglePlanSidebar={vi.fn()}
       onRuntimeModeChange={vi.fn()}
     />,
@@ -292,18 +289,15 @@ describe("CompactComposerControlsMenu", () => {
     });
   });
 
-  it("can hide the interaction mode section", async () => {
+  it("does not expose interaction mode controls", async () => {
     const host = document.createElement("div");
     document.body.append(host);
     const screen = await render(
       <CompactComposerControlsMenu
         activePlan={false}
-        interactionMode="default"
         planSidebarLabel="Plan"
         planSidebarOpen={false}
         runtimeMode="approval-required"
-        showInteractionModeToggle={false}
-        onToggleInteractionMode={vi.fn()}
         onTogglePlanSidebar={vi.fn()}
         onRuntimeModeChange={vi.fn()}
       />,

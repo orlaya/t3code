@@ -1426,18 +1426,6 @@ async function expectComposerActionsContained(): Promise<void> {
   );
 }
 
-async function waitForInteractionModeButton(
-  expectedLabel: "Build" | "Plan",
-): Promise<HTMLButtonElement> {
-  return waitForElement(
-    () =>
-      Array.from(document.querySelectorAll("button")).find(
-        (button) => button.textContent?.trim() === expectedLabel,
-      ) as HTMLButtonElement | null,
-    `Unable to find ${expectedLabel} interaction mode button.`,
-  );
-}
-
 async function waitForServerConfigToApply(): Promise<void> {
   await vi.waitFor(
     () => {
@@ -3054,71 +3042,6 @@ describe("ChatView timeline estimator parity (full app)", () => {
       );
     } finally {
       resolveDispatch({ sequence: fixture.snapshot.snapshotSequence + 1 });
-      await mounted.cleanup();
-    }
-  });
-
-  it("toggles plan mode with Shift+Tab only while the composer is focused", async () => {
-    const mounted = await mountChatView({
-      viewport: DEFAULT_VIEWPORT,
-      snapshot: createSnapshotForTargetUser({
-        targetMessageId: "msg-user-target-hotkey" as MessageId,
-        targetText: "hotkey target",
-      }),
-    });
-
-    try {
-      const initialModeButton = await waitForInteractionModeButton("Build");
-      expect(initialModeButton.title).toContain("enter plan mode");
-
-      window.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "Tab",
-          shiftKey: true,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-      await waitForLayout();
-
-      expect((await waitForInteractionModeButton("Build")).title).toContain("enter plan mode");
-
-      const composerEditor = await waitForComposerEditor();
-      composerEditor.focus();
-      composerEditor.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "Tab",
-          shiftKey: true,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-
-      await vi.waitFor(
-        async () => {
-          expect((await waitForInteractionModeButton("Plan")).title).toContain(
-            "return to normal build mode",
-          );
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-
-      composerEditor.dispatchEvent(
-        new KeyboardEvent("keydown", {
-          key: "Tab",
-          shiftKey: true,
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
-
-      await vi.waitFor(
-        async () => {
-          expect((await waitForInteractionModeButton("Build")).title).toContain("enter plan mode");
-        },
-        { timeout: 8_000, interval: 16 },
-      );
-    } finally {
       await mounted.cleanup();
     }
   });

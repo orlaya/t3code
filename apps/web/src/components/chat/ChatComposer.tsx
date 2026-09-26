@@ -1,10 +1,11 @@
+//! Owns the chat prompt editor and its send-time controls.
+
 import type {
   ApprovalRequestId,
   EnvironmentId,
   ModelSelection,
   ProjectEntry,
   ProviderApprovalDecision,
-  ProviderInteractionMode,
   RuntimeMode,
   ScopedThreadRef,
   ServerProvider,
@@ -95,7 +96,6 @@ import {
   XIcon,
 } from "lucide-react";
 import { proposedPlanTitle } from "../../proposedPlan";
-import { getProviderInteractionModeToggle } from "../../providerModels";
 import {
   deriveProviderInstanceEntries,
   resolveProviderDriverKindForInstanceSelection,
@@ -187,10 +187,7 @@ function isInsideComposerFloatingLayer(element: Element): boolean {
 const ComposerFooterModeControls = memo(function ComposerFooterModeControls(props: {
   semiCompact: boolean;
   ultraCompact: boolean;
-  showInteractionModeToggle: boolean;
-  interactionMode: ProviderInteractionMode;
   runtimeMode: RuntimeMode;
-  onToggleInteractionMode: () => void;
   onRuntimeModeChange: (mode: RuntimeMode) => void;
 }) {
   const runtimeModeOption = runtimeModeConfig[props.runtimeMode];
@@ -199,30 +196,6 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
   return (
     <>
       <Separator orientation="vertical" className="mx-0.5 h-4" />
-
-      {props.showInteractionModeToggle ? (
-        <>
-          <Button
-            variant="ghost"
-            className={cn(
-              "shrink-0 whitespace-nowrap px-2 text-muted-foreground/70 hover:text-foreground/80",
-              !props.semiCompact && "sm:px-3",
-            )}
-            size="sm"
-            type="button"
-            onClick={props.onToggleInteractionMode}
-            title={
-              props.interactionMode === "plan"
-                ? "Plan mode — click to return to normal build mode"
-                : "Default mode — click to enter plan mode"
-            }
-          >
-            <span>{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
-          </Button>
-
-          <Separator orientation="vertical" className="mx-0.5 h-4" />
-        </>
-      ) : null}
 
       <Select
         value={props.runtimeMode}
@@ -395,7 +368,6 @@ export interface ChatComposerProps {
 
   // Mode
   runtimeMode: RuntimeMode;
-  interactionMode: ProviderInteractionMode;
 
   // Provider / model
   lockedProvider: ProviderDriverKind | null;
@@ -443,7 +415,6 @@ export interface ChatComposerProps {
   ) => void;
 
   onProviderModelSelect: (instanceId: ProviderInstanceId, model: string) => void;
-  toggleInteractionMode: () => void;
   handleRuntimeModeChange: (mode: RuntimeMode) => void;
 
   focusComposer: () => void;
@@ -485,7 +456,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     showPlanFollowUpPrompt,
     activeProposedPlan,
     runtimeMode,
-    interactionMode,
     lockedProvider,
     providerName,
     providerStatuses,
@@ -511,7 +481,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     onPreviousActivePendingUserInputQuestion,
     onChangeActivePendingUserInputCustomAnswer,
     onProviderModelSelect,
-    toggleInteractionMode,
     handleRuntimeModeChange,
     focusComposer,
     scheduleComposerFocus,
@@ -695,15 +664,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
 
   const selectedPromptEffort = composerProviderState.promptEffort;
   const selectedModelOptionsForDispatch = composerProviderState.modelOptionsForDispatch;
-  const composerProviderControls = useMemo(
-    () => ({
-      showInteractionModeToggle: getProviderInteractionModeToggle(
-        providerStatuses,
-        selectedProvider,
-      ),
-    }),
-    [providerStatuses, selectedProvider],
-  );
   const selectedModelSelection = useMemo<ModelSelection>(
     () => createModelSelection(selectedInstanceId, selectedModel, selectedModelOptionsForDispatch),
     [selectedInstanceId, selectedModel, selectedModelOptionsForDispatch],
@@ -1622,10 +1582,6 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     key: "ArrowDown" | "ArrowUp" | "Enter" | "Tab",
     event: KeyboardEvent,
   ) => {
-    if (key === "Tab" && event.shiftKey) {
-      toggleInteractionMode();
-      return true;
-    }
     const { trigger } = resolveActiveComposerTrigger();
     const menuIsActive = composerMenuOpenRef.current || trigger !== null;
     if (menuIsActive) {
@@ -2313,10 +2269,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 <ComposerFooterModeControls
                   semiCompact={isComposerFooterSemiCompact}
                   ultraCompact={isComposerFooterUltraCompact}
-                  showInteractionModeToggle={composerProviderControls.showInteractionModeToggle}
-                  interactionMode={interactionMode}
                   runtimeMode={runtimeMode}
-                  onToggleInteractionMode={toggleInteractionMode}
                   onRuntimeModeChange={handleRuntimeModeChange}
                 />
               </div>

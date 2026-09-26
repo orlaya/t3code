@@ -1,3 +1,5 @@
+//! Coordinates a thread's conversation, composer, and sidebars.
+
 import {
   type ApprovalRequestId,
   DEFAULT_MODEL,
@@ -2214,27 +2216,6 @@ export default function ChatView(props: ChatViewProps) {
     ],
   );
 
-  const handleInteractionModeChange = useCallback(
-    (mode: ProviderInteractionMode) => {
-      if (mode === interactionMode) return;
-      setComposerDraftInteractionMode(composerDraftTarget, mode);
-      if (isLocalDraftThread) {
-        setDraftThreadContext(composerDraftTarget, { interactionMode: mode });
-      }
-      scheduleComposerFocus();
-    },
-    [
-      interactionMode,
-      isLocalDraftThread,
-      scheduleComposerFocus,
-      composerDraftTarget,
-      setComposerDraftInteractionMode,
-      setDraftThreadContext,
-    ],
-  );
-  const toggleInteractionMode = useCallback(() => {
-    handleInteractionModeChange(interactionMode === "plan" ? "default" : "plan");
-  }, [handleInteractionModeChange, interactionMode]);
   // ---------------------------------------------------------------------------
   // Sidebar constraint system
   //
@@ -3924,7 +3905,6 @@ export default function ChatView(props: ChatViewProps) {
                       showPlanFollowUpPrompt={showPlanFollowUpPrompt}
                       activeProposedPlan={activeProposedPlan}
                       runtimeMode={runtimeMode}
-                      interactionMode={interactionMode}
                       lockedProvider={lockedProvider}
                       providerName={providerName}
                       providerStatuses={providerStatuses as ServerProvider[]}
@@ -3953,7 +3933,6 @@ export default function ChatView(props: ChatViewProps) {
                         onChangeActivePendingUserInputCustomAnswer
                       }
                       onProviderModelSelect={onProviderModelSelect}
-                      toggleInteractionMode={toggleInteractionMode}
                       handleRuntimeModeChange={handleRuntimeModeChange}
                       focusComposer={focusComposer}
                       scheduleComposerFocus={scheduleComposerFocus}
