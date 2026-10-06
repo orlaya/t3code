@@ -170,8 +170,10 @@ export function resolveMarkdownFileLinkTarget(
 }
 
 function basenameOfPath(path: string): string {
-  const separatorIndex = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return separatorIndex >= 0 ? path.slice(separatorIndex + 1) : path;
+  // Directory links often end in a separator; strip it so the label isn't empty.
+  const trimmed = path.replace(/[\\/]+$/, "");
+  const separatorIndex = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+  return separatorIndex >= 0 ? trimmed.slice(separatorIndex + 1) : trimmed;
 }
 
 export function resolveMarkdownFileLinkMeta(
